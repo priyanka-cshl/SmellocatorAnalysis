@@ -52,6 +52,7 @@ switch foo{1}
                 disp('{1 x N}[1, 2, ... n] : Target Zone entry and exit timestamps w.r.t. trial start, in seconds');
             case 'Perturbation'
                 disp('{N x 1} : Perturbation type');
+                disp('[] : no perturbation');
                 disp('''Fake Zone'': which target zone was the fake zone');
                 disp('''Halt-I'': [odor halt start, odor halt stop], odor halt start = trial start');
                 disp('''Halt-II'': [odor halt start, odor halt stop], odor halt starts when lever crosses certain thresh');
@@ -69,6 +70,7 @@ switch foo{1}
                 disp('''BlockShift'': [shift size], rewarded location is shifted off-center');
                 disp('''OL-Template'': close loop trial that was used as template for replay');
                 disp('''OL-Replay'': replay trial');
+                disp('''RuleReversal'': Reverse direction trial');
             otherwise
                 disp('fieldname unrecognized: check spelling or ask Priyanka');
         end

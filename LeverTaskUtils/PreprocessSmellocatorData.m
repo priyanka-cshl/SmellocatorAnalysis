@@ -30,6 +30,16 @@ else
     [FilePaths, MyFileName] = fileparts(MyFilePath);
     [~,AnimalName] = fileparts(FilePaths);
 end
+
+%% check if the preprocessed version already exists - locally or on the server
+savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
+if exist(savepath)
+    reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
+    if strcmp(reply,'N')
+        return;
+    end
+end
+
 [MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
 FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
@@ -86,8 +96,6 @@ if ~isempty(TTLs)
 end
 
 %% Saving stuff in one place
-% where to save
-savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
                'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
