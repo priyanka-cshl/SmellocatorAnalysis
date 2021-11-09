@@ -1,0 +1,3 @@
+function [OdorMismatches] = TuningListMismatches(TrialSequence,EphysTuningTrials)
+OdorMismatches = intersect(find(TrialSequence(2:end,1)-EphysTuningTrials(2:size(TrialSequence,1),1)),...
+                find(~isnan(TrialSequence(2:end,1)-EphysTuningTrials(2:size(TrialSequence,1),1))));
