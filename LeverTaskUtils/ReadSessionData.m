@@ -117,16 +117,18 @@ for thisTrial = 1:size(MyParams,1)
         end
     end
     
-    % flag open loop template trials
-    if ismember(thisTrial,OL_template(:,1))
-        MyData(f,11) = 1500;
-        MyData(f,12) = -1;
-    end
-    
-    % flag replay trials
-    if ismember(thisTrial,Replay_Trials)
-        MyData(f,11) = 1600;
-        MyData(f,12) = -2;
+    if any(OL_template)
+        % flag open loop template trials
+        if ismember(thisTrial,OL_template(:,1))
+            MyData(f,11) = 1500;
+            MyData(f,12) = -1;
+        end
+        
+        % flag replay trials
+        if ismember(thisTrial,Replay_Trials)
+            MyData(f,11) = 1600;
+            MyData(f,12) = -2;
+        end
     end
     
 end

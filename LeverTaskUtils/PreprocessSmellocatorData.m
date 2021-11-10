@@ -51,7 +51,7 @@ disp(MyFileName);
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
 
 %% Check if passive tuning was done
-MyTuningTrials = [];
+MyTuningTrials = []; TrialSequence = [];
 [TuningFile] = WhereTuningFile(FilePaths,MyFileName);
 if ~isempty(TuningFile)
     [MyTuningTrials, TrialSequence, PassiveReplayTraces] = ParseTuningSession(TuningFile);
