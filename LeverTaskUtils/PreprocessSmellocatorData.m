@@ -7,6 +7,7 @@ function [] = PreprocessSmellocatorData(MyFilePath)
 %% Add relevant repositories
 Paths = WhichComputer();
 addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
+addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
 
 %% globals
 % global MyFileName;
