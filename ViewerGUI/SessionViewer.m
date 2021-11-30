@@ -126,6 +126,7 @@ function LoadSession_Callback(hObject, eventdata, handles)
 [WhichSession, SessionPath] = uigetfile(...
                                 '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O5/O5_20210923_r0_processed.mat',...
                                 '*.mat', 'Select Behavior/Recording Session');
+                            keyboard;
 % Load the relevant variables
 % Behavior
 
