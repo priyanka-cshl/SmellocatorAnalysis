@@ -1,5 +1,8 @@
-function [] = RecordingSessionOverview(SingleUnits)
-    figure; hold on
+function [] = RecordingSessionOverview(SingleUnits,SpikeHeight)
+    
+    if nargin<2
+        SpikeHeight = 0.8;
+    end
     
     for i = 1:size(SingleUnits,2)
         foo(i,:) = [SingleUnits(i).tetrode SingleUnits(i).id];
@@ -10,13 +13,12 @@ function [] = RecordingSessionOverview(SingleUnits)
     MyColors(1,:) = Plot_Colors('r');
     MyColors(2,:) = Plot_Colors('k');
     for i = 1:1:size(SingleUnits,2)
-        i
         whichunit = SortedByTetrodes(i);
         thistetrode = SingleUnits(whichunit).tetrode;
         if thistetrode~=whichtetrode
             MyColors = circshift(MyColors,1);
             whichtetrode = thistetrode;
         end
-        PlotRaster(SingleUnits(whichunit).spikes,i,MyColors(1,:),0.8);
+        PlotRaster(SingleUnits(whichunit).spikes,i,MyColors(1,:),SpikeHeight);
     end
 end

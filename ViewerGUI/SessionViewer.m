@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 30-Nov-2021 13:33:52
+% Last Modified by GUIDE v2.5 01-Dec-2021 16:55:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,6 +55,9 @@ function SessionViewer_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for SessionViewer
 handles.output = hObject;
 
+% defaults
+handles.SessionLength = 100;
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -72,6 +75,27 @@ function varargout = SessionViewer_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
+% --- Executes on button press in Previous.
+function Previous_Callback(hObject, eventdata, handles)
+% hObject    handle to Previous (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+newLims = get(handles.SpikesPlot,'XLim') - str2double(handles.TimeWindow.String);
+handles.Scroller.Value = handles.Scroller.Value - ...
+    (str2double(handles.TimeWindow.String)/handles.SessionLength);
+set(handles.SpikesPlot,'XLim',newLims); 
+set(handles.BehaviorPlot,'XLim',newLims); 
+
+% --- Executes on button press in Next.
+function Next_Callback(hObject, eventdata, handles)
+% hObject    handle to Next (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+newLims = get(handles.SpikesPlot,'XLim') + str2double(handles.TimeWindow.String);
+handles.Scroller.Value = handles.Scroller.Value + ...
+    (str2double(handles.TimeWindow.String)/handles.SessionLength);
+set(handles.SpikesPlot,'XLim',newLims); 
+set(handles.BehaviorPlot,'XLim',newLims); 
 
 % --- Executes on slider movement.
 function Scroller_Callback(hObject, eventdata, handles)
@@ -82,6 +106,9 @@ function Scroller_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
+newLims = get(hObject,'Value')*handles.SessionLength + [0 str2double(handles.TimeWindow.String)];
+set(handles.SpikesPlot,'XLim',newLims);
+set(handles.BehaviorPlot,'XLim',newLims); 
 
 % --- Executes during object creation, after setting all properties.
 function Scroller_CreateFcn(hObject, eventdata, handles)
@@ -103,6 +130,7 @@ function TimeWindow_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of TimeWindow as text
 %        str2double(get(hObject,'String')) returns contents of TimeWindow as a double
+Scroller_Callback(hObject, eventdata, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -126,8 +154,55 @@ function LoadSession_Callback(hObject, eventdata, handles)
 [WhichSession, SessionPath] = uigetfile(...
                                 '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O5/O5_20210923_r0_processed.mat',...
                                 '*.mat', 'Select Behavior/Recording Session');
-                            keyboard;
+                            
 % Load the relevant variables
-% Behavior
+load(fullfile(SessionPath,WhichSession), 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
+               'startoffset', 'errorflags', 'SampleRate', ...
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
 
-% Spikes
+handles.SessionLength = 10*ceil(TTLs.Trial(end,2)/10);
+handles.TotalUnits = size(SingleUnits,2);
+[TracesOut] = ConcatenateTraces(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
+TrialStart_behavior = TrialInfo.SessionTimestamps(1,1);
+TrialStart_Ephys = TTLs.Trial(1,1);
+% convert all behavior timestamps to match Ephys
+TimestampAdjuster = TrialStart_Ephys - TrialStart_behavior;
+
+% plot odor boxes on the behavior plot
+axes(handles.BehaviorPlot);
+for i = 1:3
+    handles.(['Trial',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
+    hold on;
+    handles.(['Trial',num2str(i),'Plot']).EdgeColor = 'none';
+    ValveTS = TrialInfo.SessionTimestamps((TrialInfo.Odor==i),1:2)' + TimestampAdjuster;
+    handles.(['Trial',num2str(i),'Plot']).Vertices = [ ...
+        reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
+        repmat([0 5 5 0]',size(ValveTS,2),1)];
+    handles.(['Trial',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
+end
+% plot the lever trace on top
+Timestamps = (1:numel(TracesOut.Lever{1}))/SampleRate;
+% make the first timestamp equal to first trial minus startoffset
+Timestamps = Timestamps - Timestamps(1) + TrialInfo.SessionTimestamps(1,1) - startoffset;
+plot(Timestamps + TimestampAdjuster, TracesOut.Lever{1},'k');
+set(gca,'YLim', [0 8], 'YTick', [],...
+    'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+
+% plot odor boxes on the spikes plot
+axes(handles.SpikesPlot);
+for i = 1:3
+    handles.(['Odor',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
+    hold on;
+    handles.(['Odor',num2str(i),'Plot']).EdgeColor = 'none';
+    ValveTS = TTLs.(['Odor',num2str(i)])(:,1:2)';
+    handles.(['Odor',num2str(i),'Plot']).Vertices = [ ...
+        reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
+        repmat(handles.TotalUnits*[0 1 1 0]',size(ValveTS,2),1)];
+    handles.(['Odor',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
+end
+% plot all spikes
+RecordingSessionOverview(SingleUnits);
+set(gca,'YLim', [0 handles.TotalUnits], 'YTick', [],...
+    'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+% Update handles structure
+guidata(hObject, handles);
