@@ -75,28 +75,6 @@ function varargout = SessionViewer_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
-% --- Executes on button press in Previous.
-function Previous_Callback(hObject, eventdata, handles)
-% hObject    handle to Previous (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-newLims = get(handles.SpikesPlot,'XLim') - str2double(handles.TimeWindow.String);
-handles.Scroller.Value = handles.Scroller.Value - ...
-    (str2double(handles.TimeWindow.String)/handles.SessionLength);
-set(handles.SpikesPlot,'XLim',newLims); 
-set(handles.BehaviorPlot,'XLim',newLims); 
-
-% --- Executes on button press in Next.
-function Next_Callback(hObject, eventdata, handles)
-% hObject    handle to Next (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-newLims = get(handles.SpikesPlot,'XLim') + str2double(handles.TimeWindow.String);
-handles.Scroller.Value = handles.Scroller.Value + ...
-    (str2double(handles.TimeWindow.String)/handles.SessionLength);
-set(handles.SpikesPlot,'XLim',newLims); 
-set(handles.BehaviorPlot,'XLim',newLims); 
-
 % --- Executes on slider movement.
 function Scroller_Callback(hObject, eventdata, handles)
 % hObject    handle to Scroller (see GCBO)
@@ -120,8 +98,6 @@ function Scroller_CreateFcn(hObject, eventdata, handles)
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
-
-
 
 function TimeWindow_Callback(hObject, eventdata, handles)
 % hObject    handle to TimeWindow (see GCBO)
@@ -185,6 +161,17 @@ Timestamps = (1:numel(TracesOut.Lever{1}))/SampleRate;
 % make the first timestamp equal to first trial minus startoffset
 Timestamps = Timestamps - Timestamps(1) + TrialInfo.SessionTimestamps(1,1) - startoffset;
 plot(Timestamps + TimestampAdjuster, TracesOut.Lever{1},'k');
+
+% plot Rewards
+handles.reward_plot = plot(NaN, NaN, 'color',Plot_Colors('t'),'Linewidth',1.25);
+tick_timestamps =  Timestamps(find(diff(TracesOut.Rewards{1}==1)) + 1)' + TimestampAdjuster;
+tick_x = [tick_timestamps'; tick_timestamps'; ...
+    NaN(1,numel(tick_timestamps))]; % creates timestamp1 timestamp1 NaN timestamp2 timestamp2..
+tick_x = tick_x(:);
+tick_y = repmat( [0; 5; NaN],...
+    numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
+set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
+
 set(gca,'YLim', [0 8], 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 
@@ -200,6 +187,17 @@ for i = 1:3
         repmat(handles.TotalUnits*[0 1 1 0]',size(ValveTS,2),1)];
     handles.(['Odor',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
 end
+
+% plot Rewards
+handles.water_plot = plot(NaN, NaN, 'color',Plot_Colors('t'),'Linewidth',1.25);
+tick_timestamps =  TTLs.Reward(:,1);
+tick_x = [tick_timestamps'; tick_timestamps'; ...
+    NaN(1,numel(tick_timestamps))]; % creates timestamp1 timestamp1 NaN timestamp2 timestamp2..
+tick_x = tick_x(:);
+tick_y = repmat( [0; handles.TotalUnits; NaN],...
+    numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
+set(handles.water_plot,'XData',tick_x,'YData',tick_y);
+
 % plot all spikes
 RecordingSessionOverview(SingleUnits);
 set(gca,'YLim', [0 handles.TotalUnits], 'YTick', [],...
