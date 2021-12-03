@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 02-Dec-2021 16:31:43
+% Last Modified by GUIDE v2.5 03-Dec-2021 12:13:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -204,7 +204,7 @@ tick_y = repmat( [0; 5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
 set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 
-set(gca,'YLim', [0 8], 'YTick', [],...
+set(gca,'YLim', [0 5], 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 
 %% plot odor boxes on the spikes plot
@@ -284,9 +284,20 @@ tick_y = repmat( [0; 10+str2double(handles.NumUnits.String); NaN],...
 set(handles.h2o_plot,'XData',tick_x,'YData',tick_y);
 
 % plot all PSTHs
-RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
+[popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
 
 set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+    'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+
+%% population psth
+axes(handles.PopPSTH);
+hold off
+taxis = (1:size(popFR,1))/100;
+plot(taxis,popFR(:,1)/max(popFR(:,1)),Plot_Colors('r'));
+hold on
+plot(taxis,popFRnorm(:,2),Plot_Colors('k'));
+
+set(gca,'YLim', [0 1.5], 'YTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 
@@ -305,9 +316,14 @@ for x = 1:size(TuningTTLs,1)
         MotorTrajectory(Indices,1) = TuningTTLs(x,7)/100;
     end
 end
+% MotorTrajectory(:,2) = MotorTrajectory(:,1);
+% % keep only positive values in col 1
+% MotorTrajectory((MotorTrajectory(:,1)<0),1) = 1.1;
+% MotorTrajectory((MotorTrajectory(:,2)>0),2) = 1.1;
+% MotorTrajectory = abs(MotorTrajectory);
 
 handles.MotorTrajectoryPlot = imagesc(MotorTrajectory',[-1 1]);
-colormap(brewermap(100,'rdbu'));
+colormap(brewermap(100,'RdYlBu'));
 
 set(gca, 'YTick', [], 'XTick', [], ...
     'TickDir','out','XLim', [0 SampleRate*str2double(handles.TimeWindow.String)]);
