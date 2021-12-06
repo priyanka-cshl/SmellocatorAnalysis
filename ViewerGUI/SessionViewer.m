@@ -59,6 +59,8 @@ handles.output = hObject;
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
 handles.WhereSession.String = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O3/O3_20210922_r0_processed.mat';
+handles.TimeWindow.String = '100';
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -89,6 +91,7 @@ newLims = handles.Scroller.Value * str2double(handles.SessionLength.String) + ..
     [0 str2double(handles.TimeWindow.String)];
 set(handles.SpikesPlot,'XLim',newLims);
 set(handles.PSTHPlot,'XLim',newLims);
+set(handles.popPSTH,'XLim',newLims);
 set(handles.BehaviorPlot,'XLim',newLims); 
 set(handles.MotorPlot,'XLim',handles.SampleRate*newLims); 
 
@@ -204,7 +207,7 @@ tick_y = repmat( [0; 5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
 set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 
-set(gca,'YLim', [0 5], 'YTick', [],...
+set(gca,'YLim', [0 6], 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 
 %% plot odor boxes on the spikes plot
@@ -287,17 +290,18 @@ set(handles.h2o_plot,'XData',tick_x,'YData',tick_y);
 [popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
 
 set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+    'XTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 %% population psth
-axes(handles.PopPSTH);
-hold off
+axes(handles.popPSTH);
+hold off;
+[handles] = EventsPlotter(handles,'Stink','WaterPlot',TTLs,TuningTTLs);
 taxis = (1:size(popFR,1))/100;
-plot(taxis,popFR(:,1)/max(popFR(:,1)),Plot_Colors('r'));
-hold on
-plot(taxis,popFRnorm(:,2),Plot_Colors('k'));
+plot(taxis,popFR(:,1),'color',Plot_Colors('k'));
 
-set(gca,'YLim', [0 1.5], 'YTick', [],...
+set(gca, 'YLim', [0 ceil(max(popFR(:,1)))], ...
+    'YTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 
