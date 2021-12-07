@@ -58,7 +58,8 @@ handles.output = hObject;
 % defaults
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
-handles.WhereSession.String = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O3/O3_20210922_r0_processed.mat';
+[Paths] = WhichComputer();
+handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat');
 % Update handles structure
 guidata(hObject, handles);
 
@@ -245,6 +246,7 @@ set(handles.water_plot,'XData',tick_x,'YData',tick_y);
 % plot all spikes
 RecordingSessionOverview(SingleUnits);
 set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+    'XTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 
