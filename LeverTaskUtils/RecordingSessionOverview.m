@@ -18,7 +18,7 @@ divideFRby = params.Results.FRnormalizer;
 downsamplefactor = 100;
 
 if ~raster
-    popFR = zeros(PSTHWindow(2)*downsamplefactor/1000,2);
+    popFR = zeros(PSTHWindow(2)*downsamplefactor/1000,1);
 else
     popFR = [];
 end
@@ -44,15 +44,18 @@ for i = 1:1:size(SingleUnits,2)
         PlotRaster(SingleUnits(whichunit).spikes,i,MyColors(1,:),SpikeHeight);
     else
         FR = MakePSTH(SingleUnits(whichunit).spikes', 0, PSTHWindow, 'downsample', downsamplefactor);
-        veclength = min(PSTHWindow(2),numel(FR));
+        veclength = min(size(popFR,1),numel(FR));
         popFR(1:veclength,1) = popFR(1:veclength,1) + FR(1:veclength,1);
-        popFR(1:veclength,2) = popFR(1:veclength,2) + FR(1:veclength,1)/max(FR);
+        %popFR(1:veclength,2) = popFR(1:veclength,2) + FR(1:veclength,1)/max(FR);
         
         FR = i + FR/divideFRby;
         plot((1:numel(FR))/downsamplefactor,FR,'color',MyColors(1,:));
     end
 end
 
-popFR = popFR/i;
-
+if ~raster
+    popFR = popFR/i;
+    %popFR(:,1) = popFR(:,1)/divideFRby;
+    %popFR(:,2) = popFR(:,2)*max(popFR(:,1));
+end
 end
