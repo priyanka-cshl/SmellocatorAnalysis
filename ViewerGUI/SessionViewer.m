@@ -58,7 +58,8 @@ handles.output = hObject;
 % defaults
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
-handles.WhereSession.String = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O3/O3_20210922_r0_processed.mat';
+[Paths] = WhichComputer();
+handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat');
 handles.TimeWindow.String = '100';
 
 % Update handles structure
