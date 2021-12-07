@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 03-Dec-2021 12:13:56
+% Last Modified by GUIDE v2.5 07-Dec-2021 10:10:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -98,16 +98,6 @@ set(handles.MotorPlot,'XLim',handles.SampleRate*newLims);
 % Update handles structure
 guidata(hObject, handles);
 
-% --- Executes during object creation, after setting all properties.
-function Scroller_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Scroller (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
 
 function TimeWindow_Callback(hObject, eventdata, handles)
 % hObject    handle to TimeWindow (see GCBO)
@@ -117,19 +107,6 @@ function TimeWindow_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of TimeWindow as text
 %        str2double(get(hObject,'String')) returns contents of TimeWindow as a double
 Scroller_Callback(hObject, eventdata, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function TimeWindow_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to TimeWindow (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on button press in LoadSession.
@@ -152,6 +129,16 @@ load(handles.WhereSession.String, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 
 
 handles.SessionLength.String = num2str(10*ceil(TTLs.Trial(end,2)/10));
 handles.NumUnits.String = num2str(size(SingleUnits,2));
+if any(~cellfun(@isempty, TrialInfo.Perturbation))
+    x = find(~cellfun(@isempty, TrialInfo.Perturbation));
+    u = unique(TrialInfo.Perturbation(x));
+    handles.PerturbationList.String = u{1};
+    for y = 2:size(u,1)
+        handles.PerturbationList.String = [handles.PerturbationList.String,'; ',u{y}];
+    end
+else
+    handles.PerturbationList.String = '';
+end
 handles.SampleRate = SampleRate;
 [TracesOut] = ConcatenateTraces(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
 
@@ -213,79 +200,19 @@ set(gca,'YLim', [0 6], 'YTick', [],...
 %% plot odor boxes on the spikes plot
 axes(handles.SpikesPlot);
 hold off
-for i = 1:3
-    handles.(['Odor',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
-    hold on;
-    handles.(['Odor',num2str(i),'Plot']).EdgeColor = 'none';
-    ValveTS = TTLs.(['Odor',num2str(i)])(:,1:2)';
-    handles.(['Odor',num2str(i),'Plot']).Vertices = [ ...
-        reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
-        repmat((10+str2double(handles.NumUnits.String))*[0 1 1 0]',size(ValveTS,2),1)];
-    handles.(['Odor',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
-end
-
-% plot air periods for the tuning period
-i = 4;
-handles.(['Odor',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
-hold on;
-handles.(['Odor',num2str(i),'Plot']).EdgeColor = 'none';
-ValveTS = TuningTTLs(TuningTTLs(:,5)==1,[4 6])';
-handles.(['Odor',num2str(i),'Plot']).Vertices = [ ...
-    reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
-    repmat((10+str2double(handles.NumUnits.String))*[0 1 1 0]',size(ValveTS,2),1)];
-handles.(['Odor',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
-
-% plot Rewards
-handles.water_plot = plot(NaN, NaN, 'color',Plot_Colors('t'),'Linewidth',1.25);
-tick_timestamps =  TTLs.Reward(:,1);
-tick_x = [tick_timestamps'; tick_timestamps'; ...
-    NaN(1,numel(tick_timestamps))]; % creates timestamp1 timestamp1 NaN timestamp2 timestamp2..
-tick_x = tick_x(:);
-tick_y = repmat( [0; 10+str2double(handles.NumUnits.String); NaN],...
-    numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
-set(handles.water_plot,'XData',tick_x,'YData',tick_y);
+[handles] = EventsPlotter(handles,'Odor','water_plot',TTLs,TuningTTLs);
 
 % plot all spikes
 RecordingSessionOverview(SingleUnits);
 set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+    'XTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 
 %% plot odor boxes on the PSTH plot
 axes(handles.PSTHPlot);
 hold off
-for i = 1:3
-    handles.(['Smell',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
-    hold on;
-    handles.(['Smell',num2str(i),'Plot']).EdgeColor = 'none';
-    ValveTS = TTLs.(['Odor',num2str(i)])(:,1:2)';
-    handles.(['Smell',num2str(i),'Plot']).Vertices = [ ...
-        reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
-        repmat((10+str2double(handles.NumUnits.String))*[0 1 1 0]',size(ValveTS,2),1)];
-    handles.(['Smell',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
-end
-
-% plot air periods for the tuning period
-i = 4;
-handles.(['Smell',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
-hold on;
-handles.(['Smell',num2str(i),'Plot']).EdgeColor = 'none';
-ValveTS = TuningTTLs(TuningTTLs(:,5)==1,[4 6])';
-handles.(['Smell',num2str(i),'Plot']).Vertices = [ ...
-    reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
-    repmat((10+str2double(handles.NumUnits.String))*[0 1 1 0]',size(ValveTS,2),1)];
-handles.(['Smell',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
-
-% plot Rewards
-handles.h2o_plot = plot(NaN, NaN, 'color',Plot_Colors('t'),'Linewidth',1.25);
-tick_timestamps =  TTLs.Reward(:,1);
-tick_x = [tick_timestamps'; tick_timestamps'; ...
-    NaN(1,numel(tick_timestamps))]; % creates timestamp1 timestamp1 NaN timestamp2 timestamp2..
-tick_x = tick_x(:);
-tick_y = repmat( [0; 10+str2double(handles.NumUnits.String); NaN],...
-    numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
-set(handles.h2o_plot,'XData',tick_x,'YData',tick_y);
-
+[handles] = EventsPlotter(handles,'Smell','h2o_plot',TTLs,TuningTTLs);
 % plot all PSTHs
 [popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
 
@@ -297,18 +224,19 @@ set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
 axes(handles.popPSTH);
 hold off;
 [handles] = EventsPlotter(handles,'Stink','WaterPlot',TTLs,TuningTTLs);
+
+% plot population psth
 taxis = (1:size(popFR,1))/100;
 plot(taxis,popFR(:,1),'color',Plot_Colors('k'));
 
 set(gca, 'YLim', [0 ceil(max(popFR(:,1)))], ...
-    'YTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
 
 %% update the motor plot
 axes(handles.MotorPlot);
 hold off
-MotorTrajectory = zeros(str2double(handles.SessionLength.String)*SampleRate,1);
+MotorTrajectory = NaN + zeros(str2double(handles.SessionLength.String)*SampleRate,1);
 % Fill in the Motor Data from the behavior session period
 Indices = round((Timestamps + TimestampAdjuster)*SampleRate);
 MotorTrajectory(Indices,1) = TracesOut.Motor{1}/100;
@@ -326,8 +254,11 @@ end
 % MotorTrajectory((MotorTrajectory(:,2)>0),2) = 1.1;
 % MotorTrajectory = abs(MotorTrajectory);
 
+alphamask = ~isnan(MotorTrajectory);
+
 handles.MotorTrajectoryPlot = imagesc(MotorTrajectory',[-1 1]);
 colormap(brewermap(100,'RdYlBu'));
+set(handles.MotorTrajectoryPlot, 'AlphaData', alphamask');
 
 set(gca, 'YTick', [], 'XTick', [], ...
     'TickDir','out','XLim', [0 SampleRate*str2double(handles.TimeWindow.String)]);
@@ -337,76 +268,6 @@ PSTHView_Callback(hObject, eventdata, handles);
 
 % Update handles structure
 guidata(hObject, handles);
-
-
-
-function WhereSession_Callback(hObject, eventdata, handles)
-% hObject    handle to WhereSession (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of WhereSession as text
-%        str2double(get(hObject,'String')) returns contents of WhereSession as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function WhereSession_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to WhereSession (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function NumUnits_Callback(hObject, eventdata, handles)
-% hObject    handle to NumUnits (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of NumUnits as text
-%        str2double(get(hObject,'String')) returns contents of NumUnits as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function NumUnits_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to NumUnits (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function SessionLength_Callback(hObject, eventdata, handles)
-% hObject    handle to SessionLength (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of SessionLength as text
-%        str2double(get(hObject,'String')) returns contents of SessionLength as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function SessionLength_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to SessionLength (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 
 % --- Executes on button press in NewSession.
 function NewSession_Callback(hObject, eventdata, handles)
