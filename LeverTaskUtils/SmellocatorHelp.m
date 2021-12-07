@@ -51,7 +51,7 @@ switch foo{1}
             case 'InZone'
                 disp('{1 x N}[1, 2, ... n] : Target Zone entry and exit timestamps w.r.t. trial start, in seconds');
             case 'Perturbation'
-                disp('{N x 1} : Perturbation type');
+                disp('{N x 2} : {Perturbation type}, {relevant params}');
                 disp('[] : no perturbation');
                 disp('''Fake Zone'': which target zone was the fake zone');
                 disp('''Halt-I'': [odor halt start, odor halt stop], odor halt start = trial start');

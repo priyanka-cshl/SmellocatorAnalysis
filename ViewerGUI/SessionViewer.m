@@ -117,9 +117,10 @@ function LoadSession_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 if isempty(handles.WhereSession.String)
+    [Paths] = WhichComputer();
         [WhichSession, SessionPath] = uigetfile(...
-                                '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O3/O3_20210922_r0_processed.mat',...
-                                '*.mat', 'Select Behavior/Recording Session');
+                                fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat'),...
+                                'Select Behavior or Recording Session');
 handles.WhereSession.String = fullfile(SessionPath,WhichSession);
 end
 
@@ -130,8 +131,8 @@ load(handles.WhereSession.String, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 
 
 handles.SessionLength.String = num2str(10*ceil(TTLs.Trial(end,2)/10));
 handles.NumUnits.String = num2str(size(SingleUnits,2));
-if any(~cellfun(@isempty, TrialInfo.Perturbation))
-    x = find(~cellfun(@isempty, TrialInfo.Perturbation));
+if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
+    x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)));
     u = unique(TrialInfo.Perturbation(x));
     handles.PerturbationList.String = u{1};
     for y = 2:size(u,1)
@@ -144,14 +145,11 @@ handles.SampleRate = SampleRate;
 [TracesOut] = ConcatenateTraces(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
 
 % create a corresponding timestamp vector
-Timestamps = (1:numel(TracesOut.Lever{1}))/SampleRate;
-% make the first timestamp equal to first trial minus startoffset - such
-% that they match raw session timestamps
-Timestamps = Timestamps + TrialInfo.SessionTimestamps(1,1) - startoffset;
+Timestamps = TracesOut.Timestamps{1}';
 
 % calculate the timestamp difference between Ephys and Behavior
-TrialStart_behavior = TrialInfo.SessionTimestamps(1,1);
-TrialStart_Ephys = TTLs.Trial(1,1);
+TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
+TrialStart_Ephys = TTLs.Trial(1,2);
 % factor to convert all behavior timestamps to match Ephys
 TimestampAdjuster = TrialStart_Ephys - TrialStart_behavior;
 

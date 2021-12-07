@@ -39,6 +39,10 @@ Trial.TimeStamps(find(TrialOn),1) = MyData(TrialOn(find(TrialOn)),1);
 Trial.TimeStamps(:,2) = MyData(TrialOff,1);
 Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
 
+if Trial.TimeStamps(1,1) == 0
+    Trial.Indices(1,1) =  1;
+end
+
 % for trial On detection 
 LeverThresh = median(MySettings(:,11));
 trialflag = [];
@@ -92,11 +96,11 @@ for thisTrial = 1:size(Trial.Indices,1)
             TrialStartOffsets(thisTrial,1) = Initiations(OdorStart,2) - numel(LeverSnippet);
             OdorStartOffsets(thisTrial,1) = Initiations(OdorStart,1) + TriggerHold - numel(LeverSnippet);
         else
-            TrialStartOffsets(thisTrial,1) = NaN;
+            %TrialStartOffsets(thisTrial,1) = NaN;
             OdorStartOffsets(thisTrial,1) = NaN;
         end
     else
-        TrialStartOffsets(thisTrial,1) = NaN;
+        %TrialStartOffsets(thisTrial,1) = NaN;
         OdorStartOffsets(thisTrial,1) = NaN;
     end
     

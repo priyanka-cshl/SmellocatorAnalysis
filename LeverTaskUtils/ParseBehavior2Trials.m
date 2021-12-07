@@ -61,7 +61,7 @@ for thisTrial = 1:numel(TrialOn)
     TrialInfo.TrialID(thisTrial) = thisTrial;
     thisTrialOffset = TrialOffsets(thisTrial); % this will be zero if there were no digital-analog sample drops
     
-    if TrialOn(thisTrial) && ~isnan(thisTrialOffset)
+    if ~isnan(thisTrialOffset)
         % extract continuous traces for lever, motor position, licks and sniffs
         
         % correction factor
@@ -98,10 +98,10 @@ for thisTrial = 1:numel(TrialOn)
         % start and stop indices of the extracted trace - w.r.t to the session
         TrialInfo.TraceIndices(thisTrial,:) = [start_idx stop_idx start_idxCorrected stop_idxCorrected];
         TrialInfo.TraceDuration(thisTrial,1) = (diff([start_idx stop_idx]) + 1)/SampleRate;
+        Traces.Timestamps(thisTrial) = { MyData(start_idx:stop_idx, 1) };
         % extract the timestamps if it can't be reconstructed from indices
         if errorflags(2) % timestamps were dropped
             Traces.Timestamps.Analog(thisTrial) = { MyData(start_idxCorrected:stop_idxCorrected, 1) };
-            Traces.Timestamps.Digital(thisTrial) = { MyData(start_idx:stop_idx, 1) };
         end
         
         %% Extract Trial Timestamps
@@ -143,7 +143,11 @@ for thisTrial = 1:numel(TrialOn)
         %% TF : odor starts from left or right?
         % check the motor position at trialstart - 10 samples before trial start
         % to verify if the transfer function was inverted in this trial
-        TrialInfo.TransferFunctionLeft(thisTrial,1) = (MyData(TrialOn(thisTrial)-1, MotorCol)>0);
+        if thisTrial>1
+            TrialInfo.TransferFunctionLeft(thisTrial,1) = (MyData(TrialOn(thisTrial)-1, MotorCol)>0);
+        else
+            TrialInfo.TransferFunctionLeft(thisTrial,1) = 0;
+        end
         
         %% Reward timestamps
         thisTrialRewards = find(diff(MyData(start_idx:stop_idx,RewardCol))==1); % indices w.r.t. to trace start
@@ -173,7 +177,6 @@ for thisTrial = 1:numel(TrialOn)
         %% Which Perturbation
         WhichPerturbation = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(1)) );
         PerturbationValue = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(2)) );
-        
         if WhichPerturbation
             if WhichPerturbation < 5 % Fake target zone
                 TrialInfo.Perturbation{thisTrial,1} = 'FakeZone';
@@ -244,8 +247,10 @@ for thisTrial = 1:numel(TrialOn)
                         TrialInfo.Perturbation{thisTrial,1} = 'BlockShift';
                         TrialInfo.Perturbation(thisTrial,2) = PerturbationValue; % shift amount
                     case 1400
-                        TrialInfo.Perturbation{thisTrial,1} = 'RuleReversal';
-                        TrialInfo.Perturbation{thisTrial,2} = PerturbationValue - 1; %TFType during reversal
+                        if thisTrial>1
+                            TrialInfo.Perturbation{thisTrial,1} = 'RuleReversal';
+                            TrialInfo.Perturbation{thisTrial,2} = PerturbationValue - 1; %TFType during reversal
+                        end
                     case 1500 % open loop template
                         TrialInfo.Perturbation{thisTrial,1} = 'OL-Template';
                     case 1600 % replay trial
