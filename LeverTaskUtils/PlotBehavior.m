@@ -1,4 +1,7 @@
-function [] = PlotBehavior(timestamps,Lever,Sniffs,Licks,Rewards,Trial,TZ)
+function [] = PlotBehavior(timestamps,Lever,Sniffs,Licks,Rewards,Trial,TZ,OdorBoxHeight)
+if nargin<8
+    OdorBoxHeight = 5;
+end
 
 %% Plots
 % Trials
@@ -19,8 +22,8 @@ handles.trial_off = fill(NaN,NaN,[1 1 1]);
 handles.trial_off.EdgeColor = 'none';
 
 if ~isempty(Trial)
-    [handles] = PlotToPatch_Trial(handles, Trial, timestamps, [0 5],1);
-    [handles] = PlotToPatch_TrialOFFhack(handles, Trial, timestamps, [0 5],1);
+    [handles] = PlotToPatch_Trial(handles, Trial, timestamps, [0 OdorBoxHeight],1);
+    [handles] = PlotToPatch_TrialOFFhack(handles, Trial, timestamps, [0 OdorBoxHeight],1);
 end
 
 % TargetZone

@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 07-Dec-2021 10:10:24
+% Last Modified by GUIDE v2.5 14-Jan-2022 09:42:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -203,7 +203,7 @@ hold off
 
 % plot all spikes
 RecordingSessionOverview(SingleUnits);
-set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], ...
     'XTick', [],...
     'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
 
@@ -290,3 +290,44 @@ else
     set([handles.SpikesPlot; handles.SpikesPlot.Children], 'Visible','on');
     set([handles.PSTHPlot; handles.PSTHPlot.Children], 'Visible','off');
 end
+
+
+% --- Executes on button press in ScrollUp.
+function ScrollUp_Callback(hObject, eventdata, handles)
+% hObject    handle to ScrollUp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+currLim = handles.SpikesPlot.YLim;
+newLim = currLim + round(diff(currLim)/2);
+% newLim(1) = max(newLim(1), 0);
+% newLim(2) = min(newLim(2),(10+str2double(handles.NumUnits.String)+1));
+set(handles.SpikesPlot,'YLim', newLim);
+set(handles.PSTHPlot,'YLim', newLim);
+
+
+% --- Executes on button press in ScrollDown.
+function ScrollDown_Callback(hObject, eventdata, handles)
+% hObject    handle to ScrollDown (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+currLim = handles.SpikesPlot.YLim;
+newLim = currLim - round(diff(currLim)/2);
+% newLim(1) = max(newLim(1), 0);
+% newLim(2) = min(newLim(2),(10+str2double(handles.NumUnits.String)+1));
+set(handles.SpikesPlot,'YLim', newLim);
+set(handles.PSTHPlot,'YLim', newLim);
+
+
+function ZoomVal_Callback(hObject, eventdata, handles)
+% hObject    handle to ZoomVal (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ZoomVal as text
+%        str2double(get(hObject,'String')) returns contents of ZoomVal as a double
+zoomfactor = str2double(handles.ZoomVal.String);
+OriginalLim = 10+str2double(handles.NumUnits.String)+1;
+newLim = [0 ceil(OriginalLim/zoomfactor)];
+set(handles.SpikesPlot,'YLim', newLim);
+set(handles.PSTHPlot,'YLim', newLim);
+

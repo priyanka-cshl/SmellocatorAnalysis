@@ -144,7 +144,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 
                 subplot(units_per_fig,2,Rasterplot);
                 % plot the trial structure
-                PlotBehavior(timestamps,[],[],[],[],Trial,[]);
+                PlotBehavior(timestamps,[],[],[],[],Trial,[],numel(PassiveReplays)+trials_per_replay+1);
                 set(gca,'YLim',...
                     [-0.4 numel(PassiveReplays)+trials_per_replay+1.4],...
                     'YTick',[0 5],'TickDir','out','XLim',[0 round(timestamps(end))], ...
@@ -154,7 +154,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 
                 subplot(units_per_fig,2,FRplot);
                 % plot the trial structure
-                PlotBehavior(timestamps,[],[],[],[],Trial,[]);
+                PlotBehavior(timestamps,[],[],[],[],Trial,[],FRmax);
                 set(gca,'YLim',[0 FRmax],'YTick',[0 50 100],'TickDir','out','XLim',[0 round(timestamps(end))], ...
                     'XTick', []);
                 axis manual;
@@ -277,7 +277,6 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     tstop = TTLs.Trial(MyTrials(thisTrial),2);
                     thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
                     thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
-                    
                     % FR: Use the original spiketimes to get PSTH, split the PSTH
                     myPSTH = MakePSTH(thisTrialSpikeTimes',0,...
                         +[0 1000*ceil(ReplayTrialLength)],...
@@ -314,7 +313,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     end
                     
                     title(['Unit# ',num2str(MyUnit), '; Clust# ', num2str(SingleUnits(MyUnit).id),...
-                        '; tet# ',num2str(SingleUnits(MyUnit).tetrode)]);
+                        '; tet# ',num2str(SingleUnits(MyUnit).tetrode), '; Fp ', num2str(SingleUnits(MyUnit).ISIquality(1)), ', ISIFrac ',num2str(SingleUnits(MyUnit).ISIquality(2)) ]);
                     if mod(i,units_per_fig) == 0
                         if savereplayfigs
                             saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
