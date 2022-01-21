@@ -1,5 +1,5 @@
 
-function [Physiology] = ProcessOpenLoopTrials(Replay, TrialInfo, SingleUnits, TTLs, varargin)
+function [MyTraces,timestamps,PSTH,Raster] = ProcessOpenLoopTrials(Replay, TrialInfo, SingleUnits, TTLs, varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -9,6 +9,7 @@ params.addParameter('whichreplays', [], @(x) isnumeric(x));
 params.addParameter('plotfigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('whichunits', [], @(x) isnumeric(x));
+params.addParameter('PSTHsmooth', 100, @(x) isnumeric(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -16,6 +17,7 @@ allreplays = params.Results.whichreplays;
 plotreplayfigs = params.Results.plotfigures;
 savereplayfigs = params.Results.savefigures;
 whichUnits = params.Results.whichunits;
+smoothingfactor = params.Results.PSTHsmooth;
 
 global SampleRate;
 global MyFileName;
@@ -196,9 +198,10 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 thisTrialSpikes(thisTrialSpikes>t2) = thisTrialSpikes(thisTrialSpikes>t2) - offset;
             end
             
-            myPSTH = MakePSTH(thisTrialSpikes',0,...
-                [0 1000*ceil(TemplateTrialLength)],'downsample',SampleRate);
+            [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikes',0,...
+                [0 1000*ceil(TemplateTrialLength)],'downsample',SampleRate,'kernelsize',smoothingfactor);
             PSTH(1,1:numel(myPSTH),i) = myPSTH;
+            Raster(1,1:size(myRaster,2),i) = myRaster;
             
             if plotreplayfigs || savereplayfigs
                 % plot raster
@@ -226,12 +229,13 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
                 
                 % FR: Use the original spiketimes to get PSTH, split the PSTH 
-                myPSTH = MakePSTH(thisTrialSpikeTimes',0,...
+                [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
                     +[0 1000*ceil(ReplayTrialLength)],...
-                    'downsample',SampleRate);
+                    'downsample',SampleRate,'kernelsize',smoothingfactor);
                 
                 PSTH(1+thisTrial,1:numel(myPSTH),i) = myPSTH';
                 FRmax = max(FRmax,max(myPSTH));
+                Raster(1+thisTrial,1:size(myRaster,2),i) = myRaster;
                 
                 if plotreplayfigs || savereplayfigs
                     % plot raster
@@ -278,12 +282,13 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
                     thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
                     % FR: Use the original spiketimes to get PSTH, split the PSTH
-                    myPSTH = MakePSTH(thisTrialSpikeTimes',0,...
+                    [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
                         +[0 1000*ceil(ReplayTrialLength)],...
-                        'downsample',SampleRate);
+                        'downsample',SampleRate,'kernelsize',smoothingfactor);
                     
                     PSTH(1+trials_per_replay+thisTrial,1:numel(myPSTH),i) = myPSTH';
                     FRmax = max(FRmax,max(myPSTH));
+                    Raster(1+trials_per_replay+thisTrial,1:size(myRaster,2),i) = myRaster;
                     
                     if plotreplayfigs || savereplayfigs
                         % plot raster
@@ -333,7 +338,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
     end
     
     %% Outputs
-    Physiology = [];
+%    Physiology = [];
 %     Physiology(whichreplay).PSTH = PSTH;
 %     Physiology(whichreplay).Correlation = PSTHCorr(PSTH,whichUnits);
 

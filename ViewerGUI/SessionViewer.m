@@ -169,6 +169,28 @@ for i = 1:4
     end
 end
 
+% plot the perturbation periods
+handles.(['Perturbation',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors('r'));
+hold on;
+handles.(['Perturbation',num2str(i),'Plot']).EdgeColor = 'none';
+if any(strcmp(TrialInfo.Perturbation(x),'OL-Template'))
+    % get start and stop TS of the template
+    templateStart = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'first'));
+    templateEnd   = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'last'));
+    PerturbTS(1,1) = TrialInfo.SessionTimestamps(templateStart,1) + TimestampAdjuster;
+    PerturbTS(2,1) = TrialInfo.SessionTimestamps(templateEnd,1) + TimestampAdjuster;
+    % get start and stop of the replays
+    replays = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Replay')));
+    PerturbTS = horzcat(PerturbTS, ...
+                TrialInfo.SessionTimestamps(replays,1:2)' + TimestampAdjuster );
+end
+if ~isempty(PerturbTS)
+    handles.(['Perturbation',num2str(i),'Plot']).Vertices = [ ...
+        reshape([PerturbTS(:) PerturbTS(:)]', 2*numel(PerturbTS), []) , ...
+        repmat([5 5.5 5.5 5]',size(PerturbTS,2),1)];
+    handles.(['Perturbation',num2str(i),'Plot']).Faces = reshape(1:2*numel(PerturbTS),4,size(PerturbTS,2))';
+end
+
 % plot the target zone
 handles.TargetZonePlot = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.2);
 hold on;
