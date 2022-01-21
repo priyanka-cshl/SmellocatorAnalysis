@@ -7,17 +7,21 @@ params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('whichreplays', [], @(x) isnumeric(x));
 params.addParameter('plotfigures', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('plotephys', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('whichunits', [], @(x) isnumeric(x));
 params.addParameter('PSTHsmooth', 100, @(x) isnumeric(x));
+params.addParameter('UnitsPerFig', 5, @(x) isnumeric(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 allreplays = params.Results.whichreplays;
 plotreplayfigs = params.Results.plotfigures;
 savereplayfigs = params.Results.savefigures;
+plotephysfigs = params.Results.plotephys;
 whichUnits = params.Results.whichunits;
 smoothingfactor = params.Results.PSTHsmooth;
+units_per_fig = params.Results.UnitsPerFig;
 
 global SampleRate;
 global MyFileName;
@@ -121,8 +125,8 @@ for x = 1:numel(allreplays) % for every unique replay stretch
     %% Ephys
     PSTH = []; % dimensions: [trial x samples x units]
     if ~isempty(SingleUnits)
+        %units_per_fig = 5;
         if plotreplayfigs || savereplayfigs
-            units_per_fig = 5;
             figure;
         end
 
@@ -136,7 +140,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             MyUnit = whichUnits(i);
             FRmax = 25; % for plotting
             
-            if plotreplayfigs || savereplayfigs
+            if plotephysfigs || savereplayfigs
                 if mod(i,units_per_fig)
                     FRplot = 2*mod(i,units_per_fig);
                 else
@@ -203,7 +207,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             PSTH(1,1:numel(myPSTH),i) = myPSTH;
             Raster(1,1:size(myRaster,2),i) = myRaster;
             
-            if plotreplayfigs || savereplayfigs
+            if plotephysfigs || savereplayfigs
                 % plot raster
                 subplot(units_per_fig,2,Rasterplot);
                 row_idx = 1;
@@ -237,7 +241,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 FRmax = max(FRmax,max(myPSTH));
                 Raster(1+thisTrial,1:size(myRaster,2),i) = myRaster;
                 
-                if plotreplayfigs || savereplayfigs
+                if plotephysfigs || savereplayfigs
                     % plot raster
                     subplot(units_per_fig,2,Rasterplot);
                     row_idx = thisTrial+1;
@@ -246,7 +250,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             end
             
             % plot avg. FR for the replay trials
-            if plotreplayfigs || savereplayfigs
+            if plotephysfigs || savereplayfigs
                 
                 subplot(units_per_fig,2,FRplot);
                 temp = squeeze(PSTH(2:(trials_per_replay+1),:,i));
@@ -290,7 +294,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     FRmax = max(FRmax,max(myPSTH));
                     Raster(1+trials_per_replay+thisTrial,1:size(myRaster,2),i) = myRaster;
                     
-                    if plotreplayfigs || savereplayfigs
+                    if plotephysfigs || savereplayfigs
                         % plot raster
                         subplot(units_per_fig,2,Rasterplot);
                         row_idx = thisTrial+1+trials_per_replay;
@@ -300,7 +304,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 end
                 
                 % plot avg. FR for the passive replay trials
-                if plotreplayfigs || savereplayfigs
+                if plotephysfigs || savereplayfigs
                     
                     subplot(units_per_fig,2,FRplot);
                     
