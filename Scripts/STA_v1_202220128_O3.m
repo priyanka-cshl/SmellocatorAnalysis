@@ -31,6 +31,8 @@ for i = 1:3
     Trial(Trial>0) = 1;
     Motor = TracesOut(:,find(strcmp(ColNames,'Motor')))';
     Motor(Trial==0) = NaN;
+    Motor = 125 - Motor;
+    Motor(Trial==0) = 0;
     TracesOut(:,end+1) = Motor;
     ColNames{end+1} = ['Odor',num2str(i)];
 end
@@ -39,7 +41,7 @@ end
 ChosenUnits = [58 35 34 55 21];
 STAwindow = [-1 1];
 snippetlength = diff(STAwindow)*SampleRate;
-F = fieldnames(TracesOut);
+%F = fieldnames(TracesOut);
 % for every unit
 for i = 1:numel(ChosenUnits)
     MyUnit = ChosenUnits(i);
@@ -47,29 +49,44 @@ for i = 1:numel(ChosenUnits)
         thisunitspiketimes = SingleUnits(MyUnit).spikes - TimestampAdjuster + STAwindow(1);
         % ignore spikes that precede behavior start
         thisunitspiketimes(thisunitspiketimes<0) = [];
-        % ignore spikes that follow ebhavior stop
-        thisunitspiketimes(thisunitspiketimes>=(Timestamps(end)-STAwindow(2))) = [];
+        % ignore spikes that follow behavior stop
+        thisunitspiketimes(thisunitspiketimes>=(Timestamps(end)-2*STAwindow(2))) = [];
         window = [];
-        Snippets = [];
+        Snippets = NaN*zeros(snippetlength+1,numel(ColNames),numel(thisunitspiketimes));
         for j = 1:numel(thisunitspiketimes)
             idx1 = find(Timestamps>=thisunitspiketimes(j),1,'first');
             idx2 = idx1 + snippetlength;
-            for k = 1:numel(F)-1
-%                Snippets(j,:,k) = TracesOut.(F{k}){1}(idx1:idx2);
-                mysnippet = TracesOut.(F{k}){1}(idx1:idx2);
-                if j == 1
-                    Snippets(:,k) = mysnippet;
-                else
-                    Snippets(:,k) = Snippets(:,k) + mysnippet;
-                end
-            end
+%            for k = 1:numel(F)-1
+                Snippets(:,:,j) = TracesOut(idx1:idx2,:);
+%                 mysnippet = TracesOut.(F{k}){1}(idx1:idx2);
+%                 if j == 1
+%                     Snippets(:,k) = mysnippet;
+%                 else
+%                     Snippets(:,k) = Snippets(:,k) + mysnippet;
+%                 end
+%            end
         end
         % get the average trace
-        STA(:,:,i) = Snippets/j;
+        STA(:,:,i) = mean(Snippets,3,'omitnan');
+        STASTD(:,:,i) = std(Snippets,3,'omitnan');
 %         for k = 1:numel(F)-1
 %             STA(:,k,i) = Snippets
 %         end
 end
     
 % TraceNames = {'Lever' 'Motor' 'Sniffs' 'Licks' 'Rewards' 'Trial' 'TargetZone'};
+%% plotting
 
+for i = 1:5
+    subplot(2,5,i);
+    plot(STA(:,8:10,i));
+    hold on
+    line( SampleRate*[1 1],[-100 100],'Color','k','LineStyle',':');
+    line( SampleRate*[0.5 0.5],[-100 100],'Color','k','LineStyle',':');
+    
+    subplot(2,5,i+5);
+    plot(STA(:,1,i),'k');
+    hold on
+    line( SampleRate*[1 1],[0 5],'Color','k','LineStyle',':');
+    line( SampleRate*[0.5 0.5],[0 5],'Color','k','LineStyle',':');
+end
