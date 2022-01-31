@@ -1,5 +1,5 @@
 MySession = '/mnt/data/Processed/Behavior/O3/O3_20211005_r0_processed.mat'; % session path - leave empty to get browser pop up
-MySession = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/O3/O3_20211005_r0_processed.mat';
+%MySession = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/O3/O3_20211005_r0_processed.mat';
 %MySession = '/mnt/data/Processed/Behavior/PCX4/PCX4_20210721_r0_processed.mat'; % session path - leave empty to get browser pop up
 LoadProcessedSession; % loads relevant variables
 
@@ -128,8 +128,8 @@ xtickangle(gca,90);
 
 %%
 % Plot specific Units
-PlotUnits = SortedByTetrodes(SortedbyCorr(51:55));
-PlotUnits = [48 49];
+%PlotUnits = SortedByTetrodes(SortedbyCorr(51:55));
+PlotUnits = [58 35 34 55 21];
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
         'plotephys', 1, 'UnitsPerFig', 5, 'whichunits', PlotUnits);
 

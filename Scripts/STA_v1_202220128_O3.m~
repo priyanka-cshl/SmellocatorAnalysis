@@ -25,13 +25,11 @@ TrialStart_Ephys = TTLs.Trial(1,2);
 TimestampAdjuster = TrialStart_Ephys - TrialStart_behavior;
 
 % Split the trial vector into the three odors
+
 for i = 1:3
     Trial = TracesOut(:,find(strcmp(ColNames,'Trial')))';
     Trial(Trial~=i) = 0;
-    Trial(Trial>0) = 1;
-    Motor = TracesOut(:,find(strcmp(ColNames,'Motor')))';
-    Motor(Trial==0) = NaN;
-    TracesOut(:,end+1) = Motor;
+    TracesOut(:,end+1) = Trial;
     ColNames{end+1} = ['Odor',num2str(i)];
 end
 
