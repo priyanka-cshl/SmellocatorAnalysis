@@ -121,7 +121,7 @@ for thisTrial = 1:numel(TrialOn)
         % Odor ON timestamp (from the InRewardZone column - enocdes Odor ON before trialstart - see GUI)
         thisTrialInZone = find(diff(MyData(LastTrialIdx:thisTrialIdx(1), RZoneCol))==-1);
         if ~isempty(thisTrialInZone)
-            TrialInfo.OdorStart(thisTrial,1) = thisTrialInZone(end) - thisTrialIdx(1); % odor start idx w.r.t trial start
+            TrialInfo.OdorStart(thisTrial,1) = LastTrialIdx + thisTrialInZone(end) - thisTrialIdx(1); % odor start idx w.r.t trial start
         else
             TrialInfo.OdorStart(thisTrial,1) = NaN;
         end
