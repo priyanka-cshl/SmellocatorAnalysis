@@ -109,7 +109,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     % get trial ON-OFF indices
     Idx = [find(diff(TrialTrace>0)==1)+1 find(diff(TrialTrace>0)==-1)];
     % get OdorStart Times w.r.t. Trial start (from the behavior file)
-    Idx(:,3) = Idx(:,1) + ceil(SampleRate*TrialInfo.OdorStart(whichTrials,2));
+    Idx(:,3) = Idx(:,1) + ceil(SampleRate*TrialInfo.OdorStart(whichTrials,1));
     if ~isempty(TTLs)
         % OdorStart Times can also be extracted from OEPS TTLs
         Idx(:,4) = Idx(:,1) + ceil(SampleRate*TTLs.Trial(whichTrials,4));

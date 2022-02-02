@@ -1,6 +1,9 @@
 MySession = '/mnt/data/Processed/Behavior/O3/O3_20211005_r0_processed.mat'; % session path - leave empty to get browser pop up
 LoadProcessedSession; % loads relevant variables
 
+% create a corresponding timestamp vector
+Timestamps = TracesOut(:,find(strcmp(ColNames,'Timestamps')))'; % in behavior timebase
+
 N = size(SingleUnits,2);
 
 %% sort units by tetrode - to match session viewer
