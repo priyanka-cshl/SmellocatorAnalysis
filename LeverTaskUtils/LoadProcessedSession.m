@@ -19,12 +19,18 @@ load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
 %SessionLength = 10*ceil(TTLs.Trial(end,2)/10);
 %NumUnits = size(SingleUnits,2);
 
-
 %% Concatenate traces and get one matrix with all behavior variables
 % SampleRate = behavior sample rate;
 [TracesOut, ColNames] = ConcatenateTraces2Mat(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
 
-% calculate the timestamp difference between Ephys and Behavior
+%% sniff trace
+%sniffs = TracesOut(:,3);
+fband = [0.5 30];
+Np    = 4; % filter order
+[b,a] = butter(Np,fband/(SampleRate/2)); % band pass Butterworth filter coefficients
+TracesOut(:,3) = filtfilt(b,a,TracesOut(:,3)); %apply the filter to x(t)
+
+%% calculate the timestamp difference between Ephys and Behavior
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
 TrialStart_Ephys = TTLs.Trial(1,2);
 % factor to convert all behavior timestamps to match Ephys
@@ -74,3 +80,10 @@ for i = 1:3
     TracesOut(:,end+1) = Motor;
     ColNames{end+1} = ['Odor',num2str(i)];
 end
+% during air periods
+Motor = TracesOut(:,find(strcmp(ColNames,'Motor')))';
+Motor(abs(OdorTrace)~=0) = NaN;
+Motor = 125 - Motor;
+%Motor(isnan(Motor)) = 0;
+TracesOut(:,end+1) = Motor;
+ColNames{end+1} = ['Odor',num2str(4)];
