@@ -1,7 +1,8 @@
 MySession = '/mnt/data/Processed/Behavior/O3/O3_20211005_r0_processed.mat'; % session path - leave empty to get browser pop up
 
-% get the data loaded 
-LoadProcessedSession; % loads relevant variables
+% get the data loaded
+[TracesOut, ColNames, SampleRate, TimestampAdjuster] = LoadProcessedDataSession(MySession);
+% LoadProcessedSession; % loads relevant variables
 % create a corresponding timestamp vector
 Timestamps = TracesOut(:,find(strcmp(ColNames,'Timestamps')))'; % in behavior timebase
 
@@ -15,7 +16,7 @@ for i = 1:N
 end
 [~,SortedByTetrodes] = sort(foo(:,1));
 
-SessionLength = 10*ceil(Timestamps(end)/10); % last timestamp in the behavior file
+SessionLength = 10*ceil(TracesOut(end,find(strcmp(ColNames,'Timestamps')))/10); % last timestamp in the behavior file
 PSTHWindow = [0 1000*SessionLength];
 AllFRs = NaN*zeros(size(TracesOut,1),N);
 for i = 1:N
@@ -56,7 +57,7 @@ end
 OpenLoopIndices = [TrialInfo.SessionIndices(OpenLoop.ReplayTraces.TrialIDs{1},1) - startoffset*SampleRate ...
     TrialInfo.SessionIndices(OpenLoop.ReplayTraces.TrialIDs{1},2) + startoffset*SampleRate];
 
-Indices2exclude = 1+0*Timestamps;
+Indices2exclude = 1+0*TracesOut(:,1);
 for i = 1:size(OpenLoopIndices,1)
     Indices2exclude(OpenLoopIndices(i,1):OpenLoopIndices(i,2)) = 0;
 end
@@ -71,21 +72,21 @@ for i = 1:numel(MyUnits)
     % 1. Sniffing
     %scatter(filteredsniffs(find(Indices2exclude))',AllFRs(find(Indices2exclude),MyUnits(i))',1);
     % 2. Odor
-    scatter(TracesOut(find(Indices2exclude),11)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
-    scatter(TracesOut(find(~Indices2exclude),11)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
-    scatter(PassiveTracesOut(:,11)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
+    scatter(TracesOut(find(Indices2exclude),8)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
+    scatter(TracesOut(find(~Indices2exclude),8)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
+    scatter(PassiveTracesOut(:,8)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
     subplot(4,5,i+5); hold on
     scatter(TracesOut(find(Indices2exclude),9)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
     scatter(TracesOut(find(~Indices2exclude),9)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
     scatter(PassiveTracesOut(:,9)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
     subplot(4,5,i+10); hold on
-    scatter(TracesOut(find(Indices2exclude),8)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
-    scatter(TracesOut(find(~Indices2exclude),8)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
-    scatter(PassiveTracesOut(:,8)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
-    subplot(4,5,i+15); hold on
     scatter(TracesOut(find(Indices2exclude),10)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
     scatter(TracesOut(find(~Indices2exclude),10)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
     scatter(PassiveTracesOut(:,10)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
+    subplot(4,5,i+15); hold on
+    scatter(TracesOut(find(Indices2exclude),11)',AllFRs(find(Indices2exclude),MyUnits(i))',1);
+    scatter(TracesOut(find(~Indices2exclude),11)',AllFRs(find(~Indices2exclude),MyUnits(i))',0.5,'r');
+    scatter(PassiveTracesOut(:,11)',PassiveFRs(:,MyUnits(i))',0.5,Plot_Colors('t'));
 end
 
 %% Get Tuning Histograms
