@@ -14,9 +14,9 @@ for whichunit = 1:N % every unit
             previousTrialspikes = thisUnitspikes(trialtags==whichtrial-1) - ...
                 (TTLs.Trial(whichtrial,1) - 0);
         end
-        if ~isempty(previousTrialspikes)
-            previousTrialspikes(previousTrialspikes<-1) = [];
-        end
+%         if ~isempty(previousTrialspikes)
+%             previousTrialspikes(previousTrialspikes<-1) = [];
+%         end
         AlignedSpikes{whichtrial,whichunit} = {horzcat(previousTrialspikes',thisTrialspikes')};
         if whichunit == 1
             x1 = TTLs.Trial(whichtrial,1);

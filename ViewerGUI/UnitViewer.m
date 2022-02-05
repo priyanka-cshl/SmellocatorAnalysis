@@ -91,13 +91,19 @@ end
 
 %% get the data loaded
 MySession = handles.WhereSession.String;
-[TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, SampleRate, TimestampAdjuster] = ...
+[TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, ...
+    ReplayTTLs, SampleRate, TimestampAdjuster] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSpikes, handles.Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(handles.TrialInfo.TrialID,2),handles.TrialInfo);
 
+if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
+    [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
+        ReplayAlignedSpikeTimes(SingleUnits,TTLs,...
+        ReplayTTLs,handles.TrialInfo,handles.Events);
+end
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
@@ -138,6 +144,11 @@ function NewSession_Callback(hObject, eventdata, handles)
 % hObject    handle to NewSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.WhereSession.String = [];
+handles.NumUnits.String = '';
+handles.CurrentUnit.Data(1) = NaN;
+% Update handles structure
+guidata(hObject, handles);
 
 
 % --- Executes on button press in NextUnit.

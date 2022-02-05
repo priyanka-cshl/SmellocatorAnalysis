@@ -1,4 +1,4 @@
-function [x] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo)
+function [] = PlotReplaySession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, TrialsDone)
 
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);

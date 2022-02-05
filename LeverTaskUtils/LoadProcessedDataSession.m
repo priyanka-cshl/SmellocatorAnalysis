@@ -1,4 +1,4 @@
-function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, SampleRate, TimestampAdjuster] = LoadProcessedDataSession(MySession)
+function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ReplayTTLs, SampleRate, TimestampAdjuster] = LoadProcessedDataSession(MySession)
 
 if nargin<0
     MySession = [];
