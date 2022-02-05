@@ -52,7 +52,11 @@ for whichunit = 1:N % every unit
                 ReplayInfo.TargetZoneType(trialcount,1) = TrialInfo.TargetZoneType(templatetrials(j));
                 ReplayInfo.Duration(trialcount,1)       = TrialInfo.Duration(templatetrials(j));
                 ReplayInfo.InZone{trialcount}           = TrialInfo.InZone{templatetrials(j)};
-                ReplayInfo.TrialID(trialcount)          = whichtrial + j/100;
+                if thisTrial <= TrialInfo.TrialID(end)
+                    ReplayInfo.TrialID(trialcount)          =  whichtrial + j/100;
+                else
+                    ReplayInfo.TrialID(trialcount)          = -(whichtrial + j/100);
+                end
             end
         end
     end

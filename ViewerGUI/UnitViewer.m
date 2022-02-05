@@ -119,7 +119,11 @@ for i = 1:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on
-    PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    % plot baseline trials
+    [trialsdone] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    % plot replay trials
+    AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType);
+
     switch AlignType
         case {1,2}
             set(gca, 'XLim', [-1.2 6]);
