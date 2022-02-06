@@ -22,7 +22,7 @@ function varargout = UnitViewer(varargin)
 
 % Edit the above text to modify the response to help UnitViewer
 
-% Last Modified by GUIDE v2.5 06-Feb-2022 14:37:14
+% Last Modified by GUIDE v2.5 04-Feb-2022 16:50:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -91,13 +91,19 @@ end
 
 %% get the data loaded
 MySession = handles.WhereSession.String;
-[TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, SampleRate, TimestampAdjuster] = ...
+[TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, ...
+    ReplayTTLs, SampleRate, TimestampAdjuster] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSpikes, handles.Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(handles.TrialInfo.TrialID,2),handles.TrialInfo);
 
+if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
+    [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
+        ReplayAlignedSpikeTimes(SingleUnits,TTLs,...
+        ReplayTTLs,handles.TrialInfo,handles.Events);
+end
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
@@ -113,7 +119,11 @@ for i = 1:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on
-    PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    % plot baseline trials
+    [trialsdone] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    % plot replay trials
+    AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType);
+
     switch AlignType
         case {1,2}
             set(gca, 'XLim', [-1.2 6]);
@@ -138,6 +148,11 @@ function NewSession_Callback(hObject, eventdata, handles)
 % hObject    handle to NewSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.WhereSession.String = [];
+handles.NumUnits.String = '';
+handles.CurrentUnit.Data(1) = NaN;
+% Update handles structure
+guidata(hObject, handles);
 
 
 % --- Executes on button press in NextUnit.
