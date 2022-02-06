@@ -1,4 +1,4 @@
-function [] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo)
+function [] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials)
 
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
@@ -7,18 +7,21 @@ whichodor = whichOdor;
 whichTrials = find(TrialInfo.Odor==whichodor); % both active and passive replays
 whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) ...
                TrialInfo.Duration(whichTrials) (TrialInfo.TrialID(whichTrials)<0)']; %#ok<AGROW>
-           
+
+
 % Sort trials - first by active and passive replay
+if SortTrials
 whichTrials(whichTrials(:,4)==0,:) = sortrows(whichTrials(whichTrials(:,4)==0,:),2);
 whichTrials(whichTrials(:,4)==1,:) = sortrows(whichTrials(whichTrials(:,4)==1,:),2);
 
-for tz = 1:12
-    q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==0));
-    whichTrials(q,:) = sortrows(whichTrials(q,:),3);
-    q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==1));
-    whichTrials(q,:) = sortrows(whichTrials(q,:),3);
-end
 
+    for tz = 1:12
+        q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==0));
+        whichTrials(q,:) = sortrows(whichTrials(q,:),3);
+        q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==1));
+        whichTrials(q,:) = sortrows(whichTrials(q,:),3);
+    end
+end
 % Plot all events
 myEvents = Events(whichTrials(:,1),:);
 switch AlignTo

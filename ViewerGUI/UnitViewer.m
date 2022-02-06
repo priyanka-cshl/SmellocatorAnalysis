@@ -22,7 +22,7 @@ function varargout = UnitViewer(varargin)
 
 % Edit the above text to modify the response to help UnitViewer
 
-% Last Modified by GUIDE v2.5 04-Feb-2022 16:50:28
+% Last Modified by GUIDE v2.5 06-Feb-2022 14:53:39
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -122,7 +122,7 @@ for i = 1:3
     % plot baseline trials
     [trialsdone] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
     % plot replay trials
-    AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType);
+    AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
 
     switch AlignType
         case {1,2}
@@ -197,6 +197,18 @@ function CurrentUnit_CellEditCallback(hObject, eventdata, handles)
 %	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
 %	Error: error string when failed to convert EditData to appropriate value for Data
 % handles    structure with handles and user data (see GUIDATA)
+UpdatePlots(handles);
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in SortReplay.
+function SortReplay_Callback(hObject, eventdata, handles)
+% hObject    handle to SortReplay (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of SortReplay
 UpdatePlots(handles);
 % Update handles structure
 guidata(hObject, handles);
