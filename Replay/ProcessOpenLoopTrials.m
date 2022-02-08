@@ -229,8 +229,9 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 thisTrialSpikeTimes = vertcat(allspikes((allspikes>=(tstart-startoffset))& (allspikes<tstart)),...
                                     thisTrialSpikeTimes);
                 tstop = TTLs.Trial(MyTrials(thisTrial),2);
-                thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
-                thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
+                thisTrialSpikeTimes = thisTrialSpikeTimes - tstart + startoffset;
+%                 thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
+%                 thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
                 
                 % FR: Use the original spiketimes to get PSTH, split the PSTH 
                 [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
@@ -283,8 +284,9 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     thisTrialSpikeTimes = vertcat(allspikes((allspikes>=(tstart-startoffset))& (allspikes<tstart)),...
                         thisTrialSpikeTimes);
                     tstop = TTLs.Trial(MyTrials(thisTrial),2);
-                    thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
-                    thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
+                    thisTrialSpikeTimes = thisTrialSpikeTimes - tstart + startoffset;
+%                     thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
+%                     thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
                     % FR: Use the original spiketimes to get PSTH, split the PSTH
                     [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
                         +[0 1000*ceil(ReplayTrialLength)],...

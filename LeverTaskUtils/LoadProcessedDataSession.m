@@ -1,4 +1,6 @@
-function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ReplayTTLs, SampleRate, TimestampAdjuster] = LoadProcessedDataSession(MySession)
+function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ...
+    ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, ...
+    OpenLoop] = LoadProcessedDataSession(MySession)
 
 if nargin<0
     MySession = [];
@@ -21,6 +23,9 @@ load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
 %% Concatenate traces and get one matrix with all behavior variables
 % SampleRate = behavior sample rate;
 [TracesOut, ColNames] = ConcatenateTraces2Mat(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
+
+% pad the samples missing from raw behavior file to prevent indexing mismatches
+TracesOut = vertcat(zeros(TrialInfo.TraceIndices(1,1),size(TracesOut,2)), TracesOut);
 
 %% sniff trace
 %sniffs = TracesOut(:,3);
@@ -54,7 +59,7 @@ if any(find(strcmp(TrialInfo.Perturbation,'OL-Replay')))
     replayTrials = OpenLoop.TemplateTraces.Trial{1};
     replayTrials(isnan(replayTrials)) = [];
     % only keep trace until last trial was off
-    tracelength = find(diff(abs(replayTrials)==-1),1,'last');
+    tracelength = find(diff(abs(replayTrials))<0,1,'last');
     replayTrials(tracelength:end) = [];
     % remove initial samples - before trial ON
     replayTrials(1:find(replayTrials>0,1,'first')-1) = [];
@@ -104,5 +109,10 @@ for i = 1:size(TrialInfo.TrialID,2)
         TrialInfo.TargetEntry(i,1) = NaN;
     end
 end
+
+
+%% Passive replays
+PassiveTracesOut = []; StartStopIdx = 0;
+LoadProcessedPassiveSession;
 
 end

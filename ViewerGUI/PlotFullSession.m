@@ -77,7 +77,7 @@ end
         
         % Trial OFF
         X = [repmat(myEvents(:,3),1,2) NaN*ones(size(myEvents,1),1)]';
-        plot(X(:),Y(:),'Color',Plot_Colors('pl'),'Linewidth',2);
+        plot(X(:),Y(:),'Color',Plot_Colors('r'),'Linewidth',2);
         
         % Rewards
         X = [repmat(myEvents(:,2),1,2) NaN*ones(size(myEvents,1),1)]';
