@@ -30,15 +30,16 @@ for whichunit = 1:N % every unit
             trialcount = trialcount + 1;
             
             if j == 1
-                t1 = min(thisTrialspikes)-1;
-                t2 = 0;
+                t1 = min(thisTrialspikes)-1; 
+                t2 = 0; % Trial Start
             else
-                t1 = subTTLs(j-1,2);
-                t2 = subTTLs(j,1);
+                t1 = subTTLs(j-1,2); % previous trial's odor OFF (OEPS) = Trial OFF
+                t2 = subTTLs(j,1); % odor ON (OEPS)
+                t2 = t2 - TrialInfo.OdorStart(templatetrials(j),1); % convert to trial start 
             end
             
             if j<nsubtrials
-                t3 = subTTLs(j+1,1);
+                t3 = subTTLs(j+1,1); % next trial ON (OEPS)
             else
                 t3 = TTLs.Trial(thisTrial+1,1);
             end
