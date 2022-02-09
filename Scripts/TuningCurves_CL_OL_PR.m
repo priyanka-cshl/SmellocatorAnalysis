@@ -122,7 +122,7 @@ end
 %%
 figure;
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
-        'plotephys', 1, 'UnitsPerFig', 5, 'whichunits', MyUnits);
+        'plotfigures', 1, 'plotephys', 0, 'UnitsPerFig', 5, 'whichunits', MyUnits);
 
     
 

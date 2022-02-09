@@ -131,10 +131,10 @@ for x = 1:numel(allreplays) % for every unique replay stretch
         end
         
         TemplateTrials = Replay.TemplateTraces.TrialIDs{whichreplay};
-        nSubTrials = numel(TemplateTrials);
+        nsubtrials = numel(TemplateTrials);
         ReplayTrialLength = size(Replay.ReplayTraces.Lever{whichreplay},1)/SampleRate; % in seconds
         TemplateTrialLength = size(Replay.TemplateTraces.Lever{whichreplay},1)/SampleRate; % in seconds
-        ReplayOFF = find(diff(Trial)==-1,1,'last')/SampleRate; % in seconds w.r.t. trace start
+        FirstTrialDuration = TrialInfo.Duration(TemplateTrials(1));
         
         for i = 1:numel(whichUnits) % for every cell
             MyUnit = whichUnits(i);
@@ -223,15 +223,23 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             % plot the replay spike times
             MyTrials = Replay.ReplayTraces.TrialIDs{whichreplay};
             for thisTrial = 1:numel(MyTrials)
-                tstart = TTLs.Trial(MyTrials(thisTrial),1);
-                thisTrialSpikeTimes = allspikes(SingleUnits(MyUnit).trialtags == MyTrials(thisTrial));
-                % append spikes from the startoffset period
-                thisTrialSpikeTimes = vertcat(allspikes((allspikes>=(tstart-startoffset))& (allspikes<tstart)),...
-                    thisTrialSpikeTimes);
-                tstop = TTLs.Trial(MyTrials(thisTrial),2);
-                thisTrialSpikeTimes = thisTrialSpikeTimes - tstart + startoffset;
-                %                 thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
-                %                 thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
+                
+                % get odor valve ON-OFF times from OEPS
+                OdorTTLs = Replay.TTLs.OdorValve{thisTrial}; % TS of odor valve ON-OFF w.r.t. Trial start TTL
+                if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
+                    OdorTTLs(1,:) = [];
+                end
+                % Add one more column for TrialStart w.r.t. Odor ON
+                OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(TemplateTrials,1);
+                % force first subtrial to start at ~0
+                OdorTTLs(1,end) = OdorTTLs(1,2) - FirstTrialDuration;
+                % convert TS to real OEPS time base
+                OdorTTLs(:,[1 2 5]) = OdorTTLs(:,[1 2 5]) + TTLs.Trial(MyTrials(thisTrial),1);
+                
+                tstart = OdorTTLs(1,5);
+                t1 = tstart - startoffset;
+                t2 = TTLs.Trial(MyTrials(thisTrial)+1,1); % until next trial start
+                thisTrialSpikeTimes = allspikes((allspikes>=t1)& (allspikes<t2)) - t1;
                 
                 % FR: Use the original spiketimes to get PSTH, split the PSTH
                 [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
@@ -276,19 +284,27 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             
             % plot the passive replays as well
             if ~isempty(PassiveReplays) && x==1
+                nReplays = numel(MyTrials);
                 MyTrials = PassiveReplays;
                 for thisTrial = 1:numel(MyTrials)
-                    tstart = TTLs.Trial(MyTrials(thisTrial),1); % w.r.t OEPS
-                    corrected_tstart = tstart + Replay.TTLs.OdorValve{end-numel(MyTrials)+thisTrial}(end-numel(TemplateTrials)+1,1);
-                    thisTrialSpikeTimes = allspikes(SingleUnits(MyUnit).trialtags == -MyTrials(thisTrial));
-                    % append spikes from the startoffset period
-                    thisTrialSpikeTimes = vertcat(allspikes((allspikes>=(tstart-startoffset))& (allspikes<tstart)),...
-                        thisTrialSpikeTimes);
-                    tstop = TTLs.Trial(MyTrials(thisTrial),2);
-                    thisTrialSpikeTimes = thisTrialSpikeTimes - tstart + startoffset;
-                    %                     thisTrialSpikeTimes = thisTrialSpikeTimes - tstop; % align to replay end
-                    %                     thisTrialSpikeTimes = thisTrialSpikeTimes + ReplayOFF; % realign to template's trial off
-                    % FR: Use the original spiketimes to get PSTH, split the PSTH
+                    
+                    % get odor valve ON-OFF times from OEPS
+                    OdorTTLs = Replay.TTLs.OdorValve{thisTrial+nReplays}; % TS of odor valve ON-OFF w.r.t. Trial start TTL
+                    if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
+                        OdorTTLs(1,:) = [];
+                    end
+                    % Add one more column for TrialStart w.r.t. Odor ON
+                    OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(TemplateTrials,1);
+                    % force first subtrial to start at ~0
+                    OdorTTLs(1,end) = OdorTTLs(1,2) - FirstTrialDuration;
+                    % convert TS to real OEPS time base
+                    OdorTTLs(:,[1 2 5]) = OdorTTLs(:,[1 2 5]) + TTLs.Trial(MyTrials(thisTrial),1);
+                    
+                    tstart = OdorTTLs(1,5);
+                    t1 = tstart - startoffset;
+                    t2 = TTLs.Trial(MyTrials(thisTrial)+1,1); % until next trial start
+                    thisTrialSpikeTimes = allspikes((allspikes>=t1)& (allspikes<t2)) - t1;
+                
                     [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
                         +[0 1000*ceil(ReplayTrialLength)],...
                         'downsample',SampleRate,'kernelsize',smoothingfactor);

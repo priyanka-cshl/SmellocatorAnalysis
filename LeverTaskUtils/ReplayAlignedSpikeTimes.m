@@ -8,55 +8,61 @@ end
 nsubtrials = min(subtrials);
 
 templatetrials = find(strcmp(TrialInfo.Perturbation,'OL-Template'));
+FirstTrialDuration = TrialInfo.Duration(templatetrials(1));
 
 N = size(SingleUnits,2); % total units
 for whichunit = 1:N % every unit
-    thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
-    trialtags = abs(SingleUnits(whichunit).trialtags); % tuning TTLs are in negative
+    %thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
+    thisUnitspikes = SingleUnits(whichunit).spikes; 
+    %trialtags = abs(SingleUnits(whichunit).trialtags); % tuning TTLs are in negative
     trialcount = 0;
-    for whichtrial = 1: nTrials % every trial 
-        thisTrial = ReplayTTLs.TrialID(whichtrial);
-        thisTrialspikes = thisUnitspikes(trialtags==thisTrial);
-        previousTrialspikes = thisUnitspikes(trialtags==thisTrial-1) - ...
-            (TTLs.Trial(thisTrial,1) - TTLs.Trial(thisTrial-1,1));
-        thisTrialspikes = horzcat(previousTrialspikes',thisTrialspikes');
-        
-        subTTLs = ReplayTTLs.OdorValve{whichtrial};
-        if size(subTTLs,1)>nsubtrials
-            subTTLs(1,:) = [];
+    for whichReplay = 1: nTrials % every replay 
+        thisReplay = ReplayTTLs.TrialID(whichReplay); % Replay Trial ID
+        OdorTTLs = ReplayTTLs.OdorValve{whichReplay}; % TS of odor valve ON-OFF w.r.t. Trial start TTL
+        if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
+            OdorTTLs(1,:) = [];
         end
-            
-        for j = 1:nsubtrials
+        % Add one more column for TrialStart w.r.t. Odor ON
+        OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials,1);
+        
+        % force first subtrial to start at ~0
+        OdorTTLs(1,end) = OdorTTLs(1,2) - FirstTrialDuration; 
+        
+        % convert TS to real OEPS time base
+        OdorTTLs(:,[1 2 5]) = OdorTTLs(:,[1 2 5]) + TTLs.Trial(thisReplay,1);
+        
+        for j = 1:nsubtrials % every trial within a replay stretch
             trialcount = trialcount + 1;
             
             if j == 1
-                t1 = min(thisTrialspikes)-1; 
-                t2 = 0; % Trial Start
+                t1 = TTLs.Trial(thisReplay-1,2);
             else
-                t1 = subTTLs(j-1,2); % previous trial's odor OFF (OEPS) = Trial OFF
-                t2 = subTTLs(j,1); % odor ON (OEPS)
-                t2 = t2 - TrialInfo.OdorStart(templatetrials(j),1); % convert to trial start 
+                t1 = OdorTTLs(j-1,2); % previous trial's odor OFF (OEPS) = Trial OFF
             end
+            
+            t2 = OdorTTLs(j,5); % Trial ON (OEPS)
             
             if j<nsubtrials
-                t3 = subTTLs(j+1,1); % next trial ON (OEPS)
+                t3 = OdorTTLs(j+1,1); % next trial ON (OEPS)
             else
-                t3 = TTLs.Trial(thisTrial+1,1);
+                t3 = TTLs.Trial(thisReplay+1,1);
             end
             
-            thisReplaySpikes = thisTrialspikes((thisTrialspikes>t1)&(thisTrialspikes<t3)) - t2;
+            thisReplaySpikes = thisUnitspikes((thisUnitspikes>t1)&(thisUnitspikes<t3)) - t2;
             ReplayAlignedSpikes{trialcount,whichunit} = {thisReplaySpikes};
             
             if whichunit == 1
-                ReplayEvents(trialcount,1:4) = Events(templatetrials(j),:);
+                
+                ReplayEvents(trialcount,2:4)            = Events(templatetrials(j),2:4);
+                ReplayEvents(trialcount,1)              = OdorTTLs(j,1) - OdorTTLs(j,5); % odor ON w.r.t. trial start
                 ReplayInfo.Odor(trialcount,1)           = TrialInfo.Odor(templatetrials(j));
                 ReplayInfo.TargetZoneType(trialcount,1) = TrialInfo.TargetZoneType(templatetrials(j));
                 ReplayInfo.Duration(trialcount,1)       = TrialInfo.Duration(templatetrials(j));
                 ReplayInfo.InZone{trialcount}           = TrialInfo.InZone{templatetrials(j)};
-                if thisTrial <= TrialInfo.TrialID(end)
-                    ReplayInfo.TrialID(trialcount)          =  whichtrial + j/100;
+                if thisReplay <= TrialInfo.TrialID(end)
+                    ReplayInfo.TrialID(trialcount)          =  whichReplay + j/100;
                 else
-                    ReplayInfo.TrialID(trialcount)          = -(whichtrial + j/100);
+                    ReplayInfo.TrialID(trialcount)          = -(whichReplay + j/100);
                 end
             end
         end
