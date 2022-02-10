@@ -2,7 +2,7 @@ function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ...
     ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, ...
     OpenLoop] = LoadProcessedDataSession(MySession)
 
-if nargin<0
+if ~nargin
     MySession = [];
 end
 
@@ -34,7 +34,7 @@ Np    = 4; % filter order
 [b,a] = butter(Np,fband/(SampleRate/2)); % band pass Butterworth filter coefficients
 TracesOut(:,3) = filtfilt(b,a,TracesOut(:,3)); %apply the filter to x(t)
 
-%% calculate the timestamp difference between Ephys and Behavior
+%% calculate the timestamp difference between Ephys and Behavior - not used in this function
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
 TrialStart_Ephys = TTLs.Trial(1,2);
 % factor to convert all behavior timestamps to match Ephys

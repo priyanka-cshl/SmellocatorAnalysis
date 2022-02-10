@@ -10,7 +10,7 @@ switch VarType
         XBins(:,1) = 20:Binsize:(230-Binsize);
         XBins(:,2) = XBins(:,1) + Binsize;
     case 'FR'
-        Binsize = 10;
+        Binsize = 5;
         XBins(:,1) = 0:Binsize:(100-Binsize);
         XBins(:,2) = XBins(:,1) + Binsize;
         XBins(end+1,:) = [XBins(end,2) Inf];
