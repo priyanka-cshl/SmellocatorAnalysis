@@ -131,5 +131,5 @@ xtickangle(gca,90);
 %PlotUnits = SortedByTetrodes(SortedbyCorr(51:55));
 PlotUnits = [58 35 34 55 21];
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
-        'plotephys', 1, 'UnitsPerFig', 5, 'whichunits', PlotUnits);
+        'plotephys', 1, 'UnitsPerFig', 6, 'whichunits', PlotUnits);
 

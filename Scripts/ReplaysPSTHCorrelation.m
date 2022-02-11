@@ -9,7 +9,7 @@ OpenLoop = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
 
 N = size(SingleUnits,2); % #units
 MyUnits = (1:N);
-MyUnits = [58 35 34 55 21];
+MyUnits = [58 35 34 55 21 8];
 
 [OpenLoopTraces,OpenLoopTimestamps,OpenLoopPSTH,~] = ...
     ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, 'whichunits', MyUnits);
