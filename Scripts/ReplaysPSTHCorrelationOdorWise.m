@@ -26,54 +26,33 @@ TrialTS =  horzcat( find(diff(Odor)>0), find(diff(Trial)>0), find(diff(Trial)<0)
 TrialTS(:,4) = Odor(TrialTS(:,2)); % which odor
 TrialTS(:,5) = OpenLoopTraces(TrialTS(:,2),7); % which Target Zone
 
-for t = 1:size(TrialTS,1) % every subtrial
-    idx(1) = TrialTS(t,1); % odor start
-    if t < size(TrialTS,1)
-        idx(2) = TrialTS(t+1,1) - 1; % next trial odor start
-    else
-        idx(2) = TrialTS(t,3) + SampleRate; % 1 sec post trial off
-    end
-    [C{t}, ~] = ReplayCrossCorr(OpenLoopPSTH(:,idx(1):idx(2),:),[1 10 5]);
-end
-% also get correlation for the full trace
-[C{t+1}, g] = ReplayCrossCorr(OpenLoopPSTH(:,TrialTS(1,1):idx(2),:),[1 10 5]);
-
-%% Plotting - distributions - looks ugly
-for i = 1:numel(MyUnits) % every unit
-    figure;
-    for x = 1:21 % each trial separately and then whole session
-        subplot(4,6,x);  hold on
-        % get histograms
-        h1 = histogram(C{x}(find(strcmp(g,'OL-OL')),i),[-1:0.1:1],...
-            'Normalization','probability', ...
-            'EdgeColor','none','FaceColor',Plot_Colors('Paletton',[2 2]));
-        h2 = histogram(C{x}(find(strcmp(g,'PR-PR')),i),[-1:0.1:1],...
-            'Normalization','probability', ...
-            'EdgeColor','none','FaceColor',Plot_Colors('Paletton',[3 2]));
-        h3 = histogram(C{x}(find(strcmp(g,'CL-OL')),i),[-1:0.1:1],...
-            'Normalization','probability', ...
-            'EdgeColor','k','FaceColor',Plot_Colors('Paletton',[2 1]));
-        h4 = histogram(C{x}(find(strcmp(g,'CL-PR')),i),[-1:0.1:1],...
-            'Normalization','probability', ...
-            'EdgeColor','k','FaceColor',Plot_Colors('Paletton',[3 1])); 
-    end
-end
-
-%% Plotting - just means and errors for each trial
-U = unique(g);
-for x = 1:size(TrialTS,1)+1 % each trial separately and then whole session
-    for c = 1:length(U)
-        MedianCorrs(:,c,x) = median(C{x}(find(strcmp(g,U{c})),:))';
-        STDCorrs(:,c,x)    = std(C{x}(find(strcmp(g,U{c})),:))';
-    end
-end
-
 OdorSequence = OpenLoop.TTLs.OdorValve{1}(:,4);
 if numel(OdorSequence)>size(TrialTS,1)
     OdorSequence(1,:) = [];
 end
-OdorSequence(end+1) = 4;
-%%
+
+%% Split the long trace into odor-specific stretches 
+% - only keep points from this trial's odorstart to next trial's odor start
+for whichodor = 1:3
+    whichones = find(OdorSequence==whichodor);
+    MyIdx = [];
+    for i = 1:numel(whichones)
+        idx(1) = TrialTS(whichones(i),1); % odor start
+        if whichones(i)<size(TrialTS,1)
+            idx(2) = TrialTS(whichones(i)+1,1) - 1; % next trial odor start
+        else
+            idx(2) = TrialTS(whichones(i),3) + SampleRate; % 1 sec post trial off
+        end
+        MyIdx = horzcat(MyIdx,idx(1):idx(2));
+    end
+    [C{whichodor}] = ReplayCrossCorr2(OpenLoopPSTH(:,MyIdx,:),[1 10 5]);
+    [Residuals{whichodor}] = ReplayResiduals(OpenLoopPSTH(:,MyIdx,:),[1 10 5]);
+end
+% also get correlation for the full trace
+idx(1) = TrialTS(1,1);
+idx(2) = TrialTS(end,3) + SampleRate;
+[C{end+1}] = ReplayCrossCorr2(OpenLoopPSTH(:,idx(1):idx(2),:),[1 10 5]);
+[Residuals{end+1}] = ReplayResiduals(OpenLoopPSTH(:,idx(1):idx(2),:),[1 10 5]);
 
 for i = 1:numel(MyUnits) % every unit
     subplot(6,1,i);  hold on
