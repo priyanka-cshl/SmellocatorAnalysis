@@ -1,6 +1,6 @@
 function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ...
     ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, ...
-    OpenLoop] = LoadProcessedDataSession(MySession)
+    OpenLoop] = LoadProcessedDataSession(MySession);
 
 if ~nargin
     MySession = [];
