@@ -1,6 +1,39 @@
-function [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo)
+function [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession)
 
 N = size(SingleUnits,2); % total units
+
+if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
+    x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)));
+    switch TrialInfo.Perturbation{x(1),1}
+        case 'Halt-Flip'
+            load(MySession,'Traces','SampleRate');
+            PerturbationParams = TrialInfo.Perturbation{x(1),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location
+            Duration = PerturbationParams(2) - PerturbationParams(1);
+            Threshold = 4; % Lever threshold at which perturbation starts 
+            
+            % for all control trials, find perturbation start point
+            for i = 1:nTrials
+                if ~ismember(i,x)
+                    f = find(Traces.Lever{i}(TrialInfo.TimeIndices(i,1):end)<Threshold,1,'first');
+                    if ~isempty(f)
+                        f = f + TrialInfo.TimeIndices(i,1) - 1;
+                        if abs(Traces.Lever{i}(f-1)-4)<abs(Traces.Lever{i}(f)-4)
+                            f = f-1;
+                        end
+                        f = f - TrialInfo.TimeIndices(i,1);
+                        PerturbationEvents(i,:) = [f f+Duration NaN];
+                    else
+                        PerturbationEvents(i,:) = [NaN NaN NaN];
+                    end
+                else
+                    PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
+                end
+            end
+    end
+else
+    PerturbationEvents = [];
+end
+
 for whichunit = 1:N % every unit
     thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
     trialtags = SingleUnits(whichunit).trialtags;
@@ -34,10 +67,14 @@ for whichunit = 1:N % every unit
                 reward = NaN;
             end
             % OdorStart, Reward, TrialOFF, First TZ entry
-            Events(whichtrial,:) = [TTLs.Trial(whichtrial,4), ...
+            Events(whichtrial,1:4) = [TTLs.Trial(whichtrial,4), ...
                                     (reward(1) - x1), ...
                                     TTLs.Trial(whichtrial,3), ...
                                     TrialInfo.TargetEntry(whichtrial,1)];
+                                
+           if ~isempty(PerturbationEvents)
+               Events(whichtrial,5) = PerturbationEvents(whichtrial,1)/SampleRate;
+           end
         end
     end
 end

@@ -13,8 +13,19 @@ for tz = 1:12
     whichTrials(whichTrials(:,2)==tz,:) = sortrows(whichTrials(whichTrials(:,2)==tz,:),3);
 end
 
+% also collect perturbation trials
+perturbationTrials = intersect(find(~cellfun(@isempty, TrialInfo.Perturbation)), ...
+    find(TrialInfo.Odor==whichodor));
+perturbationTrials = [perturbationTrials TrialInfo.TargetZoneType(perturbationTrials) TrialInfo.Duration(perturbationTrials)]; %#ok<AGROW>
+perturbationTrials = sortrows(perturbationTrials,2);
+for tz = 1:12
+    perturbationTrials(perturbationTrials(:,2)==tz,:) = sortrows(perturbationTrials(perturbationTrials(:,2)==tz,:),3);
+end
+
+allTrials = vertcat(whichTrials, perturbationTrials);
+
 % Plot all events
-myEvents = Events(whichTrials(:,1),:);
+myEvents = Events(allTrials(:,1),:);
 switch AlignTo
     case 1 % to trial ON
         Xlims = [-1.2 -1];
@@ -45,12 +56,17 @@ switch AlignTo
         % offset all events with ON timestamp
         myEvents = myEvents - Offset;
         Xlims = [-1.2 -1] - 1;
+    case 6 % perturbation start
+        Offset = myEvents(:,5);
+        % offset all events with ON timestamp
+        myEvents = myEvents - Offset;
+        Xlims = [-1.2 -1];
 end
 
 EventPlotter(myEvents);
 
 % Plot TrialType
-TrialTypePlotter(whichTrials(:,2),whichodor,Xlims);
+TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,0);
 
 % Plot Spikes
 for x = 1:size(whichTrials,1)
@@ -64,6 +80,22 @@ for x = 1:size(whichTrials,1)
     % adjust spiketimes if needed
     thisTrialSpikes = thisTrialSpikes - Offset(x);
     PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
+end
+
+if ~isempty(perturbationTrials)
+TrialTypePlotter(perturbationTrials(:,2),whichodor,Xlims,x);
+    for y = 1:size(perturbationTrials,1)
+        
+        % Plot Target Zone periods - adjust times if needed
+        ZoneTimes = TrialInfo.InZone{perturbationTrials(y)} - Offset(x+y);
+        InZonePlotter(ZoneTimes', y+x);
+        
+        % Plot Spikes
+        thisTrialSpikes = thisUnitSpikes{perturbationTrials(y,1)}{1};
+        % adjust spiketimes if needed
+        thisTrialSpikes = thisTrialSpikes - Offset(x+y);
+        PlotRaster(thisTrialSpikes,x+y,Plot_Colors('Paletton',[1 2]));
+    end
 end
 
 %%
@@ -95,16 +127,20 @@ end
         end
     end
 
-    function TrialTypePlotter(TrialList,OdorType,Xlims)
+    function TrialTypePlotter(TrialList,OdorType,Xlims,trialsdone)
         X = [Xlims(1) Xlims(2) Xlims(2) Xlims(1)];
         U = unique(TrialList);
-        y1 = 0;
+        y1 = trialsdone;
         boxcolor(1,:) = Plot_Colors(['Odor',num2str(OdorType)]);
         boxcolor(2,:) = boxcolor-0.2;
         for j = 1:numel(U)
             y2 = y1 + numel(find(TrialList==U(j)));
             Y = [y1 y1 y2 y2];
-            fill(X,Y,boxcolor(1,:),'EdgeColor','none');
+            if trialsdone
+                fill(X,Y,boxcolor(1,:),'EdgeColor','k');
+            else
+                fill(X,Y,boxcolor(1,:),'EdgeColor','none');
+            end
             y1 = y2;
             boxcolor = flipud(boxcolor);
         end

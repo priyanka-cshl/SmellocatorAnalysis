@@ -22,7 +22,7 @@ function varargout = UnitViewer(varargin)
 
 % Edit the above text to modify the response to help UnitViewer
 
-% Last Modified by GUIDE v2.5 06-Feb-2022 14:53:39
+% Last Modified by GUIDE v2.5 13-Feb-2022 15:36:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -97,7 +97,7 @@ MySession = handles.WhereSession.String;
 
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSpikes, handles.Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
-    size(handles.TrialInfo.TrialID,2),handles.TrialInfo);
+    size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
 
 if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
     [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
@@ -121,11 +121,14 @@ for i = 1:3
     hold on
     % plot baseline trials
     [trialsdone] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
-    % plot replay trials
-    AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
+    
+    if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
+        % plot replay trials
+        AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
+    end
 
     switch AlignType
-        case {1,2}
+        case {1,2,6}
             set(gca, 'XLim', [-1.2 6]);
         case {3,4}
             set(gca, 'XLim', [-5.2 1]);
