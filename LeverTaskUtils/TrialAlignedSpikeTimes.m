@@ -29,6 +29,8 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
                     PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
                 end
             end
+        otherwise
+            PerturbationEvents = [];
     end
 else
     PerturbationEvents = [];

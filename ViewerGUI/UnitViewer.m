@@ -115,26 +115,45 @@ guidata(hObject, handles);
 function UpdatePlots(handles)
 whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
+MyColors1 = brewermap(15,'*PuBu');
+MyColors2 = brewermap(15,'*OrRd');
+
+switch AlignType
+    case {1,2,6}
+        myXlim = [-1.2 6];
+    case {3,4}
+        myXlim = [-5.2 1];
+    case 5
+        myXlim = [-2.2 5];
+end
+    
 for i = 1:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on
     % plot baseline trials
-    [trialsdone] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
     
     if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
         % plot replay trials
         AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
     end
-
-    switch AlignType
-        case {1,2,6}
-            set(gca, 'XLim', [-1.2 6]);
-        case {3,4}
-            set(gca, 'XLim', [-5.2 1]);
-        case 5
-            set(gca, 'XLim', [-2.2 5]);
+    set(gca, 'XLim', myXlim);
+    
+    axes(handles.(['axes',num2str(i+3)])); 
+    cla reset; 
+    hold on
+    for t = 1:size(FRs,1)
+        plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
     end
+    if ~isempty(P_FRs)
+        for t = 1:size(FRs,1)
+            set(groot,'defaultAxesColorOrder',MyColors2);
+            plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+        end
+    end
+    
+    set(gca, 'XLim', myXlim);
 end
 
 function WhereSession_Callback(hObject, eventdata, handles)

@@ -1,5 +1,4 @@
-function [x] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo)
-
+function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo)
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
@@ -70,16 +69,27 @@ TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,0);
 
 % Plot Spikes
 for x = 1:size(whichTrials,1)
-    
     % Plot Target Zone periods - adjust times if needed
     ZoneTimes = TrialInfo.InZone{whichTrials(x)} - Offset(x);
     InZonePlotter(ZoneTimes', x);
     
     % Plot Spikes
     thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
+    
     % adjust spiketimes if needed
     thisTrialSpikes = thisTrialSpikes - Offset(x);
     PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
+end
+
+% calculate PSTH
+AlignedFRs = [];
+BinOffset = Xlims(1)*1000;
+
+for TZ = 1:12
+    thisTZspikes = thisUnitSpikes(whichTrials(find(whichTrials(:,2)==TZ),1));
+    Events2Align = Offset(find(whichTrials(:,2)==TZ),1);
+    myFR = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+    AlignedFRs(TZ,1:numel(myFR)) = myFR;
 end
 
 if ~isempty(perturbationTrials)
@@ -96,6 +106,15 @@ TrialTypePlotter(perturbationTrials(:,2),whichodor,Xlims,x);
         thisTrialSpikes = thisTrialSpikes - Offset(x+y);
         PlotRaster(thisTrialSpikes,x+y,Plot_Colors('Paletton',[1 2]));
     end
+end
+
+% calculate PSTH
+AlignedPerturbationFRs = [];
+for TZ = 1:12
+    thisTZspikes = thisUnitSpikes(perturbationTrials(find(perturbationTrials(:,2)==TZ),1));
+    Events2Align = Offset(x+find(perturbationTrials(:,2)==TZ),1);
+    myFR = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+    AlignedPerturbationFRs(TZ,1:numel(myFR)) = myFR;
 end
 
 %%
