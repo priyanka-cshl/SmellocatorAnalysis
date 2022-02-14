@@ -6,8 +6,8 @@ switch VarType
         XBins(:,1) = 0:Binsize:(5-Binsize);
         XBins(:,2) = XBins(:,1) + Binsize;
     case 'Odor'
-        Binsize = 24;
-        XBins(:,1) = 24:Binsize:(224-Binsize);
+        Binsize = 10;
+        XBins(:,1) = 20:Binsize:(230-Binsize);
         XBins(:,2) = XBins(:,1) + Binsize;
     case 'FR'
         Binsize = 5;
