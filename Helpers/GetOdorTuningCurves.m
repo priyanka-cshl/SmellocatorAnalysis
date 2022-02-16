@@ -1,4 +1,5 @@
-function [TuningCurve, XBins] = GetOdorTuningCurves(SessionPath,MyUnits,varargin)
+function [TuningCurve, XBins, PairedCorrs, PairedResiduals, ControlCorrs, ControlResiduals] = ...
+    GetOdorTuningCurves(SessionPath,MyUnits,varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -87,8 +88,8 @@ for whichodor = 1:3
     TuningCurve.ClosedLoopFull(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
     [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(find(TossVar),:),1000*(YVar(find(TossVar),:)/Binsize));
     TuningCurve.ClosedLoopHalf1(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
-    [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(~find(TossVar),:),1000*(YVar(~find(TossVar),:)/Binsize));
-    TuningCurve.ClosedLoopHalf12(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
+    [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(find(~TossVar),:),1000*(YVar(find(~TossVar),:)/Binsize));
+    TuningCurve.ClosedLoopHalf2(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
 end
 
 
@@ -153,7 +154,9 @@ TemplateTrials = find(strcmp(TrialInfo.Perturbation,'OL-Template'));
         [myCurve, ~] = SmellocatorTuning('Odor',125-XVar((countsactive+1):end,:),1000*(YVar((countsactive+1):end,:)/Binsize));
         TuningCurve.Passive(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
     end
-
+    
+    %% if there are replay trials - compare tuning curves across these conditions
+    [PairedCorrs,PairedResiduals,ControlCorrs,ControlResiduals] = CompareTuningCurves(TuningCurve);
 end
 
 end
@@ -172,3 +175,4 @@ end
 %             'color',Plot_Colors('t'),'Linewidth',2);
 %     end
 % end
+

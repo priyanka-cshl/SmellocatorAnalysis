@@ -1,40 +1,36 @@
-function [Residuals] = ReplayResiduals(PSTH,Trialcounts)
+function [ResidualsFull,Tags] = ReplayResiduals(PSTH,Trialcounts)
 
 for MyUnit = 1:size(PSTH,3) % every unit
     MyFRs = squeeze(PSTH(:,:,MyUnit))'; % columns are different replays, rows are timepoints
-
-    % within open loop
-    Residual = []; ResidualPassive = []; Residual_CL = []; Residual_PR = []; Residual_OL_PR = [];
-    counts = 0;
-    whichCols = Trialcounts(1) + (1:Trialcounts(2));
-    whichColsPassive = Trialcounts(1) + Trialcounts(2) + (1:Trialcounts(3));
-    for i = 1:numel(whichCols)
-        x = whichCols(i);
-        y = whichCols(whichCols~=x);
-        % take the mean of all but this Col and calculate residual w.r.t. to it
-        Residual(i) = mean((mean(MyFRs(:,y),2) - MyFRs(:,x)).^2); %#ok<AGROW>
-        % also calculate residual w.r.t. to closed-loop
-        Residual_CL(i) = mean((mean(MyFRs(:,y),2) - MyFRs(:,1)).^2); %#ok<AGROW>
-
-        % also calculate residual w.r.t. Passive
-        for j = 1:numel(whichColsPassive)
-            if i == 1
-                a = whichColsPassive(j);
-                b = whichColsPassive(whichColsPassive~=a);
-                % take the mean of all but this Col and calculate residual w.r.t. to it
-                ResidualPassive(j) = mean((mean(MyFRs(:,b),2) - MyFRs(:,a)).^2); %#ok<AGROW>
-                % also calculate residual w.r.t. to closed-loop
-                Residual_PR(j) = mean((mean(MyFRs(:,b),2) - MyFRs(:,1)).^2); %#ok<AGROW>
-            end
-            % residual of a given passive trial to openloop
-            counts = counts + 1;
-            Residual_OL_PR(counts) = mean((mean(MyFRs(:,y),2) - MyFRs(:,a)).^2); %#ok<AGROW>
-        end
-    end
-    Residuals(MyUnit).withinOL = [mean(Residual) std(Residual)]; %#ok<*AGROW>
-    Residuals(MyUnit).CL2OL = [mean(Residual_CL) std(Residual_CL)];
-    Residuals(MyUnit).withinPR = [mean(ResidualPassive) std(ResidualPassive)];
-    Residuals(MyUnit).CL2PR = [mean(Residual_PR) std(Residual_PR)];
-    Residuals(MyUnit).PR2OL = [mean(Residual_OL_PR) std(Residual_OL_PR)];
     
+    Residuals = []; Tags = [];
+    % CL-OL
+    whichCols = Trialcounts(1) + (1:Trialcounts(2)); % OL reps
+    Residuals = vertcat(Residuals,mean((MyFRs(:,whichCols) - MyFRs(Trialcounts(1))).^2)');
+    Tags      = vertcat(Tags,repmat(12,numel(whichCols),1));
+    
+    % CL-PR
+    whichColsPassive = Trialcounts(1) + Trialcounts(2) + (1:Trialcounts(3));
+    Residuals = vertcat(Residuals,mean((MyFRs(:,whichColsPassive) - MyFRs(Trialcounts(1))).^2)');
+    Tags      = vertcat(Tags,repmat(13,numel(whichColsPassive),1));
+    
+    % OL-OL
+    pairs = nchoosek(whichCols,2);
+    Residuals = vertcat(Residuals, mean((MyFRs(:,pairs(:,1)) - MyFRs(:,pairs(:,2))).^2)');
+    Tags      = vertcat(Tags,repmat(22,size(pairs,1),1));
+    meanOL = mean(mean((MyFRs(:,pairs(:,1)) - MyFRs(:,pairs(:,2))).^2)');
+    
+    % PR-PR
+    pairs = nchoosek(whichColsPassive,2);
+    Residuals = vertcat(Residuals, mean((MyFRs(:,pairs(:,1)) - MyFRs(:,pairs(:,2))).^2)');
+    Tags      = vertcat(Tags,repmat(33,size(pairs,1),1));
+    
+    % OL-PR
+    pairs = [repmat(whichCols',numel(whichColsPassive),1) reshape(repmat(whichColsPassive,numel(whichCols),1),numel(whichCols)*numel(whichColsPassive),1)];
+    Residuals = vertcat(Residuals, mean((MyFRs(:,pairs(:,1)) - MyFRs(:,pairs(:,2))).^2)');
+    Tags      = vertcat(Tags,repmat(23,size(pairs,1),1));
+    
+    Residuals = Residuals/meanOL;
+    
+    ResidualsFull(:,MyUnit) = Residuals;
 end

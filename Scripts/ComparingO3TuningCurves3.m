@@ -83,7 +83,7 @@ for odor = 1:4
     area(XVar,ResidualDist(:,4),'LineStyle','none','FaceColor',[0.8 0.8 0.8]);
     plot(XVar,ResidualDist(:,1:2),'Linewidth',2);
     plot(XVar,ResidualDist(:,3),':','Color',Plot_Colors('t'),'Linewidth',2);
-    line([0 1],[0.5 0.5],'Linestyle','--','Color','k');
+    line([0 0.4],[0.95 0.95],'Linestyle','--','Color','k');
 end
 
 %% plotting cumulative distributions - correlations

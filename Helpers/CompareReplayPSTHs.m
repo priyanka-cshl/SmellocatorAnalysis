@@ -1,4 +1,4 @@
-function [] = CompareReplayPSTHs(SessionPath,MyUnits,varargin)
+function [Corrs,g,Residuals,Tags] = CompareReplayPSTHs(SessionPath,MyUnits,varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -66,7 +66,8 @@ for t = 1:size(TrialTS,1) % every subtrial
             BinnedPSTH(rep,:,i) = thisRepPSTH;
         end
     end
-    %[C{t}, ~] = ReplayCrossCorr(BinnedPSTH,Trialcounts);
+    [Corrs(:,:,t),g] = ReplayCrossCorr(BinnedPSTH,Trialcounts);
+    [Residuals(:,:,t),Tags] = ReplayResiduals(BinnedPSTH,Trialcounts);
 end
 
 

@@ -25,9 +25,9 @@ for MyUnit = 1:size(PSTH,3) % every unit
     C(:,MyUnit) = vertcat(CL_OL',CL_PR',OL_OL,PR_PR,OL_PR);
 end
 
-g1 = repmat({'CL-OL'},numel(CL_OL),1);
-g2 = repmat({'CL-PR'},numel(CL_PR),1);
-g3 = repmat({'OL-OL'},numel(OL_OL),1);
-g4 = repmat({'PR-PR'},numel(PR_PR),1);
-g5 = repmat({'OL-PR'},numel(OL_PR),1);
+g1 = repmat(12,numel(CL_OL),1);
+g2 = repmat(13,numel(CL_PR),1);
+g3 = repmat(22,numel(OL_OL),1);
+g4 = repmat(33,numel(PR_PR),1);
+g5 = repmat(23,numel(OL_PR),1);
 g = [g1; g2; g3; g4; g5];
