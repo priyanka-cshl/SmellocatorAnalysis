@@ -51,6 +51,7 @@ for whichodor = 1:3
         for x = 1:size(whichTrials,1) % every trial
             % only keep the PSTH and behavioral variables from odor start until Trial OFF
             t1 = round((startoffset + Events(whichTrials(x,1),1))*SampleRate);
+            t1 = max(1,t1);
             t2 = round(Events(whichTrials(x,1),3)*SampleRate);
             if mod(numel(t1:t2),BehaviorBinsize)
                 t2 = t1 + BehaviorBinsize*floor(numel(t1:t2)/BehaviorBinsize) - 1;
