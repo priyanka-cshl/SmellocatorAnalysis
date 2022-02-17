@@ -8,6 +8,10 @@ ChosenUnits = [8 21 28 55 39]; %MyUnits = [8 35 28 55 39];
 % ChosenUnits = [2 38 45 55 64]; % may be 38
 
 %% get tuning curves
+% set binsize in SmellocatorTuning.m
+% use fine bins (10) or coarse bins (24)
+% fine bins give better tuning curves, but noisy residual comparisons
+
 [TuningCurve, XBins, PairedCorrs, PairedResiduals, ControlCorrs, ControlResiduals] = ...
     GetOdorTuningCurves(SessionPath);
 

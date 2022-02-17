@@ -1,11 +1,21 @@
 %load '/mnt/data/DataMatrices/TuningCurves_O3_20211005.mat';
 % Plotting Tuning Curves and noting residuals
+
+%%
 load('O3_20211005_TuningCurves_binsize10.mat');
 Binsize = 10;
 XBins = [];
 XBins(:,1) = 20:Binsize:(230-Binsize);
 XBins(:,2) = XBins(:,1) + Binsize;
 
+%%
+load('O3_20211005_TuningCurves_binsize24.mat');
+Binsize = 24;
+XBins = [];
+XBins(:,1) = 24:Binsize:(224-Binsize);
+XBins(:,2) = XBins(:,1) + Binsize;
+
+%%
 N = size(Curve_CL{1},4); % #units
 % {} - different odors
 % for each {}
@@ -24,8 +34,11 @@ for unit = 1:N
         X(:,4) = Curve_CL1{odor}(:,1,1,unit)/a;
         X(:,5) = Curve_CL2{odor}(:,1,1,unit)/a;
         
-        X([1:4 21],:) = []; % delete unsmapled locations
-        %X(1,:) = []; % delete unsmapled locations
+        if Binsize == 10
+            X([1:4 21],:) = []; % delete unsmapled locations
+        else
+            X(1,:) = []; % delete unsmapled locations
+        end
         
         if any(isnan(X))
             keyboard;

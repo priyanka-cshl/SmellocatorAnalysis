@@ -9,6 +9,9 @@ switch VarType
         Binsize = 10;
         XBins(:,1) = 20:Binsize:(230-Binsize);
         XBins(:,2) = XBins(:,1) + Binsize;
+%         Binsize = 24;
+%         XBins(:,1) = 24:Binsize:(224-Binsize);
+%         XBins(:,2) = XBins(:,1) + Binsize;
     case 'FR'
         Binsize = 5;
         XBins(:,1) = 0:Binsize:(100-Binsize);
