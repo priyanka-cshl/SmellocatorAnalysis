@@ -101,7 +101,7 @@ for thisTrial = 1:numel(TrialOn)
         Traces.Timestamps(thisTrial) = { MyData(start_idx:stop_idx, 1) };
         % extract the timestamps if it can't be reconstructed from indices
         if errorflags(2) % timestamps were dropped
-            Traces.Timestamps.Analog(thisTrial) = { MyData(start_idxCorrected:stop_idxCorrected, 1) };
+            Traces.TimestampsAnalog(thisTrial) = { MyData(start_idxCorrected:stop_idxCorrected, 1) };
         end
         
         %% Extract Trial Timestamps
