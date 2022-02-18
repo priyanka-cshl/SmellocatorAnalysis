@@ -110,6 +110,25 @@ for i = 1:size(TrialInfo.TrialID,2)
     end
 end
 
+% If there are Rule reversals then relabel control trials after a flip
+% block
+
+if any(find(strcmp(TrialInfo.Perturbation,'RuleReversal')))
+    count = 0;
+    y = find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'));
+    if any(diff(y)~=1)
+        x1 = y(find(diff(y)~=1))+1;
+        x2 = y(find(diff(y)~=1)+1)-1;
+        count = count + 1;
+        TrialInfo.Perturbation(x1:x2,1) = {['RuleNormal',num2str(count)]};
+        x3 = x2 + 1;
+        TrialInfo.Perturbation(x3:y(end),1) = {['RuleReversal',num2str(count)]};
+    end
+    if TrialInfo.TrialID(end)>y(end)
+        count = count + 1;
+        TrialInfo.Perturbation((y(end)+1):end,1) = {['RuleNormal',num2str(count)]};
+    end
+end
 
 %% Passive replays
 PassiveTracesOut = []; StartStopIdx = 0;

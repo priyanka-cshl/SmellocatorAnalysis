@@ -132,8 +132,11 @@ for i = 1:3
     cla reset; 
     hold on
     % plot baseline trials
-    [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
-    
+    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'RuleReversal'))
+        [trialsdone, FRs, BinOffset, P_FRs] = PlotRuleReversalSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    else
+        [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType);
+    end
     if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
         % plot replay trials
         AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
