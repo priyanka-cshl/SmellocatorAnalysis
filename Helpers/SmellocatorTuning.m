@@ -1,23 +1,32 @@
-function [myCurve,XBins] = SmellocatorTuning(VarType, VarX, VarY)
+function [myCurve,XBins] = SmellocatorTuning(VarType, VarX, VarY, customBins)
 
-switch VarType
-    case 'Lever'
-        Binsize = 0.25;
-        XBins(:,1) = 0:Binsize:(5-Binsize);
-        XBins(:,2) = XBins(:,1) + Binsize;
-    case 'Odor'
-        Binsize = 10;
-        XBins(:,1) = 20:Binsize:(230-Binsize);
-        XBins(:,2) = XBins(:,1) + Binsize;
-%         Binsize = 24;
-%         XBins(:,1) = 24:Binsize:(224-Binsize);
-%         XBins(:,2) = XBins(:,1) + Binsize;
-    case 'FR'
-        Binsize = 5;
-        XBins(:,1) = 0:Binsize:(100-Binsize);
-        XBins(:,2) = XBins(:,1) + Binsize;
-        XBins(end+1,:) = [XBins(end,2) Inf];
-        
+if nargin<4
+   customBins = [];
+end
+
+if isempty(customBins)
+    switch VarType
+        case 'Lever'
+            Binsize = 0.25;
+            XBins(:,1) = 0:Binsize:(5-Binsize);
+            XBins(:,2) = XBins(:,1) + Binsize;
+        case {'Odor10', 'Odor'}
+            Binsize = 10;
+            XBins(:,1) = 20:Binsize:(230-Binsize);
+            XBins(:,2) = XBins(:,1) + Binsize;
+        case 'Odor24'
+            Binsize = 24;
+            XBins(:,1) = 24:Binsize:(224-Binsize);
+            XBins(:,2) = XBins(:,1) + Binsize;
+        case 'FR'
+            Binsize = 5;
+            XBins(:,1) = 0:Binsize:(100-Binsize);
+            XBins(:,2) = XBins(:,1) + Binsize;
+            XBins(end+1,:) = [XBins(end,2) Inf];
+            
+    end
+else
+    XBins = customBins;
 end
 
 % VarX can be a column vector, or a matrix

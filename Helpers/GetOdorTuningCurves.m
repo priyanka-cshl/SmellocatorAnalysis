@@ -6,10 +6,26 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('binsize', 50, @(x) isnumeric(x));
+params.addParameter('tuningbins', 10, @(x) isnumeric(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 Binsize = params.Results.binsize;
+tuningbinsize = params.Results.tuningbins;
+customBins = [];
+switch tuningbinsize
+    case 15
+        TuningBinType = 'Odor';
+        customBins(:,1) = (-90:15:90)' - 7.5;
+        customBins(:,2) = (-90:15:90)' + 7.5;
+        customBins = 125 + customBins; % make center 125
+    case 10
+        TuningBinType = 'Odor10';
+    case 24
+        TuningBinType = 'Odor24';
+    otherwise
+        TuningBinType = 'Odor';
+end
 
 if strcmp(computer, 'MACI64')
     datapath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/';
@@ -35,7 +51,7 @@ end
 TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 
 [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
-                            size(TrialInfo.TrialID,2),TrialInfo);
+                            size(TrialInfo.TrialID,2),TrialInfo,MySession);
 
 BehaviorBinsize = Binsize/(1000/SampleRate);
 
@@ -85,15 +101,19 @@ for whichodor = 1:3
             counts(1) = counts(2)+1;
         end
     end
-    [myCurve, XBins] = SmellocatorTuning('Odor',125-XVar,1000*(YVar/Binsize));
+    [myCurve, XBins] = SmellocatorTuning(TuningBinType,125-XVar,1000*(YVar/Binsize),customBins);
     TuningCurve.ClosedLoopFull(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
-    [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(find(TossVar),:),1000*(YVar(find(TossVar),:)/Binsize));
+    [myCurve, ~] = SmellocatorTuning(TuningBinType,125-XVar(find(TossVar),:),1000*(YVar(find(TossVar),:)/Binsize),customBins);
     TuningCurve.ClosedLoopHalf1(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
-    [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(find(~TossVar),:),1000*(YVar(find(~TossVar),:)/Binsize));
+    [myCurve, ~] = SmellocatorTuning(TuningBinType,125-XVar(find(~TossVar),:),1000*(YVar(find(~TossVar),:)/Binsize),customBins);
     TuningCurve.ClosedLoopHalf2(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
 end
 
 
+PairedCorrs = [];
+PairedResiduals = [];
+ControlCorrs = [];
+ControlResiduals = [];
 %% tuning curves for replay trials                                          
 if any(strcmp(TrialInfo.Perturbation,'OL-Replay'))
     [ReplayAlignedSpikes, ReplayEvents, ReplayInfo] = ...
@@ -150,9 +170,9 @@ TemplateTrials = find(strcmp(TrialInfo.Perturbation,'OL-Template'));
             end
         end
 
-        [myCurve, ~] = SmellocatorTuning('Odor',125-XVar(1:countsactive,:),1000*(YVar(1:countsactive,:)/Binsize));
+        [myCurve, ~] = SmellocatorTuning(TuningBinType,125-XVar(1:countsactive,:),1000*(YVar(1:countsactive,:)/Binsize),customBins);
         TuningCurve.OpenLoop(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
-        [myCurve, ~] = SmellocatorTuning('Odor',125-XVar((countsactive+1):end,:),1000*(YVar((countsactive+1):end,:)/Binsize));
+        [myCurve, ~] = SmellocatorTuning(TuningBinType,125-XVar((countsactive+1):end,:),1000*(YVar((countsactive+1):end,:)/Binsize),customBins);
         TuningCurve.Passive(:,:,:,whichodor) = squeeze(myCurve(:,[1 3],:,:));
     end
     
@@ -160,20 +180,8 @@ TemplateTrials = find(strcmp(TrialInfo.Perturbation,'OL-Template'));
     [PairedCorrs,PairedResiduals,ControlCorrs,ControlResiduals] = CompareTuningCurves(TuningCurve);
 end
 
+if ~isempty(customBins)
+    XBins = XBins - 125;
 end
 
-%%
-% figure;
-% for j = 1:3 
-%     for i = 1:5
-%         subplot(5,3,j+3*(i-1));
-%         hold on;
-%         plot(mean(XBins,2)'-125,TuningCurve.ClosedLoopFull(:,1,i,j),...
-%             'color',Plot_Colors('k'),'Linewidth',2);
-%         plot(mean(XBins,2)'-125,TuningCurve.OpenLoop(:,1,i,j),...
-%             'color',Plot_Colors('r'),'Linewidth',2);
-%         plot(mean(XBins,2)'-125,TuningCurve.Passive(:,1,i,j),...
-%             'color',Plot_Colors('t'),'Linewidth',2);
-%     end
-% end
-
+end
