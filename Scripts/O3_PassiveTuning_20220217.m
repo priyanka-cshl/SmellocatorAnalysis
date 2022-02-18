@@ -55,25 +55,53 @@ OdorONPeriod = ceil(OdorONPeriod*SampleRate);
 % Align to:
 % 1 - Trial ON, 2 - Odor ON, 3 - Trial OFF, 4 - Reward, 5 - 1st TZ entry, 
 % 6 - Perturbation Start
+%%
 whichOdor = 1; % this was the perturbed odor
+mywin = 1000; % in m
+stepsize = 1000/SampleRate;
 for i = 1:size(SingleUnits,2)
     % get spike counts aligned to odor ON
     [~, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = ... 
         PlotFullSession(-i, whichOdor, AlignedSpikes, Events, TrialInfo, 2);
     % count spikes in a 500 ms bin after odor ON
+    bins = -BinOffset + [stepsize:stepsize:mywin];
+    bins = bins/stepsize;
     for tz = 1:12
-        bins2use = -BinOffset-500:-BinOffset;
-        OdorResponse(tz,i) = mean(RawSpikeCounts(tz,bins2use)); 
+        % get odor response during 'windowsize' after odor ON
+        AreaUnderCurve(tz,1,i) = sum(AlignedFRs(tz,bins));
     end
     % get spike counts aligned to perturbation start
     [~, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = ... 
         PlotFullSession(-i, whichOdor, AlignedSpikes, Events, TrialInfo, 6);
     % count spikes in a 500 ms bin after odor ON
+    bins = -BinOffset + [stepsize:stepsize:mywin];
+    bins = bins/stepsize;
     for tz = 1:12
-        bins2use = -BinOffset:(-BinOffset+500);
-        OdorResponse(tz,i) = mean(RawSpikeCounts(tz,bins2use)); 
+        AreaUnderCurve(tz,2,i) = sum(AlignedPerturbationFRs(tz,bins));
     end
 end
+AreaUnderCurve = AreaUnderCurve/(mywin/stepsize);
+
+%% Plot the effect
+figure;
+subplot(1,2,1); 
+hold on
+axis square
+subplot(1,2,2); 
+hold on
+axis square
+for i = 1:size(SingleUnits,2)
+    % mean perturbation response vs. mean mirror location response
+    subplot(1,2,1);
+    plot(mean(AreaUnderCurve(11:12,1,i)),mean(AreaUnderCurve([1 5 9],2,i)),'ok');
+    subplot(1,2,2);
+    for tz = 1:12
+        plot(mean(AreaUnderCurve(tz,1,i)),mean(AreaUnderCurve(1,2,i)),'ok');
+        plot(mean(AreaUnderCurve(tz,1,i)),mean(AreaUnderCurve(5,2,i)),'or');
+        plot(mean(AreaUnderCurve(tz,1,i)),mean(AreaUnderCurve(9,2,i)),'ob');
+    end
+end
+
 
 %% plot some examples
 nrows = 4; ncols = 6;
