@@ -12,6 +12,8 @@ params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('whichunits', [], @(x) isnumeric(x));
 params.addParameter('PSTHsmooth', 100, @(x) isnumeric(x));
 params.addParameter('UnitsPerFig', 5, @(x) isnumeric(x));
+params.addParameter('PlotOpenLoop', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('PlotPassive', true, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -22,6 +24,8 @@ plotephysfigs = params.Results.plotephys;
 whichUnits = params.Results.whichunits;
 smoothingfactor = params.Results.PSTHsmooth;
 units_per_fig = params.Results.UnitsPerFig;
+plotOL = params.Results.PlotOpenLoop;
+plotPR = params.Results.PlotPassive;
 
 global SampleRate;
 global MyFileName;
@@ -207,7 +211,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             PSTH(1,1:numel(myPSTH),i) = myPSTH;
             Raster(1,1:size(myRaster,2),i) = myRaster;
             
-            if plotephysfigs || savereplayfigs
+            if plotephysfigs || savereplayfigs 
                 % plot raster
                 subplot(units_per_fig,2,Rasterplot);
                 row_idx = 1;
@@ -250,34 +254,38 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 FRmax = max(FRmax,max(myPSTH));
                 Raster(1+thisTrial,1:size(myRaster,2),i) = myRaster;
                 
-                if plotephysfigs || savereplayfigs
-                    % plot raster
-                    subplot(units_per_fig,2,Rasterplot);
-                    row_idx = thisTrial+1;
-                    PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('r'));
+                if plotOL
+                    if plotephysfigs || savereplayfigs
+                        % plot raster
+                        subplot(units_per_fig,2,Rasterplot);
+                        row_idx = thisTrial+1;
+                        PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('r'));
+                    end
                 end
             end
             
             % plot avg. FR for the replay trials
-            if plotephysfigs || savereplayfigs
-                
-                subplot(units_per_fig,2,FRplot);
-                temp = squeeze(PSTH(2:(trials_per_replay+1),:,i));
-                meanFR = mean(temp);
-                semFR = std(temp)/sqrt(trials_per_replay);
-                MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5);
-                
-                %plot((1/SampleRate)*(1:size(PSTH,2)),mean(,1),'r');
-                
-                if isempty(PassiveReplays)
-                    title(['Unit# ',num2str(MyUnit)]);
+            if plotOL
+                if plotephysfigs || savereplayfigs
                     
-                    if mod(i,units_per_fig) == 0
-                        if savereplayfigs
-                            saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
-                            close(gcf);
+                    subplot(units_per_fig,2,FRplot);
+                    temp = squeeze(PSTH(2:(trials_per_replay+1),:,i));
+                    meanFR = mean(temp);
+                    semFR = std(temp)/sqrt(trials_per_replay);
+                    MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5);
+                    
+                    %plot((1/SampleRate)*(1:size(PSTH,2)),mean(,1),'r');
+                    
+                    if isempty(PassiveReplays)
+                        title(['Unit# ',num2str(MyUnit)]);
+                        
+                        if mod(i,units_per_fig) == 0
+                            if savereplayfigs
+                                saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
+                                close(gcf);
+                            end
+                            figure;
                         end
-                        figure;
                     end
                 end
             end
@@ -313,41 +321,49 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     FRmax = max(FRmax,max(myPSTH));
                     Raster(1+trials_per_replay+thisTrial,1:size(myRaster,2),i) = myRaster;
                     
-                    if plotephysfigs || savereplayfigs
-                        % plot raster
-                        subplot(units_per_fig,2,Rasterplot);
-                        row_idx = thisTrial+1+trials_per_replay;
-                        PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('t'));
+                    if plotPR
+                        if plotephysfigs || savereplayfigs
+                            % plot raster
+                            subplot(units_per_fig,2,Rasterplot);
+                            if plotOL
+                                row_idx = thisTrial+1+trials_per_replay;
+                            else
+                                row_idx = thisTrial+1;
+                            end
+                            PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('t'));
+                        end
                     end
                     
                 end
                 
                 % plot avg. FR for the passive replay trials
-                if plotephysfigs || savereplayfigs
-                    
-                    subplot(units_per_fig,2,FRplot);
-                    
-                    temp = squeeze(PSTH((trials_per_replay+2):end,:,i));
-                    meanFR = mean(temp);
-                    semFR = std(temp)/sqrt(numel(PassiveReplays));
-                    MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5);
-                    
-                    %                     plot((1/SampleRate)*(1:size(PSTH,2)),mean(squeeze(PSTH((trials_per_replay+2):end,:,i)),1),...
-                    %                         'Color',Plot_Colors('t'));
-                    
-                    % rescale plot if necessary
-                    if max(get(gca,'YLim'))<FRmax
-                        set(gca,'YLim', [0 5*ceil(FRmax/5)]);
-                    end
-                    
-                    title(['Unit# ',num2str(MyUnit), '; Clust# ', num2str(SingleUnits(MyUnit).id),...
-                        '; tet# ',num2str(SingleUnits(MyUnit).tetrode), '; Fp ', num2str(SingleUnits(MyUnit).ISIquality(1)), ', ISIFrac ',num2str(SingleUnits(MyUnit).ISIquality(2)) ]);
-                    if mod(i,units_per_fig) == 0
-                        if savereplayfigs
-                            saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
-                            close(gcf);
+                if plotPR
+                    if plotephysfigs || savereplayfigs
+                        
+                        subplot(units_per_fig,2,FRplot);
+                        
+                        temp = squeeze(PSTH((trials_per_replay+2):end,:,i));
+                        meanFR = mean(temp);
+                        semFR = std(temp)/sqrt(numel(PassiveReplays));
+                        MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5);
+                        
+                        %                     plot((1/SampleRate)*(1:size(PSTH,2)),mean(squeeze(PSTH((trials_per_replay+2):end,:,i)),1),...
+                        %                         'Color',Plot_Colors('t'));
+                        
+                        % rescale plot if necessary
+                        if max(get(gca,'YLim'))<FRmax
+                            set(gca,'YLim', [0 5*ceil(FRmax/5)]);
                         end
-                        figure;
+                        
+                        title(['Unit# ',num2str(MyUnit), '; Clust# ', num2str(SingleUnits(MyUnit).id),...
+                            '; tet# ',num2str(SingleUnits(MyUnit).tetrode), '; Fp ', num2str(SingleUnits(MyUnit).ISIquality(1)), ', ISIFrac ',num2str(SingleUnits(MyUnit).ISIquality(2)) ]);
+                        if mod(i,units_per_fig) == 0
+                            if savereplayfigs
+                                saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
+                                close(gcf);
+                            end
+                            figure;
+                        end
                     end
                 end
                 
