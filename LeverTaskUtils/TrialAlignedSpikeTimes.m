@@ -4,7 +4,7 @@ N = size(SingleUnits,2); % total units
 
 if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
     x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)));
-    switch TrialInfo.Perturbation{x(1),1}
+    switch TrialInfo.Perturbation{x(end),1}
         case 'Halt-Flip'
             load(MySession,'Traces','SampleRate');
             PerturbationParams = TrialInfo.Perturbation{x(1),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location
@@ -29,6 +29,11 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
                     PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
                 end
             end
+        case 'RuleReversal'
+            load(MySession,'SampleRate');
+            PerturbationEvents(1:nTrials,1) = 0;
+            % mark all flipped trials as one
+            PerturbationEvents(find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal')),1) = 1;
         otherwise
             PerturbationEvents = [];
     end

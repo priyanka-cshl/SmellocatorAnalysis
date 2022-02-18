@@ -192,6 +192,11 @@ if any(strcmp(TrialInfo.Perturbation(x),'Halt-Flip'))
     PerturbTS = TrialInfo.SessionTimestamps(x,1:2)' + TimestampAdjuster;
 end
 
+if any(strcmp(TrialInfo.Perturbation(x),'RuleReversal'))
+    y = find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'));
+    PerturbTS = TrialInfo.SessionTimestamps(y,1:2)' + TimestampAdjuster;
+end
+
 if ~isempty(PerturbTS)
     handles.(['Perturbation',num2str(i),'Plot']).Vertices = [ ...
         reshape([PerturbTS(:) PerturbTS(:)]', 2*numel(PerturbTS), []) , ...

@@ -22,7 +22,7 @@ function varargout = UnitViewer(varargin)
 
 % Edit the above text to modify the response to help UnitViewer
 
-% Last Modified by GUIDE v2.5 13-Feb-2022 15:36:06
+% Last Modified by GUIDE v2.5 18-Feb-2022 13:07:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -146,14 +146,17 @@ for i = 1:3
     for t = 1:size(FRs,1)
         plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
     end
-    if ~isempty(P_FRs)
-        for t = 1:size(FRs,1)
-            set(groot,'defaultAxesColorOrder',MyColors2);
-            plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+    
+    if ~handles.HidePSTH2.Value
+        if ~isempty(P_FRs)
+            for t = 1:size(FRs,1)
+                set(groot,'defaultAxesColorOrder',MyColors2);
+                plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+            end
         end
     end
-    
     set(gca, 'XLim', myXlim);
+    
 end
 
 function WhereSession_Callback(hObject, eventdata, handles)
@@ -234,3 +237,14 @@ function SortReplay_Callback(hObject, eventdata, handles)
 UpdatePlots(handles);
 % Update handles structure
 guidata(hObject, handles);
+
+
+% --- Executes on button press in HidePSTH2.
+function HidePSTH2_Callback(hObject, eventdata, handles)
+% hObject    handle to HidePSTH2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+UpdatePlots(handles);
+% Update handles structure
+guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of HidePSTH2

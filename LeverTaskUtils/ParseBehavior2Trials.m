@@ -111,7 +111,7 @@ for thisTrial = 1:numel(TrialOn)
         TrialInfo.SessionIndices(thisTrial,:) = [thisTrialIdx thisTrialIdxCorrected]; % actual session indices - to go back to raw data
         TrialInfo.SessionTimestamps(thisTrial,:) = MyData([thisTrialIdx thisTrialIdxCorrected],1); % actual timestamps of trial start and end
         % w.r.t TrialStart
-        TrialInfo.TimeIndices(thisTrial,:) = thisTrialIdx - start_idx;
+        TrialInfo.TimeIndices(thisTrial,:) = max(1,thisTrialIdx - start_idx); % when session starts with trial ON - this value becomes zero
         TrialInfo.Timestamps(thisTrial,:) = MyData(thisTrialIdx,1) - MyData(start_idx,1); % in seconds
         TrialInfo.Duration(thisTrial,1) = (diff(thisTrialIdx) + 1)/SampleRate; % in seconds
                 
