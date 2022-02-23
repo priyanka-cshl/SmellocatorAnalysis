@@ -61,8 +61,8 @@ if ~isempty(TuningFile)
 end
 
 %% Get info from the OEPS files if available
-[myephysdir] = WhereOEPSFile(MyFileName,FilePaths); % returns empty if no recording file was found
-TTLs = [];
+[myephysdir] = []; %WhereOEPSFile(MyFileName,FilePaths); % returns empty if no recording file was found
+TTLs = []; ReplayTTLs = []; TuningTTLs = [];
 if ~isempty(myephysdir)
     if size(myephysdir,1) == 1
         [TTLs,ReplayTTLs,TuningTTLs,~] = ...
