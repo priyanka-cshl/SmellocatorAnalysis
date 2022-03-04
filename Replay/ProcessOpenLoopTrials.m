@@ -133,8 +133,8 @@ for x = 1:numel(allreplays) % for every unique replay stretch
         if plotreplayfigs || savereplayfigs
             figure;
         end
-        
-        TemplateTrials = Replay.TemplateTraces.TrialIDs{whichreplay};
+        % get trial IDs for the closed loop template trials
+        TemplateTrials = Replay.TemplateTraces.TrialIDs{whichreplay}; 
         nsubtrials = numel(TemplateTrials);
         ReplayTrialLength = size(Replay.ReplayTraces.Lever{whichreplay},1)/SampleRate; % in seconds
         TemplateTrialLength = size(Replay.TemplateTraces.Lever{whichreplay},1)/SampleRate; % in seconds
@@ -182,7 +182,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
             tstart = TTLs.Trial(TemplateTrials(1),1);
             thisTrialSpikeTimes = vertcat(allspikes((allspikes>=(tstart-startoffset))& (allspikes<tstart)),...
                 thisTrialSpikeTimes);
-            thisTrialSpikeTimes = thisTrialSpikeTimes - tstart;
+            thisTrialSpikeTimes = thisTrialSpikeTimes - tstart; % 0 = Trial ON of first template subtrial
             
             % modify spiketimes to account for the extra samples
             thisTrialSpikes = thisTrialSpikeTimes + startoffset; % just to start from zero

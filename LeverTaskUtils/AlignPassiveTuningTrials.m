@@ -47,6 +47,16 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
             else
                 disp('sequence mismatch in ephys and behavior tuning files');
                 keyboard;
+                % try deleting one trial on the ephys side
+                if ~any([TrialSequence(:,2) - EphysTuningTrials(2:(size(TrialSequence,1)+1),5)])
+                    EphysTuningTrials(1,:) = [];
+                    disp('odor sequences now match in ephys and behavior files');
+                    % delete any extra trials in the Ephys side
+                    EphysTuningTrials(size(TrialSequence,1)+1:end,:) = [];
+                    % copy over the motor locations from TrialSequence
+                    EphysTuningTrials(:,7) = TrialSequence(:,1);
+                end
+                
             end
         end
     else

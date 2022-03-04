@@ -1,6 +1,6 @@
 function [ReplayAlignedSpikes, ReplayEvents, ReplayInfo] = ReplayAlignedSpikeTimes(SingleUnits,TTLs,ReplayTTLs,TrialInfo,Events)
 
-nTrials = numel(ReplayTTLs.TrialID);
+nTrials = numel(ReplayTTLs.TrialID); % how many replays
 subtrials = [];
 for j = 1:nTrials
     subtrials = vertcat(subtrials,size(ReplayTTLs.OdorValve{j},1));
@@ -43,7 +43,7 @@ for whichunit = 1:N % every unit
             t2 = OdorTTLs(j,5); % Trial ON (OEPS)
             
             if j<nsubtrials
-                t3 = OdorTTLs(j+1,1); % next trial ON (OEPS)
+                t3 = OdorTTLs(j+1,1); % next odor ON (OEPS)
             else
                 t3 = TTLs.Trial(thisReplay+1,1);
             end

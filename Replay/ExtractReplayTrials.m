@@ -120,7 +120,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     end
     temp = 0*TrialTrace;
     x1 = 1;
-    for k = 1:size(Idx,1)
+    for k = 1:size(Idx,1) % every subtrial
         % TargetZone vector
         x2 = Idx(k,2);
         temp(x1:x2,1) = AllTargets(TrialInfo.TargetZoneType(whichTrials(k)));
@@ -195,7 +195,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     
     ErrorDist = fitdist(Residuals(:),'normal');
     % check if mean is ~0 and if sigma is very small (<5)
-    if ~round(ErrorDist.mean,1) && ErrorDist.sigma<5
+    if (ErrorDist.mean<0.1) && ErrorDist.sigma<5
         disp('template and replay traces align well');
     else
         disp('template and replay traces do not seem to align well');
