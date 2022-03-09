@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 14-Jan-2022 09:42:12
+% Last Modified by GUIDE v2.5 09-Mar-2022 10:31:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -247,9 +247,14 @@ if ~isempty(TTLs)
     hold off
     [handles] = EventsPlotter(handles,'Odor','water_plot',TTLs,TuningTTLs);
     
+    whichunits = eval(handles.WhichUnits.String);
+    if ~isempty(whichunits)
+        SingleUnits = SingleUnits(whichunits);
+    end
+    
     % plot all spikes
     RecordingSessionOverview(SingleUnits);
-    set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], ...
+    set(gca,'YLim', [0 10+size(SingleUnits,2)+1], ...
         'XTick', [],...
         'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
     
@@ -381,3 +386,25 @@ newLim = [0 ceil(OriginalLim/zoomfactor)];
 set(handles.SpikesPlot,'YLim', newLim);
 set(handles.PSTHPlot,'YLim', newLim);
 
+
+
+function WhichUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to WhichUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of WhichUnits as text
+%        str2double(get(hObject,'String')) returns contents of WhichUnits as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function WhichUnits_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to WhichUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
