@@ -9,6 +9,9 @@ for i = 1:4 % three odors
     data_in(f,1) = 1;
     on_indices = timestamp_in( find(diff(data_in)==1) +1 );
     off_indices = timestamp_in( find(diff(data_in)==-1) +1 );
+    while numel(off_indices)>numel(on_indices)
+        off_indices(1,:) = [];
+    end
     ValveTS = [on_indices off_indices]';
     if ~isempty(ValveTS)
         handle_in.(['trial_on_',num2str(i)]).Vertices = [ ...
