@@ -10,16 +10,12 @@ end
 MySession = fullfile(datapath,SessionPath);
 
 %% get the processed data loaded
-load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', ...
-                'SingleUnits', 'TTLs', 'ReplayTTLs', 'TuningTTLs', ...
-                'SampleRate', 'startoffset', 'TargetZones', 'errorflags');
+% load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', ...
+%                 'SingleUnits', 'TTLs', 'ReplayTTLs', 'TuningTTLs', ...
+%                 'SampleRate', 'startoffset', 'TargetZones', 'errorflags');
 
-%% Concatenate traces and get one matrix with all behavior variables
-% SampleRate = behavior sample rate;
-[TracesOut, ColNames] = ConcatenateTraces2Mat(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
-
-% pad the samples missing from raw behavior file to prevent indexing mismatches
-TracesOut = vertcat(zeros(TrialInfo.TraceIndices(1,1),size(TracesOut,2)), TracesOut);
+[TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ...
+    ReplayTTLs, SampleRate] = LoadProcessedDataSession(MySession);
 
 %% sniff trace
 %sniffs = TracesOut(:,3);
@@ -44,27 +40,26 @@ for i = 1:numel(pks)-1
     end
 end
 
-%%
-figure; 
-subplot(1,3,1); 
-histogram(diff(Loc(:,1))); 
-subplot(1,3,2); 
-histogram(diff(Loc(:,2))); 
-subplot(1,3,3); 
-histogram((Loc(:,2)-Loc(:,1))); 
+% %%
+% figure; 
+% subplot(1,3,1); 
+% histogram(diff(Loc(:,1))); 
+% subplot(1,3,2); 
+% histogram(diff(Loc(:,2))); 
+% subplot(1,3,3); 
+% histogram((Loc(:,2)-Loc(:,1))); 
 
 %% Trial Aligned Sniff times?
 [AlignedSniffs] =  TrialAlignedSniffTimes(Loc,TracesOut(:,5),SampleRate);
 
 %% Trial Aligned spikeTimes
-TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 % Get all spikes, all units aligned to trials
 [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(TrialInfo.TrialID,2),TrialInfo,MySession);
 
 %% Plot
 figure;
-AlignTo = 2; 
+AlignTo = 5; 
 switch AlignTo
     case {1,2,6}
         myXlim = [-1.2 6];
