@@ -39,7 +39,7 @@ TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 whichOdor = 1;
 %%
 for tz = 1:12
-    whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation)), ...
+    whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
                     find(TrialInfo.Odor==whichOdor));
     whichTrials = intersect(whichTrials,...
                     find(TrialInfo.TargetZoneType==tz));
@@ -108,6 +108,20 @@ for i = 1:size(SingleUnits,2)
         'o', 'MarkerFaceColor', [0.7 0.7 0.7], 'MarkerEdgeColor', 'none');
     line([0 40],[0 40],'Color','k')
 end
+
+%% halt response
+% expected vs actual
+HaltLocation = TrialInfo.Perturbation{find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)),1,'first'),2}(3);
+WhichBin = find(mean(XBins,2)==HaltLocation);
+Expected = squeeze(TuningCurve.ClosedLoopFull(WhichBin,:,:,whichOdor))';
+Actual = squeeze(mean(AreaUnderCurve.Halt([1 5 9],1,:),1));
+for i = 1:size(SingleUnits,2)
+    Scored(i,1) = (Actual(i,1) - Expected(i,1))/Expected(i,2);
+end
+figure; hold on; axis square
+plot(Expected(:,1),Actual(:,1), 'o', 'MarkerFaceColor', [0.7 0.7 0.7], 'MarkerEdgeColor', 'none');
+set(gca,'XLim',[0 40],'YLim',[0 40])
+line([0 40],[0 40],'Color','k')
 
 %% Tuning curves vs. Odor On reponse
 figure;

@@ -1,5 +1,4 @@
 function [AlignedFRs, BinOffset, whichTZ] = PlotHaltFlips(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo)
-
 % 
 whichodor = whichOdor;
 
