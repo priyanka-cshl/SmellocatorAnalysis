@@ -102,7 +102,7 @@ for i = 1:numel(nZones)
     MyShadedErrorBar(1:size(ControlTrace,1),mean(ControlTrace,2)',std(ControlTrace'),Plot_Colors('k'),{},0.5);
     set(gca,'XLim',[0 2000],'YLim',[0 5.5],'TickDir','out');
     
-    if i == 1
+    if i == 3
         % for this zone lets get concatenated trials
         for j = 1:numel(controlTrials(:,1))
             Traces.HaltFlip(controlTrials(j,1)) = {0*Traces.Trial{controlTrials(j,1)}};
@@ -303,7 +303,7 @@ for i = 1:numel(nZones)
     MyShadedErrorBar(1:size(ControlTrace,1),mean(ControlTrace,2)',std(ControlTrace'),Plot_Colors('k'),{},0.5);
     set(gca,'XLim',[0 2000],'YLim',[0 5.5],'TickDir','out');
     
-    if i == 1
+    if i == 3
         % for this zone lets get concatenated trials
         for j = 1:numel(controlTrials(:,1))
             Traces.HaltFlip(controlTrials(j,1)) = {0*Traces.Trial{controlTrials(j,1)}};

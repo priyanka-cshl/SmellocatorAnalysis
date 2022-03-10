@@ -53,6 +53,7 @@ TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
                             size(TrialInfo.TrialID,2),TrialInfo,MySession);
 
+% Events: OdorStart, Reward, TrialOFF, First TZ entry
 BehaviorBinsize = Binsize/(1000/SampleRate);
 
 %% Assembling tuning curves for non-perturbed, closed loop trials
@@ -66,9 +67,9 @@ for whichodor = 1:3
         thisUnitSpikes = AlignedSpikes(:,MyUnits(whichUnit));
         for x = 1:size(whichTrials,1) % every trial
             % only keep the PSTH and behavioral variables from odor start until Trial OFF
-            t1 = round((startoffset + Events(whichTrials(x,1),1))*SampleRate);
+            t1 = round((startoffset + Events(whichTrials(x,1),1))*SampleRate); % odor start
             t1 = max(1,t1);
-            t2 = round(Events(whichTrials(x,1),3)*SampleRate);
+            t2 = round(Events(whichTrials(x,1),3)*SampleRate); % trial OFF
             if mod(numel(t1:t2),BehaviorBinsize)
                 t2 = t1 + BehaviorBinsize*floor(numel(t1:t2)/BehaviorBinsize) - 1;
             end

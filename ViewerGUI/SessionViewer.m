@@ -22,7 +22,7 @@ function varargout = SessionViewer(varargin)
 
 % Edit the above text to modify the response to help SessionViewer
 
-% Last Modified by GUIDE v2.5 14-Jan-2022 09:42:12
+% Last Modified by GUIDE v2.5 09-Mar-2022 10:31:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -129,8 +129,13 @@ load(handles.WhereSession.String, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 
                'startoffset', 'errorflags', 'SampleRate', ...
                'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
 
-handles.SessionLength.String = num2str(10*ceil(TTLs.Trial(end,2)/10));
-handles.NumUnits.String = num2str(size(SingleUnits,2));
+if ~isempty(TTLs)
+    handles.SessionLength.String = num2str(10*ceil(TTLs.Trial(end,2)/10));
+    handles.NumUnits.String = num2str(size(SingleUnits,2));
+else
+    handles.SessionLength.String = TrialInfo.SessionTimestamps(end,2);
+    handles.NumUnits.String = 'NaN';
+end
 if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
     x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)));
     u = unique(TrialInfo.Perturbation(x));
@@ -149,10 +154,15 @@ Timestamps = TracesOut.Timestamps{1}';
 
 % calculate the timestamp difference between Ephys and Behavior
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
-TrialStart_Ephys = TTLs.Trial(1,2);
-% factor to convert all behavior timestamps to match Ephys
-TimestampAdjuster = TrialStart_Ephys - TrialStart_behavior;
 
+if ~isempty(TTLs)
+    TrialStart_Ephys = TTLs.Trial(1,2);
+    % factor to convert all behavior timestamps to match Ephys
+    TimestampAdjuster = TrialStart_Ephys - TrialStart_behavior;
+else
+    TrialStart_Ephys = 0;
+    TimestampAdjuster = 0;
+end
 %% plot odor boxes on the behavior plot
 axes(handles.BehaviorPlot);
 hold off
@@ -231,41 +241,48 @@ set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 set(gca,'YLim', [0 6], 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 
-%% plot odor boxes on the spikes plot
-axes(handles.SpikesPlot);
-hold off
-[handles] = EventsPlotter(handles,'Odor','water_plot',TTLs,TuningTTLs);
-
-% plot all spikes
-RecordingSessionOverview(SingleUnits);
-set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], ...
-    'XTick', [],...
-    'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
-
-
-%% plot odor boxes on the PSTH plot
-axes(handles.PSTHPlot);
-hold off
-[handles] = EventsPlotter(handles,'Smell','h2o_plot',TTLs,TuningTTLs);
-% plot all PSTHs
-[popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
-
-set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
-    'XTick', [],...
-    'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
-
-%% population psth
-axes(handles.popPSTH);
-hold off;
-[handles] = EventsPlotter(handles,'Stink','WaterPlot',TTLs,TuningTTLs);
-
-% plot population psth
-taxis = (1:size(popFR,1))/100;
-plot(taxis,popFR(:,1),'color',Plot_Colors('k'));
-
-set(gca, 'YLim', [0 ceil(max(popFR(:,1)))], ...
-    'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
-
+if ~isempty(TTLs)
+    %% plot odor boxes on the spikes plot
+    axes(handles.SpikesPlot);
+    hold off
+    [handles] = EventsPlotter(handles,'Odor','water_plot',TTLs,TuningTTLs);
+    
+    whichunits = eval(handles.WhichUnits.String);
+    if ~isempty(whichunits)
+        SingleUnits = SingleUnits(whichunits);
+    end
+    
+    % plot all spikes
+    RecordingSessionOverview(SingleUnits);
+    set(gca,'YLim', [0 10+size(SingleUnits,2)+1], ...
+        'XTick', [],...
+        'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+    
+    
+    %% plot odor boxes on the PSTH plot
+    axes(handles.PSTHPlot);
+    hold off
+    [handles] = EventsPlotter(handles,'Smell','h2o_plot',TTLs,TuningTTLs);
+    % plot all PSTHs
+    [popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
+    
+    set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
+        'XTick', [],...
+        'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+    
+    %% population psth
+    axes(handles.popPSTH);
+    hold off;
+    [handles] = EventsPlotter(handles,'Stink','WaterPlot',TTLs,TuningTTLs);
+    
+    % plot population psth
+    taxis = (1:size(popFR,1))/100;
+    plot(taxis,popFR(:,1),'color',Plot_Colors('k'));
+    
+    set(gca, 'YLim', [0 ceil(max(popFR(:,1)))], ...
+        'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+    
+end
 
 %% update the motor plot
 axes(handles.MotorPlot);
@@ -275,19 +292,21 @@ MotorTrajectory = NaN + zeros(str2double(handles.SessionLength.String)*SampleRat
 Indices = round((Timestamps + TimestampAdjuster)*SampleRate);
 MotorTrajectory(Indices,1) = TracesOut.Motor{1}/100;
 
-% add the tuning period motor locations as well
-for x = 1:size(TuningTTLs,1)
-    if TuningTTLs(x,4) && ~isnan(TuningTTLs(x,5)) && ~isnan(TuningTTLs(x,7))
-        Indices = round(TuningTTLs(x,4)*SampleRate):round(TuningTTLs(x,6)*SampleRate);
-        MotorTrajectory(Indices,1) = TuningTTLs(x,7)/100;
+if ~isempty(TuningTTLs)
+    
+    % add the tuning period motor locations as well
+    for x = 1:size(TuningTTLs,1)
+        if TuningTTLs(x,4) && ~isnan(TuningTTLs(x,5)) && ~isnan(TuningTTLs(x,7))
+            Indices = round(TuningTTLs(x,4)*SampleRate):round(TuningTTLs(x,6)*SampleRate);
+            MotorTrajectory(Indices,1) = TuningTTLs(x,7)/100;
+        end
     end
+    % MotorTrajectory(:,2) = MotorTrajectory(:,1);
+    % % keep only positive values in col 1
+    % MotorTrajectory((MotorTrajectory(:,1)<0),1) = 1.1;
+    % MotorTrajectory((MotorTrajectory(:,2)>0),2) = 1.1;
+    % MotorTrajectory = abs(MotorTrajectory);
 end
-% MotorTrajectory(:,2) = MotorTrajectory(:,1);
-% % keep only positive values in col 1
-% MotorTrajectory((MotorTrajectory(:,1)<0),1) = 1.1;
-% MotorTrajectory((MotorTrajectory(:,2)>0),2) = 1.1;
-% MotorTrajectory = abs(MotorTrajectory);
-
 alphamask = ~isnan(MotorTrajectory);
 
 handles.MotorTrajectoryPlot = imagesc(MotorTrajectory',[-1 1]);
@@ -297,9 +316,10 @@ set(handles.MotorTrajectoryPlot, 'AlphaData', alphamask');
 set(gca, 'YTick', [], 'XTick', [], ...
     'TickDir','out','XLim', [0 SampleRate*str2double(handles.TimeWindow.String)]);
 
-% display PSTH or Rasters as needed
-PSTHView_Callback(hObject, eventdata, handles);
-
+if ~isempty(TTLs)
+    % display PSTH or Rasters as needed
+    PSTHView_Callback(hObject, eventdata, handles);
+end
 % Update handles structure
 guidata(hObject, handles);
 
@@ -366,3 +386,25 @@ newLim = [0 ceil(OriginalLim/zoomfactor)];
 set(handles.SpikesPlot,'YLim', newLim);
 set(handles.PSTHPlot,'YLim', newLim);
 
+
+
+function WhichUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to WhichUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of WhichUnits as text
+%        str2double(get(hObject,'String')) returns contents of WhichUnits as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function WhichUnits_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to WhichUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

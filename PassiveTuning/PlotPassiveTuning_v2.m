@@ -90,7 +90,7 @@ for x = 1:numel(whichUnits) % for every cell
                 postodor(i) = (numel(find((thisTrialSpikeTimes>=x1)&(thisTrialSpikeTimes<x2))))/(x2-x1);
             end
             
-            SpikeCounts(MyLocation,:,MyUnit,MyOdor) = [mean(noair) mean(preodor) mean(odor) mean(postodor)];           
+            SpikeCounts(MyLocation,:,x,MyOdor) = [mean(noair) mean(preodor) mean(odor) mean(postodor)];           
         end
     end
     
@@ -125,7 +125,7 @@ end
 figure;
 ncols = 1;
 for x = 1:numel(whichUnits) % for every cell
-    MyUnit = whichUnits(x);
+    MyUnit = x; %whichUnits(x);
     
     TuningCurve = [];
     for MyOdor = 1:numel(Odors)

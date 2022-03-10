@@ -9,6 +9,11 @@ whichodor = whichOdor;
 % find block switch points
 BlockSwitches(:,2) = [find(diff(TrialInfo.TransferFunctionLeft)); TrialInfo.TrialID(end)];
 BlockSwitches(:,1) = [1; BlockSwitches(1:end-1,2)+1];
+BlockSwitches(:,3) = 1:size(BlockSwitches,1);
+
+% ignore any blocks with <10 trials
+BlockSwitches(find((diff(BlockSwitches(:,[1 2])')<10)),:) = [];
+
 
 AlignedFRs = []; RawSpikeCounts = [];
 
@@ -62,10 +67,12 @@ for block = 1:size(BlockSwitches,1) % every block
         % Plot Events
         EventPlotter(myEvents,trialsdone);
         % Plot TrialType
-        if mod(block,2)
+        if mod(BlockSwitches(block,3),2)
             TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone);
+            spikecolor = Plot_Colors('k');
         else
             TrialTypePlotter(whichTrials(:,2),4,Xlims,trialsdone);
+            spikecolor = Plot_Colors('b');
         end
         
         % Plot Spikes
@@ -79,7 +86,7 @@ for block = 1:size(BlockSwitches,1) % every block
             
             % adjust spiketimes if needed
             thisTrialSpikes = thisTrialSpikes - Offset(x);
-            PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('k'));
+            PlotRaster(thisTrialSpikes,x+trialsdone,spikecolor);
         end
     end
     

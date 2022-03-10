@@ -146,15 +146,18 @@ for i = 1:3
     axes(handles.(['axes',num2str(i+3)])); 
     cla reset; 
     hold on
-    for t = 1:size(FRs,1)
-        plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
-    end
     
-    if ~handles.HidePSTH2.Value
-        if ~isempty(P_FRs)
-            for t = 1:size(FRs,1)
-                set(groot,'defaultAxesColorOrder',MyColors2);
-                plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+    if ~any(strcmp(handles.TrialInfo.Perturbation(:,1),'RuleReversal'))
+        for t = 1:size(FRs,1)
+            plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
+        end
+        
+        if ~handles.HidePSTH2.Value
+            if ~isempty(P_FRs)
+                for t = 1:size(FRs,1)
+                    set(groot,'defaultAxesColorOrder',MyColors2);
+                    plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+                end
             end
         end
     end
