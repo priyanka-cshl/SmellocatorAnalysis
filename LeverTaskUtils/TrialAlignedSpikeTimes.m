@@ -1,4 +1,4 @@
-function [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession)
+function [AlignedSpikes, Events, TetrodeOrder] = TrialAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession)
 
 N = size(SingleUnits,2); % total units
 
@@ -44,7 +44,7 @@ end
 for whichunit = 1:N % every unit
     thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
     trialtags = SingleUnits(whichunit).trialtags;
-    
+    TetrodeOrder(whichunit) = SingleUnits(whichunit).tetrode;
     for whichtrial = 1: nTrials % every trial 
         thisTrialspikes = thisUnitspikes(trialtags==whichtrial);
         if whichtrial>1

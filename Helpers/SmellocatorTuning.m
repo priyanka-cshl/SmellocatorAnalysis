@@ -56,7 +56,7 @@ switch VarType
                 for myBin = 1:size(XBins,1)
                     idx = find((XVar>=XBins(myBin,1))&(XVar<XBins(myBin,2)));
                     if ~isempty(idx)
-                        myCurve(myBin,:,whichVar,whichUnit) = [mean(YVar(idx)) median(YVar(idx)) std(YVar(idx))/sqrt(numel(idx)) numel(idx)];
+                        myCurve(myBin,:,whichVar,whichUnit) = [mean(YVar(idx)) median(YVar(idx)) std(YVar(idx)) numel(idx)];
                     end
                 end
             end

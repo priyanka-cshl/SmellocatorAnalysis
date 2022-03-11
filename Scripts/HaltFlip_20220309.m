@@ -20,7 +20,7 @@ ChosenUnits = 1:size(SingleUnits,2);
 
 %% get the closed loop tuning curve
 [TuningCurve, XBins, PairedCorrs, PairedResiduals, ControlCorrs, ControlResiduals] = ...
-    GetOdorTuningCurves(SessionPath, ChosenUnits, 'tuningbins', 15);
+    GetOdorTuningCurves(SessionPath, ChosenUnits, 'tuningbins', 15); %, 'binsize', 4);
 
 %% get the passive tuning curve
 % get trial aligned spikes for passive tuning

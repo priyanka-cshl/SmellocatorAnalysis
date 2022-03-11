@@ -22,7 +22,7 @@ function varargout = UnitViewer(varargin)
 
 % Edit the above text to modify the response to help UnitViewer
 
-% Last Modified by GUIDE v2.5 18-Feb-2022 13:07:13
+% Last Modified by GUIDE v2.5 11-Mar-2022 13:05:53
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -96,7 +96,7 @@ MySession = handles.WhereSession.String;
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
 %% Get all spikes, all units aligned to trials
-[handles.AlignedSpikes, handles.Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
+[handles.AlignedSpikes, handles.Events, handles.whichtetrode] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
 
 if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
@@ -117,7 +117,7 @@ whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
 MyColors1 = brewermap(15,'*PuBu');
 MyColors2 = brewermap(15,'*OrRd');
-
+handles.tetrode.String = num2str(handles.whichtetrode(whichUnit));
 switch AlignType
     case {1,2,6}
         myXlim = [-1.2 6];
@@ -254,3 +254,26 @@ UpdatePlots(handles);
 % Update handles structure
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of HidePSTH2
+
+
+
+function edit4_Callback(hObject, eventdata, handles)
+% hObject    handle to tetrode (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of tetrode as text
+%        str2double(get(hObject,'String')) returns contents of tetrode as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function tetrode_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to tetrode (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
