@@ -40,7 +40,7 @@ for i = 1:numel(pks)-1
     end
 end
 
-% %%
+%%
 % figure; 
 % subplot(1,3,1); 
 % histogram(diff(Loc(:,1))); 
@@ -59,7 +59,7 @@ end
 
 %% Plot
 figure;
-AlignTo = 5; 
+AlignTo = 6; 
 switch AlignTo
     case {1,2,6}
         myXlim = [-1.2 6];
@@ -69,7 +69,7 @@ switch AlignTo
         myXlim = [-2.2 5];
 end
 
-whichUnit = 15; whichOdor = 1;
+whichUnit = 17; whichOdor = 1;
 subplot(3,2,[1 3]); hold on
 [FRs, BinOffset, whichTZ] = ... 
 PlotHaltFlips(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo);
