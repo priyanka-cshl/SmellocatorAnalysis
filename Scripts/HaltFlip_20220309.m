@@ -3,6 +3,7 @@ SessionPath = 'O3/O3_20210927_r0_processed.mat';
 ChosenUnits = [15 17 18]; % 28 63 56]; %MyUnits = [8 35 28 55 39]; 
 ChosenUnits = [20 25 28 15 39 46 48 59 63 66];
 
+
 %% DataExtraction
 if strcmp(computer, 'MACI64')
     datapath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/';
@@ -122,6 +123,11 @@ figure; hold on; axis square
 plot(Expected(:,1),Actual(:,1), 'o', 'MarkerFaceColor', [0.7 0.7 0.7], 'MarkerEdgeColor', 'none');
 set(gca,'XLim',[0 40],'YLim',[0 40])
 line([0 40],[0 40],'Color','k')
+
+ModUnits    = [10 15 17 22 28 29 31 32 52 63 66 71 73];
+UnModUnits  = [12 18 56];
+plot(Expected(ModUnits,1),Actual(ModUnits,1), 'o', 'MarkerFaceColor', 'none', 'MarkerEdgeColor', 'k');
+plot(Expected(UnModUnits,1),Actual(UnModUnits,1), 'o', 'MarkerFaceColor', 'none', 'MarkerEdgeColor', 'b');
 
 %% Tuning curves vs. Odor On reponse
 figure;

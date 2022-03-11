@@ -46,7 +46,7 @@ if ~isempty(TZ)
     handles.targetzone = fill(NaN,NaN,[1 1 1]);
     handles.targetzone.EdgeColor = 'none';
 
-    [handles.targetzone] = PlotToPatch_TargetZone(handles.targetzone, TZ, timestamps);
+    [handles.targetzone] = PlotToPatch_TargetZone(handles.targetzone, abs(TZ), timestamps);
 end
 
 % Lever
