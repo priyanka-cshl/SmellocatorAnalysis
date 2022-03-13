@@ -1,5 +1,5 @@
 %% for O3
-SessionPath = 'O3/O3_20210927_r0_processed.mat';
+SessionPath = 'O3/O3_20210929_r0_processed.mat';
 ChosenUnits = [15 17 18]; % 28 63 56]; %MyUnits = [8 35 28 55 39]; 
 ChosenUnits = [20 25 28 15 39 46 48 59 63 66];
 
@@ -76,6 +76,10 @@ for i = 1:size(SingleUnits,2)
     bins = -BinOffset + [stepsize:stepsize:mywin];
     bins = bins/stepsize;
     foo = round(numel(bins)/2);
+    if size(AlignedPerturbationFRs,2)<bins(end)
+        AlignedPerturbationFRs = horzcat(AlignedPerturbationFRs,...
+            zeros(size(AlignedPerturbationFRs,1),(bins(end)- size(AlignedPerturbationFRs,2))));
+    end
     for tz = 1:12
         AreaUnderCurve.Halt(tz,1,i) = sum(AlignedPerturbationFRs(tz,bins));
         AreaUnderCurve.Halt(tz,2,i) = sum(AlignedPerturbationFRs(tz,bins(1:foo)));
