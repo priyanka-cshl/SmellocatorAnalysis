@@ -144,6 +144,7 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
         handles.PerturbationList.String = [handles.PerturbationList.String,'; ',u{y}];
     end
 else
+    x = [];
     handles.PerturbationList.String = '';
 end
 handles.SampleRate = SampleRate;
@@ -184,36 +185,38 @@ handles.(['Perturbation',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors('r'));
 hold on;
 handles.(['Perturbation',num2str(i),'Plot']).EdgeColor = 'none';
 
-% for replay sessions
-if any(strcmp(TrialInfo.Perturbation(x),'OL-Template'))
-    % get start and stop TS of the template
-    templateStart = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'first'));
-    templateEnd   = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'last'));
-    PerturbTS(1,1) = TrialInfo.SessionTimestamps(templateStart,1) + TimestampAdjuster;
-    PerturbTS(2,1) = TrialInfo.SessionTimestamps(templateEnd,1) + TimestampAdjuster;
-    % get start and stop of the replays
-    replays = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Replay')));
-    PerturbTS = horzcat(PerturbTS, ...
-                TrialInfo.SessionTimestamps(replays,1:2)' + TimestampAdjuster );
-end
 
-% for other perturbations
-if any(strcmp(TrialInfo.Perturbation(x),'Halt-Flip'))
-    PerturbTS = TrialInfo.SessionTimestamps(x,1:2)' + TimestampAdjuster;
+if ~isempty(x)
+    % for replay sessions
+    if any(strcmp(TrialInfo.Perturbation(x),'OL-Template'))
+        % get start and stop TS of the template
+        templateStart = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'first'));
+        templateEnd   = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Template'),1,'last'));
+        PerturbTS(1,1) = TrialInfo.SessionTimestamps(templateStart,1) + TimestampAdjuster;
+        PerturbTS(2,1) = TrialInfo.SessionTimestamps(templateEnd,1) + TimestampAdjuster;
+        % get start and stop of the replays
+        replays = x(find(strcmp(TrialInfo.Perturbation(x),'OL-Replay')));
+        PerturbTS = horzcat(PerturbTS, ...
+            TrialInfo.SessionTimestamps(replays,1:2)' + TimestampAdjuster );
+    end
+    
+    % for other perturbations
+    if any(strcmp(TrialInfo.Perturbation(x),'Halt-Flip'))
+        PerturbTS = TrialInfo.SessionTimestamps(x,1:2)' + TimestampAdjuster;
+    end
+    
+    if any(strcmp(TrialInfo.Perturbation(x),'RuleReversal'))
+        y = find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'));
+        PerturbTS = TrialInfo.SessionTimestamps(y,1:2)' + TimestampAdjuster;
+    end
+    
+    if ~isempty(PerturbTS)
+        handles.(['Perturbation',num2str(i),'Plot']).Vertices = [ ...
+            reshape([PerturbTS(:) PerturbTS(:)]', 2*numel(PerturbTS), []) , ...
+            repmat([5 5.5 5.5 5]',size(PerturbTS,2),1)];
+        handles.(['Perturbation',num2str(i),'Plot']).Faces = reshape(1:2*numel(PerturbTS),4,size(PerturbTS,2))';
+    end
 end
-
-if any(strcmp(TrialInfo.Perturbation(x),'RuleReversal'))
-    y = find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'));
-    PerturbTS = TrialInfo.SessionTimestamps(y,1:2)' + TimestampAdjuster;
-end
-
-if ~isempty(PerturbTS)
-    handles.(['Perturbation',num2str(i),'Plot']).Vertices = [ ...
-        reshape([PerturbTS(:) PerturbTS(:)]', 2*numel(PerturbTS), []) , ...
-        repmat([5 5.5 5.5 5]',size(PerturbTS,2),1)];
-    handles.(['Perturbation',num2str(i),'Plot']).Faces = reshape(1:2*numel(PerturbTS),4,size(PerturbTS,2))';
-end
-
 % plot the target zone
 handles.TargetZonePlot = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.2);
 hold on;
