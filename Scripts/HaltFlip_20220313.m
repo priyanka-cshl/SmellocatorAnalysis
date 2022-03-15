@@ -35,7 +35,7 @@ end
 
 %% Plot
 figure;
-AlignTo = 6; 
+AlignTo = 2; 
 switch AlignTo
     case {1,2,6}
         myXlim = [-1.2 6];
@@ -45,26 +45,34 @@ switch AlignTo
         myXlim = [-2.2 5];
 end
 
-whichUnit = 17; 
-% whichTZ = 1;
-trialsdone = 0;
-subplot(3,2,[1 3]); hold on
-for whichTZ = 1:12
-trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
-[nTrials, FRs, BinOffset] = ...
-    UnitPlotter(whichUnit, whichOdor, whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
-trialsdone = trialsdone + nTrials;
-end
+%% Chosen Units
+ChosenUnits = [18 25 53];
+nCols = numel(ChosenUnits);
 
-% halt flip trials
-for whichTZ = 1:12
-trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
-[nTrials, FRs, BinOffset] = ...
-    UnitPlotter(whichUnit, whichOdor, -whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
-trialsdone = trialsdone + nTrials;
+for x = 1:nCols
+    %whichUnit = 17;
+    whichUnit = ChosenUnits(x);
+    trialsdone = 0;
+    whichplots = x + [0 nCols];
+    subplot(3,nCols,whichplots); 
+    hold on
+    for whichTZ = 1:3:12
+        trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
+        [nTrials, FRs, BinOffset] = ...
+            UnitPlotter(whichUnit, whichOdor, whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
+        trialsdone = trialsdone + nTrials;
+    end
+    
+    % halt flip trials
+    for whichTZ = 1:3:12
+        trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
+        [nTrials, FRs, BinOffset] = ...
+            UnitPlotter(whichUnit, whichOdor, -whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
+        trialsdone = trialsdone + nTrials;
+    end
+    set(gca,'XLim',myXlim);
+    
 end
-set(gca,'XLim',myXlim);
-
 
 [FRs, BinOffset, whichTZ] = ... 
 PlotHaltFlips(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo);
