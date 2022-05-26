@@ -48,7 +48,6 @@ else
 end
 PerturbationCol(1) = find(cellfun(@isempty,regexp(DataTags,'WhichPerturbation'))==0);
 PerturbationCol(2) = find(cellfun(@isempty,regexp(DataTags,'PerturbationValue'))==0);
-
 %% Get Trial ON-OFF indices and timestamps
 TrialOn  = Trial.Indices(:,1);
 TrialOff = Trial.Indices(:,2);

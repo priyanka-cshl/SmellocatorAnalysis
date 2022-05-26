@@ -3,10 +3,14 @@ function [handle_in] = PlotToPatch_TrialTF(handle_in, trial_in, timestamp_in, of
 f = find(trial_in(:,1)>0);
 data_in = zeros(length(trial_in),1);
 data_in(f,1) = 1;
+data_in(end,1) = 0;
 on_indices = timestamp_in( find(diff(data_in)==1) +1 );
 off_indices = timestamp_in( find(diff(data_in)==-1) +1 );
 while numel(off_indices)>numel(on_indices)
     off_indices(1,:) = [];
+end
+if numel(off_indices)<numel(on_indices)
+    on_indices(end,:) = [];
 end
 ValveTS = [on_indices off_indices]';
 if ~isempty(ValveTS)

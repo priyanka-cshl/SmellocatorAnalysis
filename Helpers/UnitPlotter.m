@@ -3,11 +3,11 @@ function [x, AlignedFRs, BinOffset, RawSpikeCounts] = UnitPlotter(whichUnit, whi
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
 perturbed = whichTZ<0; % hack to select perturbed or normal trials
-whichTZ = abs(whichTZ);
+TZ = abs(whichTZ);
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 
-whichTrials = intersect(find(TrialInfo.Odor==whichodor),find(TrialInfo.TargetZoneType==whichTZ));
+whichTrials = intersect(find(TrialInfo.Odor==whichodor),find(TrialInfo.TargetZoneType==TZ));
 if ~perturbed
     whichTrials = intersect(whichTrials, ...
         find(cellfun(@isempty, TrialInfo.Perturbation)));
@@ -63,7 +63,7 @@ if any(whichTrials)
     
     if plotting
         % Plot Events
-        EventPlotter(myEvents,trialsdone);
+        %EventPlotter(myEvents,trialsdone);
         % Plot TrialType
         TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone);
         
@@ -86,13 +86,11 @@ if any(whichTrials)
 
     BinOffset = Xlims(1)*1000;
     
-    for TZ = 1:12
-        thisTZspikes = thisUnitSpikes(whichTrials(find(whichTrials(:,2)==TZ),1));
-        Events2Align = Offset(find(whichTrials(:,2)==TZ),1);
-        [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
-        AlignedFRs(TZ,1:numel(myFR)) = myFR;
-        RawSpikeCounts(TZ,1:numel(myPSTH)) = myPSTH;
-    end
+    thisTZspikes = thisUnitSpikes(whichTrials(find(whichTrials(:,2)==TZ),1));
+    Events2Align = Offset(find(whichTrials(:,2)==TZ),1);
+    [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+    AlignedFRs(1,1:numel(myFR)) = myFR;
+    RawSpikeCounts(1,1:numel(myPSTH)) = myPSTH;
 end
 %%
     function EventPlotter(myEvents,trialsdone)
