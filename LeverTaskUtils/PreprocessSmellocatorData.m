@@ -96,6 +96,12 @@ if ~isempty(TTLs)
     end
 end
 
+%% Photometry
+FTrace = [];
+if ~isempty(TTLs)
+    
+end
+
 %% Saving stuff in one place
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
