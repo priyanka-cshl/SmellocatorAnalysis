@@ -45,11 +45,11 @@ switch AlignTo
         myXlim = [-2.2 5];
 end
 
-whichUnit = 17; 
+whichUnit = 15; 
 % whichTZ = 1;
 trialsdone = 0;
 subplot(3,2,[1 3]); hold on
-for whichTZ = 1:12
+for whichTZ = 2:2:12
 trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
 [nTrials, FRs, BinOffset] = ...
     UnitPlotter(whichUnit, whichOdor, whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
@@ -63,7 +63,7 @@ trialboxcolor = GetLocationColor(LocationTrialStart(whichTZ));
     UnitPlotter(whichUnit, whichOdor, -whichTZ, AlignedSpikes, Events, TrialInfo, AlignTo, trialsdone, trialboxcolor);
 trialsdone = trialsdone + nTrials;
 end
-set(gca,'XLim',myXlim);
+set(gca,'XLim',myXlim,'TickDir','out');
 
 
 [FRs, BinOffset, whichTZ] = ... 
