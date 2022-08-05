@@ -20,7 +20,7 @@ handles.trial_on_4.EdgeColor = 'none';
 % for plotting Trial as TF
 handles.trial_tf = fill(NaN,NaN,[1 1 1]);
 handles.trial_tf.EdgeColor = 'none';
-colormap(brewermap([100],'rdbu'));
+colormap(brewermap([100],'*rdbu'));
 set(gca,'CLim',120*[-1 1]);
 
 % whiten trial off periods
