@@ -127,7 +127,7 @@ switch AlignType
         myXlim = [-2.2 5];
 end
     
-for i = 1:3
+for i = 1%:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on

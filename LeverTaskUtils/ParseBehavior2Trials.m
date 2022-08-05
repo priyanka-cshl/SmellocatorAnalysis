@@ -216,7 +216,7 @@ for thisTrial = 1:numel(TrialOn)
                         else
                             TrialInfo.Perturbation{thisTrial,1} = 'Offset-III';
                         end
-                        TrialInfo.Perturbation(thisTrial,2) = PerturbationValue; % offset added
+                        %TrialInfo.Perturbation(thisTrial,2) = {PerturbationValue}; % offset added
                         % get timestamps for offset start and feedback restart
                         % this is encoded in the InRewardZone Col - see GUI
                         if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1))
@@ -225,8 +225,10 @@ for thisTrial = 1:numel(TrialOn)
                             FeedbackStart = ...
                                 find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1,1,'last');
                             % convert to seconds w.r.t. trial start
-                            OffsetStart = TrialInfo.PerturbationStart(thisTrial)/SampleRate;
-                            FeedbackStart = TrialInfo.FeedbackStart(thisTrial)/SampleRate;
+%                             OffsetStart = TrialInfo.PerturbationStart(thisTrial)/SampleRate;
+%                             FeedbackStart = TrialInfo.FeedbackStart(thisTrial)/SampleRate;
+                            OffsetStart = OffsetStart/SampleRate;
+                            FeedbackStart = FeedbackStart/SampleRate;
                             
                             TrialInfo.Perturbation{thisTrial,2} = ...
                                 [PerturbationValue OffsetStart FeedbackStart]; % offset added, offset start, feedback start w.r.t. trial start
