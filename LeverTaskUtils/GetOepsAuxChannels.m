@@ -127,8 +127,8 @@ for i = 1:size(TTLs.Trial,1) % every trial
      end
              
     % for replay trials
-    if TTLs.Trial(i,3) > 1 + mode(BehaviorTrials(:,3))
-
+    %if TTLs.Trial(i,3) > 1 + mode(BehaviorTrials(:,3))
+    if TTLs.Trial(i,3) > 5*mode(BehaviorTrials(:,3)) % at least 5 trials in the replay
         count = count + 1;
         tstart = TTLs.Trial(i,1);
         tstop  = TTLs.Trial(i,2);
@@ -137,7 +137,9 @@ for i = 1:size(TTLs.Trial,1) % every trial
         O3 = intersect(find(TTLs.Odor3(:,1)>tstart),find(TTLs.Odor3(:,1)<tstop));
         
         % keep the odor transition that happened just before trial start
-        ValveEvents = ValveEvents(x,:);        
+        if ~isempty(ValveEvents)
+            ValveEvents = ValveEvents(x,:);        
+        end
         for j = 1:3
             temp = eval(['TTLs.Odor',num2str(j),'(O',num2str(j),',:);']);
             ValveEvents = vertcat(ValveEvents,...

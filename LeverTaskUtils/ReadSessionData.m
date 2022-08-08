@@ -32,21 +32,35 @@ if ~isempty(f)
 end
 
 %% open loop and replays
+if any(MyParams(:,32)>10)
+    % replays of transient perturbations
+    MyParams((MyParams(:,32)==12),32) = 0;
+    MyParams((MyParams(:,32)>0),32) = 1;
+end
+
+% regular replays of close loop trials
 OL_Blocks  = numel(find(diff(MyParams(:,32))==1)); % in timestamps
-OL_template = []; 
+OL_template = [];
 Replay_Trials = [];
 if any(OL_Blocks)
+    OL_Starts = find(diff(MyParams(:,32))== 1);
+    OL_Stops  = find(diff(MyParams(:,32))==-1);
+    if numel(OL_Stops)<numel(OL_Starts)
+        OL_Stops(end+1) = size(MyParams,1);
+%         OL_Starts(end,:) = [];
+%         OL_Blocks = OL_Blocks - 1;
+    end
     for OL = 1:OL_Blocks
         foo = [];
-        foo(:,1) = (find(diff(MyParams(:,32))== 1)+1):(find(diff(MyParams(:,32))== -1));
+        foo(:,1) = (OL_Starts(OL)+1):OL_Stops(OL);
+        %foo(:,1) = (find(diff(MyParams(:,32))== 1)+1):(find(diff(MyParams(:,32))== -1));
         foo(:,2) = OL;
-        OL_template = vertcat(foo,OL_template);
+        OL_template = vertcat(OL_template,foo);
     end
     
     % any replays?
     Replay_Trials = find(diff(MyParams(:,32))== 2) + 1;
 end
-
 %% for each trial
 for thisTrial = 1:size(MyParams,1)
     
@@ -120,8 +134,12 @@ for thisTrial = 1:size(MyParams,1)
     if any(OL_template)
         % flag open loop template trials
         if ismember(thisTrial,OL_template(:,1))
-            MyData(f,11) = 1500;
-            MyData(f,12) = -1;
+            if MyParams(thisTrial,26)>1 % was also  a transient perturbation
+                MyData(f,11) = 1500 + MyData(f,11)/100;
+            else
+                MyData(f,11) = 1500;
+                MyData(f,12) = -1;
+            end
         end
         
         % flag replay trials

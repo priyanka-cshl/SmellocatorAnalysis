@@ -8,7 +8,7 @@ global SampleRate; % = 500; % samples/second
 global startoffset; % = 1; % seconds
 global errorflags; % [digital-analog sample drops, timestamp drops, RE voltage drift, motor slips]
 
-[MyData, MyParams, DataTags, TrialSequence] = LoadSessionData(FileName, 1, PIDflag); %#ok<ASGLU>
+[MyData, MyParams, DataTags, TrialSequence, LocationSequence] = LoadSessionData(FileName, 1, PIDflag); %#ok<ASGLU>
 
 %% Get Trial ON-OFF timestamps
 TrialColumn = MyData(:,6);
@@ -59,13 +59,24 @@ for i = 1:size(MyTrials,1)
     MyTrials(i,1) = round(mode(MotorColumn(x1:x2,1)));
 end
 
-TrialSequence = vertcat([NaN NaN], TrialSequence(1:end-1,:));
+if any(LocationSequence(:))
+    TrialSequence = [TrialSequence LocationSequence];
+end
+%TrialSequence = vertcat([NaN NaN], TrialSequence(1:end-1,:));
+TrialSequence = circshift(TrialSequence,1);
+TrialSequence(1,:) = NaN*TrialSequence(1,:);
 
 % if there are any passive replay trials - extract the traces
 if any(TrialSequence(:,1)==999)
     
     % which trials
-    x = find(MyTrials(:,7)>sum(MyParams(3:8))/1000); % these trials will be longer
+    if any(TrialSequence(:,1)==800) % pseudorandom tuning instead of discrete 
+        x = find(MyTrials(:,7)> ...
+            (sum(MyParams([3 4 7 8]))+size(LocationSequence,2)*sum(MyParams([5 3])))/1000 );
+    else
+        x = find(MyTrials(:,7)> ...
+            sum(MyParams(3:8))/1000 ); % these trials will be longer
+    end
     
     % get column IDs
     LeverCol = find(cellfun(@isempty,regexp(DataTags,'Lever'))==0);
