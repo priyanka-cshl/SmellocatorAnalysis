@@ -92,18 +92,25 @@ end
 %% get the data loaded
 MySession = handles.WhereSession.String;
 [TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, ...
-    ReplayTTLs, SampleRate, TimestampAdjuster] = ...
+    ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, OpenLoop] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSpikes, handles.Events, handles.whichtetrode] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
 
-if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
+if any(strcmp(handles.TrialInfo.Perturbation(:,1),'OL-Replay'))
     [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
         ReplayAlignedSpikeTimes(SingleUnits,TTLs,...
         ReplayTTLs,handles.TrialInfo,handles.Events);
 end
+
+if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+    [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
+        PerturbationReplayAlignedSpikeTimes(SingleUnits,TTLs,...
+        ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop);
+end
+
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
