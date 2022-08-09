@@ -3,10 +3,18 @@ function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = Pl
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
 
+% hack to prevent OL-Template trials to be considered as perturbed trials
+f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
+if ~isempty(f)
+    for i = 1:numel(f)
+        TrialInfo.Perturbation{f(i),1} = [];
+    end
+end
+
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
 % get the trial sorting order
-whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation)), ...
+whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
     find(TrialInfo.Odor==whichodor));
 whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) TrialInfo.Duration(whichTrials)]; %#ok<AGROW>
 whichTrials = sortrows(whichTrials,2);

@@ -15,7 +15,11 @@ end
 % How many open loop templates are there?
 % typically only 1 - in rare cases there might be two
 TemplateTrials(:,1) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))== 1) + 1;
-TemplateTrials(:,2) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))==-1);
+if ~strcmp(TrialInfo.Perturbation(end,1),'OL-Template')
+    TemplateTrials(:,2) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))==-1);
+else
+    TemplateTrials(:,2) = [find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))==-1); size(TrialInfo.Perturbation,1)];
+end
 
 % for each template - get a concatenated trace for
 % Lever, Motor, Resp, Licks, TrialON, Rewards, TargetZone, Timestamps (?)
