@@ -139,6 +139,8 @@ for TZ = 1:12
     RawSpikeCounts(TZ+entries_done,1:numel(myPSTH)) = myPSTH;
 end
 
+x = size(allTrials,1);
+
 %%
     function EventPlotter(myEvents)
         ticklength = 0.8;

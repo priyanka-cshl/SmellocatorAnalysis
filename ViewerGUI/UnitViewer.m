@@ -148,6 +148,11 @@ for i = 1:3
         % plot replay trials
         AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
     end
+    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+        % plot passive halt trials
+        AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, ...
+            handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value);
+    end
     set(gca, 'XLim', myXlim);
     
     axes(handles.(['axes',num2str(i+3)])); 
