@@ -1,4 +1,4 @@
-function [MyData, MyParams, DataTags, varout1] = LoadSessionData(FileName, TuningFlag, PIDflag)
+function [MyData, MyParams, DataTags, varout1, varout2] = LoadSessionData(FileName, TuningFlag, PIDflag)
 
 %% load the file
 Temp = load(FileName,'session_data');
@@ -7,8 +7,14 @@ MyParams = Temp.session_data.params; % settings
 [nrows, ~] = size(MyTraces);
 if ~TuningFlag
     varout1 = Temp.session_data.ForNextSession(8); % 0 = from left, 1 = from right
+    varout2 = [];
 else
     varout1 = Temp.session_data.TrialSequence; % location, odor
+    if isfield(Temp.session_data,'LocationSequence')
+        varout2 = Temp.session_data.LocationSequence;
+    else
+        varout2 = zeros(size(varout1,1),1);
+    end
 end
 DataTags = {'Lever'; ...
             'Encoder'; ...

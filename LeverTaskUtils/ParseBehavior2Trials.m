@@ -244,6 +244,14 @@ for thisTrial = 1:numel(TrialOn)
                             % HaltLocation = PerturbationValue
                             TrialInfo.Perturbation{thisTrial,2} = [HaltStart HaltStop PerturbationValue];
                         end
+                    case 1510 % halts (newer version - with location flip) that also were used as open loop templates
+                        TrialInfo.Perturbation{thisTrial,1} = 'Halt-Flip-Template';
+                        if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1))
+                            HaltStart = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1);
+                            HaltStop = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1);
+                            % HaltLocation = PerturbationValue
+                            TrialInfo.Perturbation{thisTrial,2} = [HaltStart HaltStop PerturbationValue];
+                        end
                     case 1100 % block shift perturbations
                         TrialInfo.Perturbation{thisTrial,1} = 'BlockShift';
                         TrialInfo.Perturbation(thisTrial,2) = PerturbationValue; % shift amount

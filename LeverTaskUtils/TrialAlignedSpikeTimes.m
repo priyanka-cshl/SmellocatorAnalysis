@@ -7,7 +7,7 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
     switch TrialInfo.Perturbation{x(end),1}
         case 'Halt-Flip'
             load(MySession,'Traces','SampleRate');
-            PerturbationParams = TrialInfo.Perturbation{x(1),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location
+            PerturbationParams = TrialInfo.Perturbation{x(end),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location
             Duration = PerturbationParams(2) - PerturbationParams(1);
             Threshold = 4; % Lever threshold at which perturbation starts 
             

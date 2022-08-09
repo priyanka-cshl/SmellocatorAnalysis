@@ -6,6 +6,12 @@ global startoffset; % = 1; % seconds
 traceOverlap = SampleRate*startoffset;
 AllTargets = 1:0.25:3.75; % for assigning target zone values
 
+% rename all trials flagged as Halt-Flip-Templates as OL-Template
+flipTemps = find(strcmp(TrialInfo.Perturbation,'Halt-Flip-Template'));
+for i = 1:numel(flipTemps)
+    TrialInfo.Perturbation{flipTemps(i),1} = 'OL-Template';
+end
+
 % How many open loop templates are there?
 % typically only 1 - in rare cases there might be two
 TemplateTrials(:,1) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))== 1) + 1;
@@ -18,66 +24,69 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     
     %% Extract the active replay traces
     whichTrials = find(strcmp(TrialInfo.Perturbation,'OL-Replay'));
-    % some extra steps in case there were two open loop templates - rare
-    whichTrials(whichTrials<TemplateTrials(i,2)) = []; 
-    if i < size(TemplateTrials,1) % more than one open loop template (no more than two though)
-        whichTrials(whichTrials>TemplateTrials(i+1,2)) = [];
-    end
     
-    OpenLoop.ReplayTraces.TrialIDs{i} = whichTrials;
-    TrialOFF = [];
-    Nsubtrials = diff(TemplateTrials(i,:))+1;
-    for r = 1:numel(whichTrials)
-        % the replay trace is already concatenated - but need to know
-        % how to split it into subtrials such that the template can
-        % be aligned to it
-        % this is because a few samples get missed during Arduino
-        % updates at the end of every OL - template trial;
-        
-        % 1. get Trial OFF indices w.r.t. to trace start (includes startoffset)     
-        if isempty(ReplayTTLs) % Use the behavior trace itself
-            % find reward timestamps for the replayed trace
-            % use reward TS as proxy of trial OFF
-            TrialOFF(:,r) = find(diff(Traces.Rewards{whichTrials(r)})==1)+1;
-        else % use the OdorOFF TTLs from OEPS as proxy for trial OFF
-            % which set of ReplayTTLs to use
-            f = find(ReplayTTLs.TrialID==whichTrials(r));
-            T_off = ReplayTTLs.OdorValve{f}(:,2);
-            % sometimes there is 1 extra odor transition at trialstart
-            % if replay trial starts with a different odor - delete that
-            while size(T_off,1)>Nsubtrials
-                T_off(1,:) = [];
-            end
-            % account for the padded startoffset samples in the template
-            TrialOFF(:,r) = ceil((T_off+startoffset)*SampleRate);
+    if ~isempty(whichTrials)
+        % some extra steps in case there were two open loop templates - rare
+        whichTrials(whichTrials<TemplateTrials(i,2)) = [];
+        if i < size(TemplateTrials,1) % more than one open loop template (no more than two though)
+            whichTrials(whichTrials>TemplateTrials(i+1,2)) = [];
         end
         
-        % 2. extract the actual replayed traces
-        % include startoffset before and after replay Trial ON and OFF
-        ReplayOFFidx = TrialInfo.TimeIndices(whichTrials(r),2);
-        tracelength = ReplayOFFidx + startoffset*SampleRate;
-        % put in the traces upside down such that 
-        % all are aligned by replay off - because replay start can have 1-2
-        % extra samples that will cause replays to look mis-aligned
-        for j = 1:size(whichTraces,1)
-            if ~strcmp(whichTraces{j},'Trial')
-                temptrace = Traces.(whichTraces{j}){whichTrials(r)};
-                if length(temptrace)>=tracelength
-                    OpenLoop.ReplayTraces.(whichTraces{j}){i}(1:tracelength,r) = ...
-                        flipud(temptrace(1:tracelength));
-                else
-                    OpenLoop.ReplayTraces.(whichTraces{j}){i}(1:tracelength,r) = ...
-                        flipud(vertcat(temptrace, ...
-                        NaN*ones((tracelength - length(temptrace)),1)));
+        OpenLoop.ReplayTraces.TrialIDs{i} = whichTrials;
+        TrialOFF = [];
+        Nsubtrials = diff(TemplateTrials(i,:))+1;
+        for r = 1:numel(whichTrials)
+            % the replay trace is already concatenated - but need to know
+            % how to split it into subtrials such that the template can
+            % be aligned to it
+            % this is because a few samples get missed during Arduino
+            % updates at the end of every OL - template trial;
+            
+            % 1. get Trial OFF indices w.r.t. to trace start (includes startoffset)
+            if isempty(ReplayTTLs) % Use the behavior trace itself
+                % find reward timestamps for the replayed trace
+                % use reward TS as proxy of trial OFF
+                TrialOFF(:,r) = find(diff(Traces.Rewards{whichTrials(r)})==1)+1;
+            else % use the OdorOFF TTLs from OEPS as proxy for trial OFF
+                % which set of ReplayTTLs to use
+                f = find(ReplayTTLs.TrialID==whichTrials(r));
+                T_off = ReplayTTLs.OdorValve{f}(:,2);
+                % sometimes there is 1 extra odor transition at trialstart
+                % if replay trial starts with a different odor - delete that
+                while size(T_off,1)>Nsubtrials
+                    T_off(1,:) = [];
+                end
+                % account for the padded startoffset samples in the template
+                TrialOFF(:,r) = ceil((T_off+startoffset)*SampleRate);
+            end
+            
+            % 2. extract the actual replayed traces
+            % include startoffset before and after replay Trial ON and OFF
+            ReplayOFFidx = TrialInfo.TimeIndices(whichTrials(r),2);
+            tracelength = ReplayOFFidx + startoffset*SampleRate;
+            % put in the traces upside down such that
+            % all are aligned by replay off - because replay start can have 1-2
+            % extra samples that will cause replays to look mis-aligned
+            for j = 1:size(whichTraces,1)
+                if ~strcmp(whichTraces{j},'Trial')
+                    temptrace = Traces.(whichTraces{j}){whichTrials(r)};
+                    if length(temptrace)>=tracelength
+                        OpenLoop.ReplayTraces.(whichTraces{j}){i}(1:tracelength,r) = ...
+                            flipud(temptrace(1:tracelength));
+                    else
+                        OpenLoop.ReplayTraces.(whichTraces{j}){i}(1:tracelength,r) = ...
+                            flipud(vertcat(temptrace, ...
+                            NaN*ones((tracelength - length(temptrace)),1)));
+                    end
                 end
             end
-        end        
-    end
-    
-    % flip back all replay traces
-    for j = 1:size(whichTraces,1)
-        if ~strcmp(whichTraces{j},'Trial')
-            OpenLoop.ReplayTraces.(whichTraces{j}){i} = flipud(OpenLoop.ReplayTraces.(whichTraces{j}){i});
+        end
+        
+        % flip back all replay traces
+        for j = 1:size(whichTraces,1)
+            if ~strcmp(whichTraces{j},'Trial')
+                OpenLoop.ReplayTraces.(whichTraces{j}){i} = flipud(OpenLoop.ReplayTraces.(whichTraces{j}){i});
+            end
         end
     end
     
@@ -139,7 +148,11 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     else
         X(:,2) = Idx(:,2);
     end
-    X(:,4) = mode(TrialOFF(1,:)) + mode(TrialOFF - TrialOFF(1,:),2);
+    if exist('TrialOFF','var')
+        X(:,4) = mode(TrialOFF(1,:)) + mode(TrialOFF - TrialOFF(1,:),2);
+    else
+        X(:,4) = X(:,2); % for sessions where no active replays were done
+    end
     % col 2 and col 4 now contain stop indices for each subtrial
     % col 2 - w.r.t. template, col 4 - w.r.t. replayed traces
     % get start indices for both sets of subtrials
@@ -171,38 +184,38 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     end
     
     %% sanity checks
-    
-    foo = OpenLoop.TemplateTraces.Motor{1};
-    foo = foo(~isnan(foo));
-    % if replay traces are longer than the template traces after accounting
-    % for NaNs - delete the extra samples
-    
-    if length(OpenLoop.ReplayTraces.Motor{i})>length(foo)
-        samps_to_delete = length(OpenLoop.ReplayTraces.Motor{i})-length(foo) - 1;
-        for j = 1:size(whichTraces,1)
-            if isfield(OpenLoop.ReplayTraces,whichTraces{j})
-                OpenLoop.ReplayTraces.(whichTraces{j}){i}(end-samps_to_delete:end,:) = [];
+    if isfield(OpenLoop,'ReplayTraces')
+        foo = OpenLoop.TemplateTraces.Motor{1};
+        foo = foo(~isnan(foo));
+        % if replay traces are longer than the template traces after accounting
+        % for NaNs - delete the extra samples
+        
+        if length(OpenLoop.ReplayTraces.Motor{i})>length(foo)
+            samps_to_delete = length(OpenLoop.ReplayTraces.Motor{i})-length(foo) - 1;
+            for j = 1:size(whichTraces,1)
+                if isfield(OpenLoop.ReplayTraces,whichTraces{j})
+                    OpenLoop.ReplayTraces.(whichTraces{j}){i}(end-samps_to_delete:end,:) = [];
+                end
             end
+        end
+        
+        x = length(OpenLoop.ReplayTraces.Motor{i});
+        Residuals = OpenLoop.ReplayTraces.Motor{i} - ...
+            foo(1:x,1);
+        % ignore residuals before first trial start and last trial end
+        Residuals(1:(SampleRate*startoffset),:) = 0; % being generous about errors at the beginning
+        Residuals(X(end,4):end,:) = 0;
+        
+        ErrorDist = fitdist(Residuals(:),'normal');
+        % check if mean is ~0 and if sigma is very small (<5)
+        if (ErrorDist.mean<0.1) && ErrorDist.sigma<5
+            disp('template and replay traces align well');
+        else
+            disp('template and replay traces do not seem to align well');
+            keyboard;
         end
     end
     
-    x = length(OpenLoop.ReplayTraces.Motor{i});
-    Residuals = OpenLoop.ReplayTraces.Motor{i} - ...
-        foo(1:x,1);
-    % ignore residuals before first trial start and last trial end
-    Residuals(1:(SampleRate*startoffset),:) = 0; % being generous about errors at the beginning
-    Residuals(X(end,4):end,:) = 0;
-    
-    ErrorDist = fitdist(Residuals(:),'normal');
-    % check if mean is ~0 and if sigma is very small (<5)
-    if (ErrorDist.mean<0.1) && ErrorDist.sigma<5
-        disp('template and replay traces align well');
-    else
-        disp('template and replay traces do not seem to align well');
-        keyboard;
-    end
-    
-    
-    OpenLoop.TTLs = ReplayTTLs;
-    
 end
+OpenLoop.TTLs = ReplayTTLs;
+    

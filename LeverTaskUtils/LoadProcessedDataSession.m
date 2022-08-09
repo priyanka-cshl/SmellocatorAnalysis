@@ -132,6 +132,12 @@ end
 
 %% Passive replays
 PassiveTracesOut = []; StartStopIdx = 0;
-LoadProcessedPassiveSession;
+% make sure open loop template trials have been identified
+if ~isempty(PassiveReplayTraces) 
+    if ~exist('OpenLoop','var')
+        OpenLoop = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
+    end
+end
+%LoadProcessedPassiveSession;
 
 end
