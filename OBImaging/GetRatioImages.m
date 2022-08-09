@@ -1,7 +1,8 @@
 function [Ratio, validTrials] = GetRatioImages(FolderPath)
 
 if ~exist('FolderPath','var')
-    FolderPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/26-Jul-2022_4';
+    %FolderPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/26-Jul-2022_4';
+    FolderPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/04-Aug-2022';
 end
 
 % Load all trials and construct Average Ratio Images for each
@@ -28,7 +29,7 @@ for i = 1:nTrials
         StimDuration = (find(FrameStarts>StimStop,1,'first') - find(FrameStarts>StimStart,1,'first'));
     end
     
-    if preStim ~=0 % valid trial
+    if preStim > 10 % valid trial
         validTrials(i,1) = 1;
         
         % load Imaging Data
@@ -43,6 +44,7 @@ for i = 1:nTrials
         
         Baseline = mean(MyStack(:,:,:,(preStim-10):preStim),4);
         Stimulus = mean(MyStack(:,:,:,preStim+(1:StimDuration)),4);
+        %Stimulus = mean(MyStack(:,:,:,preStim+(11:StimDuration)),4);
         Ratio(:,:,i) = (Stimulus - Baseline)./Baseline;
     end
     
