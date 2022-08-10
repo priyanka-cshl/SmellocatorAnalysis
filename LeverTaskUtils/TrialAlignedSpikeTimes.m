@@ -32,7 +32,11 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
                     PerturbationEvents(i,:) = [NaN NaN NaN];
                 end
             else
-                PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
+                if ~isempty(TrialInfo.Perturbation{i,2})
+                    PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
+                else
+                    PerturbationEvents(i,:) = [NaN NaN NaN];
+                end
             end
         end
     end
