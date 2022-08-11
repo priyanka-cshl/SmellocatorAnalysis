@@ -129,7 +129,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     if ~isempty(TTLs)
         % OdorStart Times can also be extracted from OEPS TTLs
         Idx(:,4) = Idx(:,1) + ceil(SampleRate*TTLs.Trial(whichTrials,4));
-        if any(abs(Idx(:,3)-Idx(:,4))>5)
+        if numel(find(abs(Idx(:,3)-Idx(:,4))>5))>1
             disp('mismatch in OdorOn Timestamps between behavior and OEPS files');
             keyboard;
         end
