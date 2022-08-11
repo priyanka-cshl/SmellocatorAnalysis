@@ -61,7 +61,7 @@ end
 TracesOut.Timestamps{1} = Timestamps + TimestampAdjuster;
 
 %% Spike data
-TS = 1000*[447 497]; % 50 seconds = 50,000 bins
+TS = 1000*[447 502]; % 50 seconds = 50,000 bins
 timeBins = TS(1):TS(2);
 myRaster = zeros(NumUnits,numel(timeBins));
 TS = TS/1000;
