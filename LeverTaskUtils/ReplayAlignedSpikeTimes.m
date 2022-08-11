@@ -19,7 +19,7 @@ for whichunit = 1:N % every unit
     for whichReplay = 1: nTrials % every replay 
         thisReplay = ReplayTTLs.TrialID(whichReplay); % Replay Trial ID
         OdorTTLs = ReplayTTLs.OdorValve{whichReplay}; % TS of odor valve ON-OFF w.r.t. Trial start TTL
-        if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
+        if size(OdorTTLs,1)>numel(templatetrials) % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
             OdorTTLs(1,:) = [];
         end
         % Add one more column for TrialStart w.r.t. Odor ON

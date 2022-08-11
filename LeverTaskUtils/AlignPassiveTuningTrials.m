@@ -98,12 +98,22 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                 disp('odor sequences match in ephys and behavior tuning files');
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TrialSequence,1)+1:end,:) = [];
+                % delete any extra trials in the Behavior side
+                TrialSequence(size(EphysTuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TrialSequence
                 EphysTuningTrials(:,7) = TrialSequence(:,1);
                 alignment = 1;
             else
                 if alignment == 0
-                    EphysTuningTrials(1,:) = [];
+                    if any(find(TrialSequence(:,1)==800))
+                        U1 = unique(round(TuningTrials(:,7),0,'decimal'));
+                        U2 = unique(round(EphysTuningTrials(:,3),0,'decimal'));
+                        culprit = U2(find(~ismember(U2,U1,'rows')));
+                        spuriousTrials = find(round(EphysTuningTrials(:,3),0,'decimal') == culprit);
+                        EphysTuningTrials(spuriousTrials,:) = [];
+                    else
+                        EphysTuningTrials(1,:) = [];
+                    end
                     alignment = -1;
                 else
                     disp('ephys file has extra trials!');

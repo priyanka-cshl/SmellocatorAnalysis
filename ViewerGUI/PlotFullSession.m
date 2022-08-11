@@ -26,6 +26,8 @@ end
 % also collect perturbation trials
 perturbationTrials = intersect(find(~cellfun(@isempty, TrialInfo.Perturbation)), ...
     find(TrialInfo.Odor==whichodor));
+perturbationTrials = intersect(find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Replay')), ...
+    perturbationTrials);
 perturbationTrials = [perturbationTrials TrialInfo.TargetZoneType(perturbationTrials) TrialInfo.Duration(perturbationTrials)]; %#ok<AGROW>
 perturbationTrials = sortrows(perturbationTrials,2);
 for tz = 1:12

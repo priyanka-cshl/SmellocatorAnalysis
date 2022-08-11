@@ -29,7 +29,6 @@ for whichunit = 1:N % every unit
     %trialtags = abs(SingleUnits(whichunit).trialtags); % tuning TTLs are in negative
     trialcount = 0;
     for whichReplay = 1: nTrials % every replay
-        
         %templatetrials = find(strcmp(TrialInfo.Perturbation,'OL-Template'));
         %FirstTrialDuration = TrialInfo.Duration(templatetrials(1));
         
@@ -37,12 +36,12 @@ for whichunit = 1:N % every unit
         OdorTTLs = ReplayTTLs.OdorValve{whichReplay}; % TS of odor valve ON-OFF w.r.t. Trial start TTL
         
         if size(OdorTTLs,1) >= nsubtrials
-            if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
-                OdorTTLs(1,:) = [];
-            end
+%             if size(OdorTTLs,1)>nsubtrials % some replays have an extra odor transition at the very beginning - to shut off odor from pre-replay trial
+%                 OdorTTLs(1,:) = [];
+%             end
             
             % which template does this replay correspond to
-            [~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors, 'rows');
+            [~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors(:,1:numel(OdorTTLs(:,4)')), 'rows');
             
             templatetrials = abs(Templates.Trials(whichtemplate(1),:));
             FirstTrialDuration = TrialInfo.Duration(templatetrials(1));
@@ -53,7 +52,7 @@ for whichunit = 1:N % every unit
             end
             
             % Add one more column for TrialStart w.r.t. Odor ON
-            OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials,1);
+            OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials(find(templatetrials)),1);
             
             % force first subtrial to start at ~0
             OdorTTLs(1,end) = OdorTTLs(1,2) - FirstTrialDuration;

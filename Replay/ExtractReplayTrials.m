@@ -12,6 +12,10 @@ for i = 1:numel(flipTemps)
     TrialInfo.Perturbation{flipTemps(i),1} = 'OL-Template';
 end
 
+% sometimes odorstart is computed as NaN - mouse started moving too quickly
+% force it to be zero
+TrialInfo.OdorStart(find(isnan(TrialInfo.OdorStart(:,1))),1) = 0;
+
 % How many open loop templates are there?
 % typically only 1 - in rare cases there might be two
 TemplateTrials(:,1) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))== 1) + 1;
@@ -25,7 +29,6 @@ end
 % Lever, Motor, Resp, Licks, TrialON, Rewards, TargetZone, Timestamps (?)
 whichTraces = fieldnames(Traces);
 for i = 1:size(TemplateTrials,1) % no. of templates
-    
     %% Extract the active replay traces
     whichTrials = find(strcmp(TrialInfo.Perturbation,'OL-Replay'));
     
@@ -126,13 +129,17 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     if ~isempty(TTLs)
         % OdorStart Times can also be extracted from OEPS TTLs
         Idx(:,4) = Idx(:,1) + ceil(SampleRate*TTLs.Trial(whichTrials,4));
-        if any(abs(Idx(:,3)-Idx(:,4))>5)
+        if numel(find(abs(Idx(:,3)-Idx(:,4))>5))>1
             disp('mismatch in OdorOn Timestamps between behavior and OEPS files');
             keyboard;
         end
     end
+    % sometimes if the mouse takes too long to start the first trial (>1sec), so
+    % odorON indices can be negative
+    Idx(1,find(Idx(1,:)<0)) = 1;
     temp = 0*TrialTrace;
     x1 = 1;
+    
     for k = 1:size(Idx,1) % every subtrial
         % TargetZone vector
         x2 = Idx(k,2);

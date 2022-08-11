@@ -24,6 +24,14 @@ while TrialOn(end)>TrialOff(end)
     TrialOn(end,:) = [];
 end
 
+% sometimes a trial gets split into two - because of noisy TTL toggle?
+splitTrials = find(abs(TrialOff(:,1) - circshift(TrialOn(:,1),-1))<2);
+if any(splitTrials)
+    disp(['merging ',num2str(numel(splitTrials)),' split Trials in the behavior tuning file']);
+    TrialOff(splitTrials,:)  = [];
+    TrialOn(splitTrials+1,:) = [];
+end
+
 MyTrials = [NaN*ones(length(TrialOn),2) TrialOn TrialOff MyData(TrialOn,1) MyData(TrialOff,1)];
 MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); 
 % MyTrials = [Location, OdorId, T-ON-idx, T-OFF-idx, T-ON-TS, T-OFF-TS, T-duration-TS]
@@ -94,7 +102,11 @@ if any(TrialSequence(:,1)==999)
     for i = 1:numel(x)
         thisTrial = x(i); % trial #
         start_idx = MyTrials(thisTrial,3) - startoffset*SampleRate; % 1 sec preceding trial start
-        stop_idx = MyTrials(thisTrial+1,3) -1; % upto next trial start
+        if thisTrial>=size(MyTrials,1)
+            stop_idx = size(MyData,1);
+        else
+            stop_idx = MyTrials(thisTrial+1,3) -1; % upto next trial start
+        end
         
         ReplayTraces.Lever(i)     = { MyData(start_idx:stop_idx, LeverCol) };
         ReplayTraces.Motor(i)     = { MyData(start_idx:stop_idx, MotorCol) };
