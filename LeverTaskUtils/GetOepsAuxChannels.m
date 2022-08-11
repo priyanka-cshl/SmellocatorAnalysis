@@ -55,6 +55,17 @@ for i = 1:numel(TTLTypes)
     
     % ignore any transitions faster than 1 ms - behavior resolution is 2 ms
     temp(temp(:,3)<0.001,:) = [];
+    
+    % sometimes lines can toggle high low quickly leading to
+    % splitting of one trial into two
+    splitTrials = find(abs(Off(:,1) - circshift(On(:,1),-1))<0.001);
+    if any(splitTrials)
+        disp(['merging ',num2str(numel(splitTrials)),' split ',char(Tags(i)),' Trials']);
+        Off(splitTrials,:)  = [];
+        On(splitTrials+1,:) = [];
+    end
+    
+    temp = [On Off Off-On];
     TTLs.(char(Tags(i))) = temp;
 end
 
@@ -128,7 +139,7 @@ for i = 1:size(TTLs.Trial,1) % every trial
              
     % for replay trials
     %if TTLs.Trial(i,3) > 1 + mode(BehaviorTrials(:,3))
-    if TTLs.Trial(i,3) > 5*mode(BehaviorTrials(:,3)) % at least 5 trials in the replay
+    if TTLs.Trial(i,3) > 5*mean(BehaviorTrials(:,3)) % at least 5 trials in the replay
         count = count + 1;
         tstart = TTLs.Trial(i,1);
         tstop  = TTLs.Trial(i,2);

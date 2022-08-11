@@ -116,7 +116,6 @@ for thisTrial = 1:numel(TrialOn)
                 
         %% Which odor
         TrialInfo.Odor(thisTrial,1) = mode(MyData(thisTrialIdx(1):thisTrialIdx(2),TrialCol));
-        
         % Odor ON timestamp (from the InRewardZone column - enocdes Odor ON before trialstart - see GUI)
         thisTrialInZone = find(diff(MyData(LastTrialIdx:thisTrialIdx(1), RZoneCol))==-1);
         if ~isempty(thisTrialInZone)

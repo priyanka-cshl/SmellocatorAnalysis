@@ -24,6 +24,14 @@ while TrialOn(end)>TrialOff(end)
     TrialOn(end,:) = [];
 end
 
+% sometimes a trial gets split into two - because of noisy TTL toggle?
+splitTrials = find(abs(TrialOff(:,1) - circshift(TrialOn(:,1),-1))<2);
+if any(splitTrials)
+    disp(['merging ',num2str(numel(splitTrials)),' split Trials in the behavior tuning file']);
+    TrialOff(splitTrials,:)  = [];
+    TrialOn(splitTrials+1,:) = [];
+end
+
 MyTrials = [NaN*ones(length(TrialOn),2) TrialOn TrialOff MyData(TrialOn,1) MyData(TrialOff,1)];
 MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); 
 % MyTrials = [Location, OdorId, T-ON-idx, T-OFF-idx, T-ON-TS, T-OFF-TS, T-duration-TS]
