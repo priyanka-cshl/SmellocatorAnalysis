@@ -102,7 +102,11 @@ if any(TrialSequence(:,1)==999)
     for i = 1:numel(x)
         thisTrial = x(i); % trial #
         start_idx = MyTrials(thisTrial,3) - startoffset*SampleRate; % 1 sec preceding trial start
-        stop_idx = MyTrials(thisTrial+1,3) -1; % upto next trial start
+        if thisTrial>=size(MyTrials,1)
+            stop_idx = size(MyData,1);
+        else
+            stop_idx = MyTrials(thisTrial+1,3) -1; % upto next trial start
+        end
         
         ReplayTraces.Lever(i)     = { MyData(start_idx:stop_idx, LeverCol) };
         ReplayTraces.Motor(i)     = { MyData(start_idx:stop_idx, MotorCol) };

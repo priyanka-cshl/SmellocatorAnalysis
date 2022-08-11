@@ -98,6 +98,8 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                 disp('odor sequences match in ephys and behavior tuning files');
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TrialSequence,1)+1:end,:) = [];
+                % delete any extra trials in the Behavior side
+                TrialSequence(size(EphysTuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TrialSequence
                 EphysTuningTrials(:,7) = TrialSequence(:,1);
                 alignment = 1;
