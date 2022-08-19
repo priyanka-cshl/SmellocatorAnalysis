@@ -325,7 +325,6 @@ for i = 1:numel(nZones)
         B2 = figure;
         figure(B2);
         [TracesOut] = ConcatenateTraces(Traces, allTrials, SampleRate*startoffset);
-        TracesOut = vertcatm
         
         timestamps = (1:size(TracesOut.Lever{1},1))'/SampleRate;
         TZ = [TracesOut.TargetZone{1} TracesOut.TargetZone{1}];

@@ -115,46 +115,12 @@ ops.iPC = 1:NumUnits;
 [isort1, isort2, Sm] = mapTmap(myRaster, ops);
 
 %% replot
-figure; 
+TS = [447 520];
+subplot(11,1,[2:11]);
 hold on;
 
 % plot Odor boxes
 BoxTag = 'odor';
-for i = 1:3
-    handles.([BoxTag,num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
-    hold on;
-    handles.([BoxTag,num2str(i),'Plot']).EdgeColor = 'none';
-    ValveTS = TTLs.(['Odor',num2str(i)])(:,1:2)';
-    ValveTS(:,1:(find(ValveTS(1,:)<=TS(1),1,'last'))) = [];
-    ValveTS(:,(find(ValveTS(2,:)>=TS(2),1,'first')):end) = [];
-    ValveTS = ValveTS - TS(1);
-    handles.([BoxTag,num2str(i),'Plot']).Vertices = [ ...
-        reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
-        repmat((10+NumUnits)*[0 1 1 0]',size(ValveTS,2),1)];
-    handles.([BoxTag,num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
-end
-
-for m = 1:NumUnits
-    n = isort1(m);
-    % align to the specified event
-    f = find(SingleUnits(n).spikes>TS(2),1,'first');
-    if ~isempty(f)
-        f = f-1;
-        thisUnitSpikes = SingleUnits(n).spikes(1:f)' - TS(1);
-    else
-        thisUnitSpikes = SingleUnits(n).spikes' - TS(1);
-    end
-    PlotRaster(thisUnitSpikes(thisUnitSpikes>0),m,[0 0 0],0.8);
-end
-
-
-%% replot
-figure; 
-hold on;
-TS = [1027 1077];
-
-% plot Odor boxes
-BoxTag = 'Rodor';
 for i = 1:3
     handles.([BoxTag,num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
     hold on;
