@@ -2,6 +2,8 @@ function [] = PlotReplayResponses(SessionPath,MyUnits)
 
 if strcmp(computer, 'MACI64')
     datapath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/';
+elseif strcmp(computer,'PCWIN64')
+    datapath = 'C:\Users\Marie\Documents\data\Behavior';
 else
     datapath = '/mnt/data/Processed/Behavior/';
 end
