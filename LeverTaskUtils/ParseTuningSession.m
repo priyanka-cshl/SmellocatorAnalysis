@@ -10,6 +10,9 @@ global errorflags; % [digital-analog sample drops, timestamp drops, RE voltage d
 
 [MyData, MyParams, DataTags, TrialSequence, LocationSequence] = LoadSessionData(FileName, 1, PIDflag); %#ok<ASGLU>
 
+% MyParams: [0 121 MotorSettle PreOdor Odor Purge PostOdor ITI LeverGain
+% LeverDC Reward]
+
 %% Get Trial ON-OFF timestamps
 TrialColumn = MyData(:,6);
 TrialColumn(TrialColumn~=0) = 1; % make logical
