@@ -119,7 +119,7 @@ function UpdatePlot(hObject, eventdata, handles)
 Nchan       = str2double(handles.NumChans.String);
 Nsamples    = str2double(handles.WindowSize.String)*32000;
 
-TStart      = handles.TimeScroll.Value * ...
+TStart      = handles.TimeScroll.Value * 60 * ...
                 str2double(handles.RecordingLength.String) - ...
                 str2double(handles.WindowSize.String);
 offset = max(0,Nchan * TStart * 32000);
@@ -133,8 +133,8 @@ channelSpacing = str2double(handles.Spacing.String);
 
 MyData = MyData';
 axes(handles.axes1);
-MyColorOrder = brewermap(Nchan/8,'Set3')';
-MyColorOrder = reshape(repmat(MyColorOrder,8,1),3,Nchan)';
+MyColorOrder = brewermap(ceil(Nchan/8),'Set3')';
+MyColorOrder = reshape(repmat(MyColorOrder,8,1),3,8*ceil(Nchan/8))';
 set(0,'DefaultAxesColorOrder',MyColorOrder);
 plot(MyData + int16(repmat(channelSpacing*(0:1:Nchan-1),size(MyData,1),1)));
 %set(gca,'ColorMap',brewermap(Nchan,'Accent'))
