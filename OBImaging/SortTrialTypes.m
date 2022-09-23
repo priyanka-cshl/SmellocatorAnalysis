@@ -1,11 +1,13 @@
 
-FolderRoot = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/04-Aug-2022';
+%FolderRoot = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/04-Aug-2022';
 %FolderRoot = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/26-Jul-2022_4';
+FolderRoot = '/mnt/data/OBImaging/testmouse3_brown/02-Sep-2022_2';
+FolderRoot = '/mnt/data/OBImaging/testmouse2_black/07-Sep-2022';
 [Ratio, TrialList] = GetRatioImages(FolderRoot);
 
 %% load Trial List from the behavior side
 if ~exist('TrialFile','var')
-    TrialSequencePath = fullfile(FolderRoot,'OBimaging_20220804_o0.mat');
+    TrialSequencePath = fullfile(FolderRoot,'OBimaging_20220907_o1.mat');
     %TrialSequencePath = fullfile(FolderRoot,'OBimaging_20220726_o0.mat');
 else
     TrialSequencePath = fullfile(FolderRoot,TrialFile);

@@ -3,16 +3,17 @@ function [Ratio, validTrials] = GetRatioImages(FolderPath)
 if ~exist('FolderPath','var')
     %FolderPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/26-Jul-2022_4';
     FolderPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/04-Aug-2022';
+    
 end
 
 % Load all trials and construct Average Ratio Images for each
-nTrials = numel(dir([FolderPath,filesep,'frametimes*.mat']));
+nTrials = numel(dir([FolderPath,filesep,'frameTimes*.mat']));
 threshold = 1500; % for digitizing triggers from the analog file
 validTrials = zeros(nTrials,2);
 Ratio = zeros(540,640,nTrials);
 
 for i = 1:nTrials
-    
+    disp(i);
     % get info about this trial
     % get frame times as saved by Widefield Imager
     load([FolderPath,filesep,'frameTimes_',num2str(i, '%04i'),'.mat'],'preStim','imgSize'); %, 'imgSize','frameTimes');

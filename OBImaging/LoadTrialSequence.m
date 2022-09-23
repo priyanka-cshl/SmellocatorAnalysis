@@ -5,7 +5,7 @@ load(BehaviorPath);
 TrialList_Behavior = session_data.TrialSequence;
 
 % trial list from the imaging side
-nTrials = numel(dir([ImagingPath,filesep,'frametimes*.mat']));
+nTrials = numel(dir(fullfile(ImagingPath,'frameTimes*.mat')));
 threshold = 1500; % for digitizing triggers from the analog file
 TrialList_Imaging = zeros(nTrials,6);
 ImageSize = 0;
