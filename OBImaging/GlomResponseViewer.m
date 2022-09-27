@@ -168,9 +168,16 @@ handles.RepeatList.Max = 1;
 % update stimulus settings
 handles.StimulusSettings.Data = mode(handles.TrialSequence(:,[5 6 7 8]),1)';
 
+ROIs = [];
 % Load ROIs
-if exist(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'))
+if exist(fullfile(handles.ImagingPath.String,'AllGloms.mat'))
+    load(fullfile(handles.ImagingPath.String,'AllGloms.mat'), 'GlomSession');
+    ROIs = GlomSession.ROImasks;
+elseif exist(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'))
     load(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'), 'ROIs');
+end
+
+if ~isempty(ROIs)
     handles.MyImage(:,:,3) = ROIs;
     handles.ROIcount.String = num2str(numel(unique(handles.MyImage(:,:,3)))-1);
     handles.MyImage(:,:,4) = 0*handles.MyImage(:,:,3);

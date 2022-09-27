@@ -70,7 +70,7 @@ axes(handles.axes2);
 set(gca, 'XTick', [], 'YTick', []);
 axis manual;
 axes(handles.axes4);
-set(gca, 'XTick', [], 'YTick', [], 'Visible','off');
+set(gca, 'XTick', [], 'YTick', []);
 axis manual;
 handles.MyImage = [];
 
@@ -292,6 +292,8 @@ handles.I3.AlphaData = ceil(allROIs);
 colormap(handles.axes4,brewermap(3,'*Set1'));
 handles.axes4.Color = 'none';
 
+OverlayROIs_Callback(hObject, eventdata, handles);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -359,7 +361,12 @@ function SaveROIs_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 ROIs = squeeze(handles.MyImage(:,:,3));
-save(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'), 'ROIs');
+%save(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'), 'ROIs');
+disp('saving');
+[GlomSession] = GetAllGlomTraces(handles.ImagingPath.String);
+GlomSession.ROImasks = ROIs;
+save(fullfile(handles.ImagingPath.String,'AllGloms.mat'), 'GlomSession');
+disp('done');
 
 
 % --- Executes on button press in OverlayROIs.
