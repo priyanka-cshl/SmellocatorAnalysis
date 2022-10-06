@@ -1,4 +1,4 @@
-function [MyTrials, TrialSequence, ReplayTraces] = ParseTuningSession(FileName, PIDflag)
+function [MyTrials, TrialSequence, ReplayTraces, MyParams] = ParseTuningSession(FileName, PIDflag)
 if nargin<2
     PIDflag = 0;
 end
@@ -6,7 +6,6 @@ end
 %% globals
 global SampleRate; % = 500; % samples/second
 global startoffset; % = 1; % seconds
-global errorflags; % [digital-analog sample drops, timestamp drops, RE voltage drift, motor slips]
 
 [MyData, MyParams, DataTags, TrialSequence, LocationSequence] = LoadSessionData(FileName, 1, PIDflag); %#ok<ASGLU>
 

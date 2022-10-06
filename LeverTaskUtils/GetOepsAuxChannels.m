@@ -77,35 +77,37 @@ if size(TTLs.Trial,1)<5
     return
 end
 
-%% mismatch between behavior and oeps trials on first trial 
-if any(abs(BehaviorTrials(1:5,3)-TTLs.Trial(1:5,3))>=0.01)
-    % case 1 : behavior file has an extra trial
-    if ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(1:5,3))>=0.01)
-        % append an extra NaN trial on the Oeps side
-        TTLs.Trial = [NaN*TTLs.Trial(1,:); TTLs.Trial];
-
-    % case 2 : behavior acq started mid-trial, first trial might be a bit shorter 
-    elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(2:6,3))>=0.01)
-        % do nothing
+%% mismatch between behavior and oeps trials on first trial
+if ~isempty(BehaviorTrials)
+    if any(abs(BehaviorTrials(1:5,3)-TTLs.Trial(1:5,3))>=0.01)
+        % case 1 : behavior file has an extra trial
+        if ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(1:5,3))>=0.01)
+            % append an extra NaN trial on the Oeps side
+            TTLs.Trial = [NaN*TTLs.Trial(1,:); TTLs.Trial];
+            
+            % case 2 : behavior acq started mid-trial, first trial might be a bit shorter
+        elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(2:6,3))>=0.01)
+            % do nothing
+        end
     end
-end
-
-% Is it the right recording file?
-if size(TTLs.Trial,1)<size(BehaviorTrials,1)
-    TTLs = [];
-    EphysTuningTrials = [];
-    AuxData = [];
-    disp('behavior and ephys files do not match');
-    return
-end
-
-y = corrcoef(BehaviorTrials(2:20,3),TTLs.Trial(2:20,3));
-if y(2,1)<0.99
-    TTLs = [];
-    EphysTuningTrials = [];
-    AuxData = [];
-    disp('behavior and ephys files do not match');
-    return
+    
+    % Is it the right recording file?
+    if size(TTLs.Trial,1)<size(BehaviorTrials,1)
+        TTLs = [];
+        EphysTuningTrials = [];
+        AuxData = [];
+        disp('behavior and ephys files do not match');
+        return
+    end
+    
+    y = corrcoef(BehaviorTrials(2:20,3),TTLs.Trial(2:20,3));
+    if y(2,1)<0.99
+        TTLs = [];
+        EphysTuningTrials = [];
+        AuxData = [];
+        disp('behavior and ephys files do not match');
+        return
+    end
 end
 
 %% find the odor ON time 
@@ -139,32 +141,34 @@ for i = 1:size(TTLs.Trial,1) % every trial
              
     % for replay trials
     %if TTLs.Trial(i,3) > 1 + mode(BehaviorTrials(:,3))
-    if TTLs.Trial(i,3) > 5*mean(BehaviorTrials(:,3)) % at least 5 trials in the replay
-        tstart = TTLs.Trial(i,1);
-        tstop  = TTLs.Trial(i,2);
-        O1 = intersect(find(TTLs.Odor1(:,1)>tstart),find(TTLs.Odor1(:,1)<tstop));
-        O2 = intersect(find(TTLs.Odor2(:,1)>tstart),find(TTLs.Odor2(:,1)<tstop));
-        O3 = intersect(find(TTLs.Odor3(:,1)>tstart),find(TTLs.Odor3(:,1)<tstop));
-        
-        % keep the odor transition that happened just before trial start
-        if ~isempty(ValveEvents)
-            ValveEvents = ValveEvents(x,:);        
+    if ~isempty(BehaviorTrials)
+        if TTLs.Trial(i,3) > 5*mean(BehaviorTrials(:,3)) % at least 5 trials in the replay
+            tstart = TTLs.Trial(i,1);
+            tstop  = TTLs.Trial(i,2);
+            O1 = intersect(find(TTLs.Odor1(:,1)>tstart),find(TTLs.Odor1(:,1)<tstop));
+            O2 = intersect(find(TTLs.Odor2(:,1)>tstart),find(TTLs.Odor2(:,1)<tstop));
+            O3 = intersect(find(TTLs.Odor3(:,1)>tstart),find(TTLs.Odor3(:,1)<tstop));
+            
+            % keep the odor transition that happened just before trial start
+            if ~isempty(ValveEvents)
+                ValveEvents = ValveEvents(x,:);
+            end
+            for j = 1:3
+                temp = eval(['TTLs.Odor',num2str(j),'(O',num2str(j),',:);']);
+                ValveEvents = vertcat(ValveEvents,...
+                    [temp j*ones(size(temp,1),1)]);
+            end
+            % reference odor transitions w.r.t. trial ON
+            ValveEvents(:,1:2) = ValveEvents(:,1:2) - t2 ;
+            [~,sortID] = sort(ValveEvents(:,1));
+            
+            if size(ValveEvents,1)>5
+                count = count + 1;
+                ReplayTTLs.OdorValve{count} = ValveEvents(sortID,:);
+                ReplayTTLs.TrialID(count)   = i;
+            end
+            
         end
-        for j = 1:3
-            temp = eval(['TTLs.Odor',num2str(j),'(O',num2str(j),',:);']);
-            ValveEvents = vertcat(ValveEvents,...
-                [temp j*ones(size(temp,1),1)]);
-        end
-        % reference odor transitions w.r.t. trial ON
-        ValveEvents(:,1:2) = ValveEvents(:,1:2) - t2 ;
-        [~,sortID] = sort(ValveEvents(:,1));
-        
-        if size(ValveEvents,1)>5
-            count = count + 1;
-            ReplayTTLs.OdorValve{count} = ValveEvents(sortID,:);
-            ReplayTTLs.TrialID(count)   = i;
-        end
-        
     end
     
 end

@@ -11,6 +11,13 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
     % first trial is crap - delete it
     EphysTuningTrials(1,:) = [];
     
+    if SkipTrials == 0 % only tuning was done
+        % there might be one more extra trial
+        while size(TrialSequence,1)>size(TuningTrials,1)
+            TrialSequence(1,:) = [];
+        end
+    end
+    
     % Assign odor identities
     for i = 1:size(EphysTuningTrials,1)
         tstart = EphysTuningTrials(i,1);
