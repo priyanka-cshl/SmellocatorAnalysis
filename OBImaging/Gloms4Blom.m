@@ -361,7 +361,7 @@ function SaveROIs_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 ROIs = squeeze(handles.MyImage(:,:,3));
-%save(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'), 'ROIs');
+save(fullfile(handles.ImagingPath.String,'GlomerularMasks.mat'), 'ROIs');
 disp('saving');
 [GlomSession] = GetAllGlomTraces(handles.ImagingPath.String);
 GlomSession.ROImasks = ROIs;
