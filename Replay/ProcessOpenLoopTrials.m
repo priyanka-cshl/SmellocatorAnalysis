@@ -259,7 +259,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                         % plot raster
                         subplot(units_per_fig,2,Rasterplot);
                         row_idx = thisTrial+1;
-                        PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('r'));
+                        PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('t')); %used to be r
                     end
                 end
             end
@@ -272,7 +272,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     temp = squeeze(PSTH(2:(trials_per_replay+1),:,i));
                     meanFR = mean(temp);
                     semFR = std(temp)/sqrt(trials_per_replay);
-                    MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5);
+                    MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5); %used to be r
                     
                     %plot((1/SampleRate)*(1:size(PSTH,2)),mean(,1),'r');
                     
@@ -330,7 +330,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                             else
                                 row_idx = thisTrial+1;
                             end
-                            PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('t'));
+                            PlotRaster(thisTrialSpikeTimes,row_idx,Plot_Colors('r')); % used to be t
                         end
                     end
                     
@@ -345,7 +345,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                         temp = squeeze(PSTH((trials_per_replay+2):end,:,i));
                         meanFR = mean(temp);
                         semFR = std(temp)/sqrt(numel(PassiveReplays));
-                        MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5);
+                        MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5); % used to be t
                         
                         %                     plot((1/SampleRate)*(1:size(PSTH,2)),mean(squeeze(PSTH((trials_per_replay+2):end,:,i)),1),...
                         %                         'Color',Plot_Colors('t'));
