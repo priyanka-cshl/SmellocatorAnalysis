@@ -40,11 +40,11 @@
 
 % load data directly if PassiveTuning structure was saved - change path
 % accordingly
-%load('C:\Users\Marie\Documents\data\Smellocator\PassiveTuningDecoder\PassiveTuning_E3_20220713.mat')
+load('C:\Users\Marie\Documents\data\Smellocator\PassiveTuningDecoder\PassiveTuning_E3_20220713.mat')
 
 % run LocationDataParser() if PassiveTuning wasn't saved or to test
 % different mice (change behavior filename if so)
-[PassiveTuning] = LocationTuningDataParser('E3_20220713_o3.mat');
+%[PassiveTuning] = LocationTuningDataParser('E3_20220713_o3.mat');
 
 %% Raster plots for sanity check 
 % uncomment and change inputs as needed 
@@ -138,7 +138,7 @@ t_start = 1;
 t_end = size (response_matrix,1);
 
 Nboot = 10; %number of bootstraps 
-CellIter
+
 GENERAL_PERF = zeros(t_end,length(CellNum),Nrep,Nboot); % classifier output: time points X number of neuron X repeats X bootstraps
 
 for t = t_start:t_end %for a specific time
@@ -169,7 +169,7 @@ for t = t_start:t_end %for a specific time
         %Dimensions are odors x number of stimuli 
 
         for CellIter = 1:length(CellNum) % for different number of cells
-            PERF = zeros(Nboot,2);            
+            PERF = zeros(Nboot,1);            
             for boot = 1:Nboot %bootstrapping - picking randomly 10 different times
                 CellId = randperm(ncells,CellNum(CellIter)); % new vector of cells on which train/test will be performed
                 X = xtrain(CellId,:)';
@@ -196,11 +196,11 @@ for t = t_start:t_end %for a specific time
                     label(k,:) = a;
 
                 end
-                PERF(boot,1) = corr2(label,Output(:,1:nstim)); %compare the prediction to the truth (target output) 
+                PERF(boot) = corr2(label,Output(:,1:nstim)); %compare the prediction to the truth (target output) 
                 
             end
 
-            GENERAL_PERF(t,CellIter,test,:) = squeeze(PERF(:,1));
+            GENERAL_PERF(t,CellIter,test,:) = PERF(:);
 
         end
     end
@@ -209,42 +209,48 @@ end
 
 
 %% PLOTS
+temp = reshape(GENERAL_PERF,[t_end size(CellNum,2) Nrep*Nboot]);
 %%
-% Performance across time
-figure(1);
-subplot(1,2,1)
-temp1 = reshape(GENERAL_PERF,[t_end size(CellNum,2) Nrep*Nboot]);
+% Performance across time for all cells
+figure(1)
 
-shadedErrorBar(1*0.2:0.2:20*0.2,nanmean(squeeze(temp1(:,end,:)),2)*100,... 
-    (nanstd(squeeze(temp1(:,10,:)),0,2)*100)./sqrt(Nrep*Nboot))
+subplot(1,2,1)
+time_mean = nanmean(squeeze(temp(:,end,:)),2); %mean at each timepoint across cross-validations for all cells
+time_std = nanstd(squeeze(temp(:,end,:)),0,2); %std at each timepoint across cross-validations for all cells
+
+shadedErrorBar(1*0.2:0.2:20*0.2,time_mean*100,(time_std*100)./sqrt(Nrep*Nboot))
 xlabel('Time (s)')
 ylabel('Classifier performance (%)')
 hold on; 
 xline(1, '--', {'odor','on'},'FontSize',8)
 xline(3, '--', {'odor','off'},'FontSize',8)
+set(gca,'TickDir','out')
 
-
-% Performance across cell number 
-subplot(1,2,2)
+% Performance across cell number at defined timepoint 
 timepoint = 10; %in sec performance at time to be plotted for increasing number of cells
 
-shadedErrorBar(1*5:5:size(CellNum,2)*5,nanmean(squeeze(temp1(10,:,:)),2)*100,...
-    (nanstd(squeeze(temp1(10,:,:)),0,2)*100)./sqrt(Nrep*Nboot))
+subplot(1,2,2)
+cell_mean = nanmean(squeeze(temp(timepoint,:,:)),2); %mean for different cell number across cross-validations at one timepoint
+cell_std = nanstd(squeeze(temp(timepoint,:,:)),0,2); %std for different cell number across cross-validations at one timepoint
+shadedErrorBar(1*5:5:size(CellNum,2)*5,cell_mean*100,...
+    (cell_std*100)./sqrt(Nrep*Nboot))
 
 xlabel('Number of neurons')
 ylabel('Classifier performance (%)')
+set(gca,'TickDir','out')
 
 
 %%
 figure(2)
-% median
+% median performance across both number of cells and time
 subplot(1,2,1)
-imagesc(median(temp1,3)',[0 1])
+imagesc(median(temp,3)',[0 1]) %median across cross-validations
 axis('square');colormap('jet'); 
 xticks([5 10 15 20])
 xticklabels({'1','2','3','4'})
 yticks([2 4 6 8 10])
 yticklabels({'10','20','30','40','50'})
+set(gca,'TickDir','out')
 
 xlabel('Time(s)')
 ylabel('Number of neurons')
@@ -253,15 +259,16 @@ xline(15, 'w--', {'odor','off'},'FontSize',8)
 c = colorbar; c.Label.String = 'Classifier performance';
 
 
-%mean
+%mean performance across both number of cells and time
 subplot(1,2,2)
-temp = squeeze(mean(GENERAL_PERF,4));
-imagesc(mean(temp,3)',[0 1])
+xx = squeeze(mean(GENERAL_PERF,4));
+imagesc(mean(xx,3)',[0 1])
 axis('square');colormap('jet')
 xticks([5 10 15 20])
 xticklabels({'1','2','3','4'})
 yticks([2 4 6 8 10])
 yticklabels({'10','20','30','40','50'})
+set(gca,'TickDir','out')
 
 xlabel('Time(s)')
 ylabel('Number of neurons')
