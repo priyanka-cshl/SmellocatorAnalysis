@@ -1,12 +1,10 @@
 %% load GlomSession into work space
-load('/mnt/data/OBImaging/BlackCamK/12-Oct-2022_1/AllGloms.mat');
-%load('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/CAMKII_Black/14-Oct-2022_1/AllGloms.mat');
+%load('/mnt/data/OBImaging/BlackCamK/12-Oct-2022_1/AllGloms.mat');
+load('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/CAMKII_Black/14-Oct-2022_1/AllGloms.mat');
 
 % get stimulus period
 preStim = GlomSession.TrialSequence(1,5);
 stimulus = (GlomSession.TrialSequence(1,7) - GlomSession.TrialSequence(1,6) + 1);
-% endStim = preStim + stimulus;
-% postStim = 160;
 
 Frames2Use = [(preStim - stimulus + 1):(preStim + 2*stimulus)];
 
@@ -25,15 +23,12 @@ for m = 1:length(GlomSession.Odors)
             for ROI = 1:length(GlomSession.ROI_index)
                 
                 % dF/F
-                Fo = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
-                GlomSession.Traces(ROI, :, thisTrial) = (GlomSession.Traces(ROI, :, thisTrial) - Fo)/Fo;
-                
-                dFTraces(ROI,:,m,n,trial) = GlomSession.Traces(ROI, Frames2Use, thisTrial);
+                Fo = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));                
+                dFTraces(ROI,:,m,n,trial) = (GlomSession.Traces(ROI, Frames2Use, thisTrial) - Fo)/Fo;
                 
                 % z-score
                 mu = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
                 sigma = std(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
-                
                 ZscoredTraces(ROI,:,m,n,trial) = (GlomSession.Traces(ROI, Frames2Use, thisTrial) - mu)/sigma;
                 
             end
@@ -53,43 +48,36 @@ for ROI = 1:length(GlomSession.ROI_index)
     Frames2Use = stimulus+(1:stimulus); 
     whichLocation = find(GlomSession.Locations==0);
     for m = 1:length(GlomSession.Odors)
-        ROI_attributes(ROI,1+m) = mean(mean(ZscoredTraces(ROI,:,m,whichLocation,:)));
+        ROI_attributes(ROI,1+m) = max(mean(ZscoredTraces(ROI,:,m,whichLocation,:),5));
     end
 end
 
 ROI_attributes(:,end+1) = 1:ROI;
 
-
+%% Get a Ratio Image
+RatioImage = [];
+for odor = 1:3
+    allROIs = GlomSession.ROImasks;
+    for roi = 1:numel(GlomSession.ROI_index)
+        whichPixels = find(allROIs == roi);
         
-%% plotting heatmaps
-
-whichOdor = 3; 
-whichLocation = find(GlomSession.Locations==0);
-
-% Order by responses of a given Odor, and split left and right bulbs
-[~,tempOrder] = sortrows(ROI_attributes,whichOdor+1,'descend'); % order by response strength
-GlomsOrdered = ROI_attributes(tempOrder,:);
-% split left and right into chunks, with reversed orders
-GlomOrder = tempOrder(vertcat( find(GlomsOrdered(:,1)<MidLine),...
-                               flipud(find(GlomsOrdered(:,1)>MidLine)) ));
-
-% heatmap : given odor, given location, all repeats     
-range = [-5 70];
-nReps = size(ZscoredTraces,5);
-figure;
-for i = 1:nReps 
-    subplot(1,nReps,i); 
-    imagesc(ZscoredTraces(GlomOrder,:,whichOdor,whichLocation,i), range); 
-    set(gca, 'YTick', [], 'XTick', []);
-    colormap(brewermap([],'*RdBu'));
+        allROIs(whichPixels) = ROI_attributes(roi,2+odor);
+    end
+    RatioImage(:,:,odor) = allROIs;
 end
 
-% heatmap : given odor, all locations, averaged across repeats                 
-figure;
-nLoc = numel(GlomSession.Locations);
-for i = 1:nLoc 
-    subplot(1,nLoc,i); 
-    imagesc(mean(ZscoredTraces(GlomOrder,:,whichOdor,i,:),5), range); 
-    set(gca, 'YTick', [], 'XTick', []);
-    colormap(brewermap([],'*RdBu'));
+%%
+for odor = 1:3
+    figure;
+    MyImage = RatioImage(:,:,odor);
+    MyImage(MyImage==0) = - 100;
+    imagesc(MyImage,[-100 150]); 
+    switch odor
+        case 1
+            colormap(brewermap([],'Reds'));
+        case 2
+            colormap(brewermap([],'Blues'));
+        case 3
+            colormap(brewermap([],'Greens'));
+    end
 end

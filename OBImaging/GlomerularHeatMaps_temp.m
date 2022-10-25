@@ -1,6 +1,6 @@
 %% load GlomSession into work space
-load('/mnt/data/OBImaging/BlackCamK/12-Oct-2022_1/AllGloms.mat');
-%load('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/CAMKII_Black/14-Oct-2022_1/AllGloms.mat');
+%load('/mnt/data/OBImaging/BlackCamK/12-Oct-2022_1/AllGloms.mat');
+load('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/OB imaging/CAMKII_Black/12-Oct-2022_1/AllGloms.mat');
 
 % get stimulus period
 preStim = GlomSession.TrialSequence(1,5);
@@ -25,15 +25,12 @@ for m = 1:length(GlomSession.Odors)
             for ROI = 1:length(GlomSession.ROI_index)
                 
                 % dF/F
-                Fo = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
-                GlomSession.Traces(ROI, :, thisTrial) = (GlomSession.Traces(ROI, :, thisTrial) - Fo)/Fo;
-                
-                dFTraces(ROI,:,m,n,trial) = GlomSession.Traces(ROI, Frames2Use, thisTrial);
+                Fo = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));                
+                dFTraces(ROI,:,m,n,trial) = (GlomSession.Traces(ROI, Frames2Use, thisTrial) - Fo)/Fo;
                 
                 % z-score
                 mu = mean(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
                 sigma = std(GlomSession.Traces(ROI,1:(GlomSession.TrialSequence(thisTrial,5)), thisTrial));
-                
                 ZscoredTraces(ROI,:,m,n,trial) = (GlomSession.Traces(ROI, Frames2Use, thisTrial) - mu)/sigma;
                 
             end
@@ -59,11 +56,10 @@ end
 
 ROI_attributes(:,end+1) = 1:ROI;
 
-
         
 %% plotting heatmaps
 
-whichOdor = 3; 
+whichOdor = 1; 
 whichLocation = find(GlomSession.Locations==0);
 
 % Order by responses of a given Odor, and split left and right bulbs
@@ -73,23 +69,69 @@ GlomsOrdered = ROI_attributes(tempOrder,:);
 GlomOrder = tempOrder(vertcat( find(GlomsOrdered(:,1)<MidLine),...
                                flipud(find(GlomsOrdered(:,1)>MidLine)) ));
 
-% heatmap : given odor, given location, all repeats     
-range = [-5 70];
-nReps = size(ZscoredTraces,5);
-figure;
-for i = 1:nReps 
-    subplot(1,nReps,i); 
-    imagesc(ZscoredTraces(GlomOrder,:,whichOdor,whichLocation,i), range); 
+%% heatmap: all odors, center location, averaged across reps
+range = [-5 80];
+nStim = numel(GlomSession.Odors);
+for i = 1:nStim
+    subplot(1,nStim,i); 
+    imagesc(mean(ZscoredTraces(GlomOrder,:,i,whichLocation,:),5), range); 
     set(gca, 'YTick', [], 'XTick', []);
     colormap(brewermap([],'*RdBu'));
 end
+                           
+%% heatmap : given odor, given location, all repeats
 
-% heatmap : given odor, all locations, averaged across repeats                 
-figure;
-nLoc = numel(GlomSession.Locations);
-for i = 1:nLoc 
-    subplot(1,nLoc,i); 
-    imagesc(mean(ZscoredTraces(GlomOrder,:,whichOdor,i,:),5), range); 
+for whichOdor = 2%1:nStim
+    
+    % get sorting order
+    
+    % Order by responses of a given Odor, and split left and right bulbs
+    [~,tempOrder] = sortrows(ROI_attributes,whichOdor+1,'descend'); % order by response strength
+    GlomsOrdered = ROI_attributes(tempOrder,:);
+    % split left and right into chunks, with reversed orders
+    GlomOrder = tempOrder(vertcat( find(GlomsOrdered(:,1)<MidLine),...
+        flipud(find(GlomsOrdered(:,1)>MidLine)) ));
+    
+    range = [-5 80];
+    nReps = size(ZscoredTraces,5);
+    figure;
+    
+    whichLocation = find(GlomSession.Locations==-10);
+    
+    % plot the average
+    subplot(1,nReps+1,1);
+    imagesc(mean(ZscoredTraces(GlomOrder,:,whichOdor,whichLocation,:),5), range);
     set(gca, 'YTick', [], 'XTick', []);
     colormap(brewermap([],'*RdBu'));
+    
+    for i = 1:nReps
+        subplot(1,nReps+1,i+1);
+        imagesc(ZscoredTraces(GlomOrder,:,whichOdor,whichLocation,i), range);
+        set(gca, 'YTick', [], 'XTick', []);
+        colormap(brewermap([],'*RdBu'));
+    end
+
+end
+
+%% heatmap : given odor, all locations, averaged across repeats        
+for whichOdor = 1:nStim
+    
+     % get sorting order
+    whichLocation = find(GlomSession.Locations==0);
+    
+    % Order by responses of a given Odor, and split left and right bulbs
+    [~,tempOrder] = sortrows(ROI_attributes,whichOdor+1,'descend'); % order by response strength
+    GlomsOrdered = ROI_attributes(tempOrder,:);
+    % split left and right into chunks, with reversed orders
+    GlomOrder = tempOrder(vertcat( find(GlomsOrdered(:,1)<MidLine),...
+        flipud(find(GlomsOrdered(:,1)>MidLine)) ));
+    
+    figure;
+    nLoc = numel(GlomSession.Locations);
+    for i = 1:nLoc
+        subplot(1,nLoc,i);
+        imagesc(mean(ZscoredTraces(GlomOrder,:,whichOdor,i,:),5), range);
+        set(gca, 'YTick', [], 'XTick', []);
+        colormap(brewermap([],'*RdBu'));
+    end
 end
