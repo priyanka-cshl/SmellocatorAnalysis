@@ -6,6 +6,7 @@ for odor = 1:size(RasterIn,2)
         rownum = rownum + 1;
         spiketimes = find(squeeze(RasterIn(WhichUnit,odor,WhichLocation,:,rep)))/1000; 
         PlotRaster(spiketimes,rownum,Plot_Colors(colortags{odor})); 
+        hold on
     end
 end
 end
