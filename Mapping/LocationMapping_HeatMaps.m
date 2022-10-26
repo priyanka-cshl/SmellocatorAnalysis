@@ -26,7 +26,8 @@ for whichUnit = 1:size(PassiveTuning.RasterOut,1) % each unit
                 tempPSTH(:,1:(Air1(1)-1)) = [];
                 zs = 1000*conv(tempPSTH,gauss_kernel,'same'); %in ms, convert firing rate to Hz (1 ms = 1000 Hz)
                 PSTH_raw(whichUnit,:,whichOdor,whichLocation,whichRep) = zs; 
-                MeanFRs(whichUnit,1,whichOdor,whichLocation,whichRep) = mean(zs(1,stim_duration+[1:stim_duration]));
+                MeanFRs(whichUnit,1,whichOdor,whichLocation,whichRep) = mean(zs(1,stim_duration+[1:stim_duration])) ; %- ...
+                    mean(zs(1,[1:stim_duration]));
                 
                 % ratio PSTH
                 FRo = mean(zs(1,1:stim_duration)); 
