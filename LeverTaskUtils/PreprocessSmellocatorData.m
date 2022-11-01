@@ -8,6 +8,7 @@ function [] = PreprocessSmellocatorData(MyFilePath)
 Paths = WhichComputer();
 addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
 addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
+addpath(genpath('/opt/npy-matlab/')) % path to npy-matlab scripts
 
 %% globals
 % global MyFileName;

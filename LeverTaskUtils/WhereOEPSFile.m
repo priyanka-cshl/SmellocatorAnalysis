@@ -9,6 +9,8 @@ if exist(fullfile(Paths.Grid.Ephys{1},mousename),'dir')
     root = fullfile(Paths.Grid.Ephys{1},mousename);
 elseif exist(fullfile([Paths.Grid.Ephys{2},mousename(1:end-1)],mousename))
     root = fullfile([Paths.Grid.Ephys{2},mousename(1:end-1)],mousename);
+elseif exist(fullfile(Paths.Grid.Ephys{3},mousename))
+    root = fullfile(Paths.Grid.Ephys{3},mousename);
 else
     disp('Please specify the location of raw Ephys Data');
     keyboard;
