@@ -27,11 +27,11 @@ for whichUnit = 1:size(PassiveTuning.RasterOut,1) % each unit
                 zs = 1000*conv(tempPSTH,gauss_kernel,'same'); %in ms, convert firing rate to Hz (1 ms = 1000 Hz)
                 PSTH_raw(whichUnit,:,whichOdor,whichLocation,whichRep) = zs; 
                 MeanFRs(whichUnit,1,whichOdor,whichLocation,whichRep) = mean(zs(1,stim_duration+[1:stim_duration])) ; %- ...
-                    mean(zs(1,[1:stim_duration]));
+                    %mean(zs(1,[1:stim_duration]));
                 
                 % ratio PSTH
                 FRo = mean(zs(1,1:stim_duration)); 
-                PSTH_ratio(whichUnit,:,whichOdor,whichLocation,whichRep) = (zs - FRo)/FRo;
+                PSTH_ratio(whichUnit,:,whichOdor,whichLocation,whichRep) = (zs - FRo); %/FRo;
                 
                 % z-score
                 mu      = mean(zs(1:stim_duration));
@@ -55,15 +55,15 @@ end
 Unit_attributes(:,end+1) = 1:whichUnit;
 
 %% plotting heatmaps
-whichOdor = 3; 
-Trace2Use = 1; % 1 = RawTraces 2 = RatioTraces 3 = ZscoredTraces
+whichOdor = 4; 
+Trace2Use = 2; % 1 = RawTraces 2 = RatioTraces 3 = ZscoredTraces
 switch Trace2Use
     case 1
         WhichTraces = PSTH_raw;
         range = [0 35];     
     case 2
         WhichTraces = PSTH_ratio;
-        range = [-0.1 1];     
+        range = [-10 35];     
     case 3
         WhichTraces = PSTH_zscored;
         range = [-5 70];        
@@ -85,7 +85,7 @@ end
 
 % heatmap : given odor, given location, all repeats     
 nReps = size(WhichTraces,5);
-whichLocation = find(PassiveTuning.Locations==-30);
+whichLocation = find(PassiveTuning.Locations==0);
 figure('Name',['All Repeats, Odor = ',num2str(PassiveTuning.Odors(whichOdor)), ', Location = ',num2str(PassiveTuning.Locations(whichLocation))],'NumberTitle','off');
 for i = 1:nReps 
     subplot(1,nReps,i); 

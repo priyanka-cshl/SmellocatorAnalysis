@@ -12,7 +12,7 @@ global startoffset;
 startoffset = 1; % in seconds
 
 %% core data extraction (and settings)
-if ~exist(MyFilePath)
+if  exist(MyFilePath) == 2
     foo = regexp(MyFilePath,'_','split');
     AnimalName = foo{1};
     MyFilePath = fullfile(Paths.Mapping.StimulusFile,AnimalName,MyFilePath);

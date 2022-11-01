@@ -29,7 +29,7 @@ else
     for i = 1:numel(AllFiles)
         fSize(i) = AllFiles(i).bytes;
     end
-    nUnique = unique(fSize);
+    nUnique = unique(fSize,'stable');
     thisFile = dir(fullfile(BehaviorFolder,[BehaviorFile,'.mat']));
     % same # of tuning and recording files
     if size(myfolders,1) == numel(nUnique)
