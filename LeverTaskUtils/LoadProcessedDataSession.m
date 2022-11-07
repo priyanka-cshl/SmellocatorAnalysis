@@ -139,5 +139,8 @@ if ~isempty(PassiveReplayTraces)
     end
 end
 %LoadProcessedPassiveSession;
+if ~exist('OpenLoop','var')
+    OpenLoop = [];
+end
 
 end
