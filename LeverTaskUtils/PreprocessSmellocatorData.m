@@ -7,6 +7,7 @@ function [] = PreprocessSmellocatorData(MyFilePath)
 %% Add relevant repositories
 Paths = WhichComputer();
 addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
+addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI
 addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
 addpath(genpath('/opt/npy-matlab/')) % path to npy-matlab scripts
 
@@ -48,7 +49,8 @@ FileLocations.Behavior = MyFilePath;
 disp(MyFileName);
 
 %% Parse into trials
-[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
+%[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
+[Trials] = CorrectMatlabSampleDrops_v2(MyData, MySettings, DataTags);
 [MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags);
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
 
@@ -89,7 +91,7 @@ end
 SingleUnits = [];
 if ~isempty(TTLs)
     foo = regexp(myephysdir,[filesep,AnimalName,filesep],'split');
-    myspikesdir = fullfile(Paths.Grid.Ephys_processed,AnimalName,fileparts(foo{end}));
+    myspikesdir = fullfile(Paths.Local.Ephys_processed,AnimalName,fileparts(foo{end}));
     if exist(myspikesdir)
         FileLocations.Spikes = myspikesdir;
         SingleUnits = GetSingleUnits(myspikesdir);
