@@ -19,19 +19,30 @@ filename = fullfile(myKsDir,'all_channels.events');
 
 %% heck to avoid going through empty files
 temp = dir(filename);
-if ~temp.bytes
-    TTLs = [];
-    EphysTuningTrials = [];
-    AuxData = [];
-    disp('empty events file');
-    return
+if ~isempty(temp) % old GUI
+    if ~temp.bytes
+        TTLs = [];
+        EphysTuningTrials = [];
+        AuxData = [];
+        disp('empty events file');
+        return
+    end
+    
+    [data, timestamps, info] = load_open_ephys_data(filename); % data has channel IDs
+    
+    % adjust for clock offset between open ephys and kilosort
+    [offset] = AdjustClockOffset(myKsDir);
+else % new GUI
+    session = Session(fileparts(myKsDir));
+    Events = session.recordNodes{1}.recordings{1}.ttlEvents('Acquisition_Board-100.Rhythm Data');
+    data            = Events.channel;
+    timestamps      = Events.timestamp;
+    info.eventId    = Events.state;
+    
+    % adjust for clock offset between open ephys and kilosort
+    offset = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').timestamps(1);
 end
 
-[data, timestamps, info] = load_open_ephys_data(filename); % data has channel IDs
-
-% adjust for clock offset between open ephys and kilosort
-[offset] = AdjustClockOffset(myKsDir);
-% offset = offset/OepsSampleRate;
 timestamps = timestamps - offset;
 
 % Get various events
