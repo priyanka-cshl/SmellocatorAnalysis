@@ -50,7 +50,7 @@ disp(MyFileName);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
-[Trials] = CorrectMatlabSampleDrops_v2(MyData, MySettings, DataTags);
+[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
 [MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags);
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
 

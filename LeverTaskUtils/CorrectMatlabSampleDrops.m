@@ -83,12 +83,19 @@ for thisTrial = 1:size(Trial.Indices,1)
                 if size(Initiations,1) > 1
                     % no initiation bout longer than TriggerHold (bug)
                     % take the largest bout
-                    [~,OdorStart] = max(diff(Initiations,1,2));
+                    % [~,OdorStart] = max(diff(Initiations,1,2));
+                    % changed for batch Q: I don't know why we would ever pick anything but the last one 
+                    OdorStart = size(Initiations,1);
                 else
                     % take the initiation bout thats available
                     OdorStart = 1;
                 end
                 %disp(['Trial ',num2str(thisTrial),': No valid Initiations found!']);
+                trialflag(thisTrial) = -1;
+            elseif OdorStart < size(Initiations,1) % changed for batch Q:
+                % I don't know why we would ever pick anything but the last one 
+                OdorStart = size(Initiations,1);
+                disp(thisTrial);
                 trialflag(thisTrial) = -1;
             end
             
