@@ -109,10 +109,12 @@ handles.RecordingLength.String = num2str(floor(X.bytes/2/Nchan/30000/60));
 
 % To overlay OdorTTLs
 [TTLFile,TTLPath] = uigetfile('*.mat','Select a processed behavior-ephys file');
-% Load the relevant variables
-load(fullfile(TTLPath,TTLFile), 'TTLs', 'SingleUnits');
-handles.TTLs = TTLs;
-handles.SingleUnits = SingleUnits;
+if ~isequal(TTLFile,0)
+    % Load the relevant variables
+    load(fullfile(TTLPath,TTLFile), 'TTLs', 'SingleUnits');
+    handles.TTLs = TTLs;
+    handles.SingleUnits = SingleUnits;
+end
 
 guidata(hObject, handles);
 
@@ -163,29 +165,31 @@ myYLims = get(gca,'YLim');
 
 myTimeAxis = max(TStart,0) + [0 str2double(handles.WindowSize.String)];
 % find Trial TTLs that span this stretch
-TrialStarts = find((handles.TTLs.Trial(:,1)>=myTimeAxis(1))&(handles.TTLs.Trial(:,1)<=myTimeAxis(2)));
-if ~isempty(TrialStarts)
-    hold on
-    Timestamps = handles.TTLs.Trial(TrialStarts,:);
-    for odor = 1:3
-       if any(Timestamps(:,end)==odor)
-           whichTS = Timestamps(find(Timestamps(:,end)==odor),:);
-           for i = 1:size(whichTS,1)
-               x(1) = whichTS(i,1)+ whichTS(i,4) - myTimeAxis(1);
-               x(2) = whichTS(i,2) - myTimeAxis(1);
-               x = x*OEPSSamplingRate; % in samples
-               Vx = [x(1) x(1) x(2) x(2)];
-               Vy = [myYLims(1) myYLims(2) myYLims(2) myYLims(1)];
-               switch odor 
-                   case 1
-                       patch(Vx,Vy,'y','EdgeColor','none','FaceAlpha',.2);
-                   case 2
-                       patch(Vx,Vy,'r','EdgeColor','none','FaceAlpha',.2);
-                   case 3
-                       patch(Vx,Vy,'b','EdgeColor','none','FaceAlpha',.2);
-               end
-           end
-       end
+if isfield(handles,'TTLs')
+    TrialStarts = find((handles.TTLs.Trial(:,1)>=myTimeAxis(1))&(handles.TTLs.Trial(:,1)<=myTimeAxis(2)));
+    if ~isempty(TrialStarts)
+        hold on
+        Timestamps = handles.TTLs.Trial(TrialStarts,:);
+        for odor = 1:3
+            if any(Timestamps(:,end)==odor)
+                whichTS = Timestamps(find(Timestamps(:,end)==odor),:);
+                for i = 1:size(whichTS,1)
+                    x(1) = whichTS(i,1)+ whichTS(i,4) - myTimeAxis(1);
+                    x(2) = whichTS(i,2) - myTimeAxis(1);
+                    x = x*OEPSSamplingRate; % in samples
+                    Vx = [x(1) x(1) x(2) x(2)];
+                    Vy = [myYLims(1) myYLims(2) myYLims(2) myYLims(1)];
+                    switch odor
+                        case 1
+                            patch(Vx,Vy,'y','EdgeColor','none','FaceAlpha',.2);
+                        case 2
+                            patch(Vx,Vy,'r','EdgeColor','none','FaceAlpha',.2);
+                        case 3
+                            patch(Vx,Vy,'b','EdgeColor','none','FaceAlpha',.2);
+                    end
+                end
+            end
+        end
     end
 end
 set(gca,'XLim',myXLims);
