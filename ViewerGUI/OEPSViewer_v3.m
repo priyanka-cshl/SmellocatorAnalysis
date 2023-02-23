@@ -1,35 +1,35 @@
-function varargout = OEPSViewer_v2(varargin)
-% OEPSVIEWER_V2 MATLAB code for OEPSViewer_v2.fig
-%      OEPSVIEWER_V2, by itself, creates a new OEPSVIEWER_V2 or raises the existing
+function varargout = OEPSViewer_v3(varargin)
+% OEPSVIEWER_V3 MATLAB code for OEPSViewer_v3.fig
+%      OEPSVIEWER_V3, by itself, creates a new OEPSVIEWER_V3 or raises the existing
 %      singleton*.
 %
-%      H = OEPSVIEWER_V2 returns the handle to a new OEPSVIEWER_V2 or the handle to
+%      H = OEPSVIEWER_V3 returns the handle to a new OEPSVIEWER_V3 or the handle to
 %      the existing singleton*.
 %
-%      OEPSVIEWER_V2('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in OEPSVIEWER_V2.M with the given input arguments.
+%      OEPSVIEWER_V3('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in OEPSVIEWER_V3.M with the given input arguments.
 %
-%      OEPSVIEWER_V2('Property','Value',...) creates a new OEPSVIEWER_V2 or raises the
+%      OEPSVIEWER_V3('Property','Value',...) creates a new OEPSVIEWER_V3 or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before OEPSViewer_v2_OpeningFcn gets called.  An
+%      applied to the GUI before OEPSViewer_v3_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to OEPSViewer_v2_OpeningFcn via varargin.
+%      stop.  All inputs are passed to OEPSViewer_v3_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help OEPSViewer_v2
+% Edit the above text to modify the response to help OEPSViewer_v3
 
-% Last Modified by GUIDE v2.5 04-Nov-2022 15:27:48
+% Last Modified by GUIDE v2.5 02-Feb-2023 10:32:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @OEPSViewer_v2_OpeningFcn, ...
-                   'gui_OutputFcn',  @OEPSViewer_v2_OutputFcn, ...
+                   'gui_OpeningFcn', @OEPSViewer_v3_OpeningFcn, ...
+                   'gui_OutputFcn',  @OEPSViewer_v3_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -44,26 +44,30 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before OEPSViewer_v2 is made visible.
-function OEPSViewer_v2_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before OEPSViewer_v3 is made visible.
+function OEPSViewer_v3_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to OEPSViewer_v2 (see VARARGIN)
+% varargin   command line arguments to OEPSViewer_v3 (see VARARGIN)
 
-% Choose default command line output for OEPSViewer_v2
+% Choose default command line output for OEPSViewer_v3
 handles.output = hObject;
+
+% spike data 
+handles.selectedUnit = plot(NaN,NaN,'w.');
+handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.8);
 
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes OEPSViewer_v2 wait for user response (see UIRESUME)
+% UIWAIT makes OEPSViewer_v3 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = OEPSViewer_v2_OutputFcn(hObject, eventdata, handles) 
+function varargout = OEPSViewer_v3_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -94,6 +98,12 @@ if isempty(handles.SessionPath.String)
     
     load(fullfile(handles.SessionPath.String,'chanMap.mat'),'chanMap');
     handles.NumChans.String = num2str(size(chanMap,2));
+    
+    % load units if available
+    if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
+        [handles.Units.List, handles.units.spikes] = GetSortingSummary(WhichSession);
+        handles.UnitList.Data = handles.Units.List(:,1:2);
+    end
 end
 
 if isempty(handles.NumChans.String)
@@ -119,8 +129,6 @@ end
 guidata(hObject, handles);
 
 UpdatePlot(hObject, eventdata, handles);
-
-
 
 
 % --- Executes on button press in ClearSession.
@@ -164,6 +172,12 @@ myXLims = get(gca,'XLim');
 myYLims = get(gca,'YLim');
 
 myTimeAxis = max(TStart,0) + [0 str2double(handles.WindowSize.String)];
+handles.myTimeAxis = myTimeAxis;
+
+hold on
+handles.selectedUnit = plot(NaN,NaN,'w.');
+handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.2);
+
 % find Trial TTLs that span this stretch
 if isfield(handles,'TTLs')
     TrialStarts = find((handles.TTLs.Trial(:,1)>=myTimeAxis(1))&(handles.TTLs.Trial(:,1)<=myTimeAxis(2)));
@@ -207,6 +221,7 @@ function ClearSession_Callback(hObject, eventdata, handles)
 % hObject    handle to ClearSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.SessionPath.String = '';
 
 
 % --- Executes on slider movement.
@@ -288,3 +303,65 @@ function Spacing_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes when selected cell(s) is changed in UnitList.
+function UnitList_CellSelectionCallback(hObject, eventdata, handles)
+% hObject    handle to UnitList (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
+%	Indices: row and column indices of the cell(s) currently selecteds
+% handles    structure with handles and user data (see GUIDATA)
+handles.whichUnit.String = num2str(eventdata.Indices(1));
+% if handles.PlotUnits.Value
+%     UpdatePlot(hObject, eventdata, handles);
+%     % plot units if desired
+myTimeAxis = handles.myTimeAxis;
+OEPSSamplingRate = 30000;
+Nchan       = str2double(handles.NumChans.String);
+channelSpacing = str2double(handles.Spacing.String);
+
+if handles.PlotUnits.Value
+    if isreal(str2double(handles.whichUnit.String))
+        whichUnit = str2double(handles.whichUnit.String);
+        spikes = handles.units.spikes{whichUnit};
+        myspikes = OEPSSamplingRate*(spikes(intersect(find(spikes>=myTimeAxis(1)),find(spikes<=myTimeAxis(2)))) - myTimeAxis(1));
+        
+        whichTT = floor(handles.UnitList.Data(whichUnit,2));
+        whichChan = (whichTT-1)*4 + 10*(handles.UnitList.Data(whichUnit,2) - whichTT);
+        offset = channelSpacing*(Nchan-whichChan-1) - channelSpacing/2;
+        
+        % for plotting as dots
+        handles.selectedUnit.XData = myspikes;
+        handles.selectedUnit.YData = 0*myspikes + offset;
+
+        % plot as a shaded box
+        myspikes(:,2:3) = myspikes + OEPSSamplingRate*[-0.001 0.001]; % 1 ms window around the spike
+        myspikes(:,1) = [];
+%         Vx = [myspikes(:,1) myspikes(:,1) myspikes(:,2) myspikes(:,2)];
+%         Vy = repmat([-channelSpacing  channelSpacing*(Nchan-1) channelSpacing*(Nchan-1) -channelSpacing],size(myspikes,1),1);
+        
+        offsets =  [-channelSpacing  channelSpacing*Nchan];
+        TS = myspikes';
+        if ~isempty(TS)
+            handles.MySelectedUnit.Vertices = [ ...
+                reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
+                repmat([offsets(1) offsets(2) offsets(2) offsets(1)]',size(TS,2),1)];
+            handles.MySelectedUnit.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+        else
+            handles.MySelectedUnit.Vertices = [];
+            handles.MySelectedUnit.Faces = [];
+        end
+    end
+end
+% end
+
+% --- Executes on button press in PlotUnits.
+function PlotUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to PlotUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of PlotUnits
+% if handles.PlotUnits.Value
+%     UpdatePlot(hObject, eventdata, handles);
+% end
