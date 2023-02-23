@@ -11,9 +11,10 @@ params.addParameter('plotephys', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('whichunits', [], @(x) isnumeric(x));
 params.addParameter('PSTHsmooth', 100, @(x) isnumeric(x));
-params.addParameter('UnitsPerFig', 5, @(x) isnumeric(x));
+params.addParameter('UnitsPerFig', 8, @(x) isnumeric(x));
 params.addParameter('PlotOpenLoop', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('PlotPassive', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('ShadeErrorbars', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -26,6 +27,7 @@ smoothingfactor = params.Results.PSTHsmooth;
 units_per_fig = params.Results.UnitsPerFig;
 plotOL = params.Results.PlotOpenLoop;
 plotPR = params.Results.PlotPassive;
+ShadeErrorbars = params.Results.ShadeErrorbars;
 
 global SampleRate;
 global MyFileName;
@@ -272,8 +274,13 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     temp = squeeze(PSTH(2:(trials_per_replay+1),:,i));
                     meanFR = mean(temp);
                     semFR = std(temp)/sqrt(trials_per_replay);
-                    MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5); %used to be r
-                    
+                    if ShadeErrorbars
+                        MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5); %used to be r
+                    else
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,Plot_Colors('t'),0.5);
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,Plot_Colors('t'),0.25);
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,Plot_Colors('t'),0.25);
+                    end
                     %plot((1/SampleRate)*(1:size(PSTH,2)),mean(,1),'r');
                     
                     if isempty(PassiveReplays)
@@ -345,7 +352,14 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                         temp = squeeze(PSTH((trials_per_replay+2):end,:,i));
                         meanFR = mean(temp);
                         semFR = std(temp)/sqrt(numel(PassiveReplays));
-                        MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5); % used to be t
+                        %MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5); % used to be t
+                        if ShadeErrorbars
+                            MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5); %used to be r
+                        else
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,Plot_Colors('r'),0.5);
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,Plot_Colors('r'),0.25);
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,Plot_Colors('r'),0.25);
+                        end
                         
                         %                     plot((1/SampleRate)*(1:size(PSTH,2)),mean(squeeze(PSTH((trials_per_replay+2):end,:,i)),1),...
                         %                         'Color',Plot_Colors('t'));
