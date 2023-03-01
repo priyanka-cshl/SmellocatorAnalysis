@@ -287,7 +287,9 @@ if size(TemplateTrials,1)>1
     first_valid_template = find(TemplateTrials(:,2)<first_replay,1,'last');
     for t = 1:(first_valid_template-1)
         invalid_templates = TemplateTrials(t,1):TemplateTrials(t,2);
-        TrialInfo.Perturbation(invalid_templates) = [];
+        for x = 1:numel(invalid_templates)
+            TrialInfo.Perturbation{invalid_templates(x),1} = [];
+        end
     end
 end
 
