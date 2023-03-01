@@ -7,9 +7,9 @@ function [] = PreprocessSmellocatorData(MyFilePath)
 %% Add relevant repositories
 Paths = WhichComputer();
 addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
-addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI
+addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI: https://github.com/open-ephys/open-ephys-matlab-tools (use commit 10-04-22)
 addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
-addpath(genpath('/opt/npy-matlab/')) % path to npy-matlab scripts
+addpath(genpath(fullfile(Paths.Code,'npy-matlab/'))); % path to npy-matlab scripts
 
 %% globals
 % global MyFileName;
@@ -51,7 +51,7 @@ disp(MyFileName);
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
 [Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
-[MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags);
+[MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags); % check that manifold actually moved as expected
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
 
 %% Check if passive tuning was done
@@ -64,21 +64,34 @@ if ~isempty(TuningFile)
 end
 
 %% Get info from the OEPS files if available
-[myephysdir] = WhereOEPSFile(MyFileName,FilePaths); % returns empty if no recording file was found
-TTLs = []; ReplayTTLs = []; TuningTTLs = [];
-if ~isempty(myephysdir)
-    if size(myephysdir,1) == 1
-        [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-            GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TrialSequence); % send 'ADC', 1 to also get analog aux data
-    else
-        while isempty(TTLs) && ~isempty(myephysdir)
+TTLs = []; ReplayTTLs = []; TuningTTLs = []; myephysdir = [];
+
+% for batch Q - first check if event data has been processed during Sorting
+[mySortingdir] = WhereOEPSTTLs(MyFileName,FilePaths); % returns empty if no recording file was found
+if ~isempty(mySortingdir)
+    % process the TTLs
+    [TTLs,ReplayTTLs,TuningTTLs,~] = ...
+            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
+end
+
+if isempty(TTLs)
+    [myephysdir] = WhereOEPSFile(MyFileName,FilePaths); % returns empty if no recording file was found
+    if ~isempty(myephysdir)
+        if size(myephysdir,1) == 1
             [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TrialSequence);
-            if isempty(TTLs)
-                myephysdir(1,:) = [];
+                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TrialSequence); % send 'ADC', 1 to also get analog aux data
+        else
+            while isempty(TTLs) && ~isempty(myephysdir)
+                [TTLs,ReplayTTLs,TuningTTLs,~] = ...
+                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TrialSequence);
+                if isempty(TTLs)
+                    myephysdir(1,:) = [];
+                end
             end
         end
     end
+else
+    FileLocations.KiloSorted = mySortingdir;
 end
 
 if isempty(TTLs)
@@ -90,8 +103,12 @@ end
 %% Get spikes - label spikes by trials
 SingleUnits = [];
 if ~isempty(TTLs)
-    foo = regexp(myephysdir,[filesep,AnimalName,filesep],'split');
-    myspikesdir = fullfile(Paths.Local.Ephys_processed,AnimalName,fileparts(foo{end}));
+    if isfield(FileLocations,'KiloSorted')
+        myspikesdir = FileLocations.KiloSorted;
+    else
+        foo = regexp(myephysdir,[filesep,AnimalName,filesep],'split');
+        myspikesdir = fullfile(Paths.Local.Ephys_processed,AnimalName,fileparts(foo{end}));
+    end
     if exist(myspikesdir)
         FileLocations.Spikes = myspikesdir;
         SingleUnits = GetSingleUnits(myspikesdir);

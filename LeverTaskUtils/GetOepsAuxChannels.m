@@ -5,47 +5,64 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('ADC', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('KiloSorted', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
 GetAux = params.Results.ADC;
+UseSortingFolder = params.Results.KiloSorted;     
 
 %% defaults
-OepsSampleRate = 30000; % Open Ephys acquisition rate
 global SampleRate; % Behavior Acquisition rate
 
 %% Get Trial Timestamps from the OpenEphys Events file
-filename = fullfile(myKsDir,'all_channels.events');
-
-%% heck to avoid going through empty files
-temp = dir(filename);
-if ~isempty(temp) % old GUI
-    if ~temp.bytes
+if UseSortingFolder
+    if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
+        foo             = load(fullfile(myKsDir,'myTTLfile_1.mat'),'TTLs');
+        data            = foo.TTLs.data;
+        timestamps      = foo.TTLs.timestamps;
+        info.eventId    = foo.TTLs.info.eventId;
+        offset          = foo.TTLs.offset;
+    else
         TTLs = [];
         EphysTuningTrials = [];
         AuxData = [];
         disp('empty events file');
         return
     end
-    
-    [data, timestamps, info] = load_open_ephys_data(filename); % data has channel IDs
-    
-    % adjust for clock offset between open ephys and kilosort
-    [offset] = AdjustClockOffset(myKsDir);
-else % new GUI
-    session = Session(fileparts(myKsDir));
-    Events = session.recordNodes{1}.recordings{1}.ttlEvents('Acquisition_Board-100.Rhythm Data');
-    data            = Events.channel;
-    timestamps      = Events.timestamp;
-    info.eventId    = Events.state;
-    
-    % adjust for clock offset between open ephys and kilosort
-    offset = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').timestamps(1);
+else
+    filename = fullfile(myKsDir,'all_channels.events');
+
+    % hack to avoid going through empty files
+    temp = dir(filename);
+    if ~isempty(temp) % old GUI
+        if ~temp.bytes
+            TTLs = [];
+            EphysTuningTrials = [];
+            AuxData = [];
+            disp('empty events file');
+            return
+        end
+
+        [data, timestamps, info] = load_open_ephys_data(filename); % data has channel IDs
+
+        % adjust for clock offset between open ephys and kilosort
+        [offset] = AdjustClockOffset(myKsDir);
+    else % new GUI
+        session = Session(fileparts(myKsDir));
+        Events = session.recordNodes{1}.recordings{1}.ttlEvents('Acquisition_Board-100.Rhythm Data');
+        data            = Events.channel;
+        timestamps      = Events.timestamp;
+        info.eventId    = Events.state;
+
+        % adjust for clock offset between open ephys and kilosort
+        offset = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').timestamps(1);
+    end
 end
 
 timestamps = timestamps - offset;
 
-% Get various events
+%% Get various events
 TTLTypes = unique(data);
 Tags = {'Air', 'Odor1', 'Odor2', 'Odor3', 'Trial', 'Reward', 'AirManifold', 'Licks'};
 for i = 1:numel(TTLTypes)
@@ -193,27 +210,33 @@ end
 
 AuxData = [];
 if GetAux
-    %% Get analog/digital AuxData from Oeps files - for comparison with behavior data
-    foo = dir(fullfile(myKsDir,'*_ADC1.continuous')); % pressure sensor
-    filename = fullfile(myKsDir,foo.name);
-    [Auxdata1, timestamps, ~] = load_open_ephys_data(filename); % data has channel IDs
-    foo = dir(fullfile(myKsDir,'*_ADC2.continuous')); % thermistor
-    filename = fullfile(myKsDir,foo.name);
-    [Auxdata2, ~, ~] = load_open_ephys_data(filename); % data has channel IDs
-    
-    % adjust for clock offset between open ephys and kilosort
-    timestamps = timestamps - offset;
-    
-    % downsample to behavior resolution
-    
-    AuxData(:,1) = 0:1/SampleRate:max(timestamps);
-    AuxData(:,2) = interp1q(timestamps,Auxdata1,AuxData(:,1)); % pressure sensor
-    AuxData(:,3) = interp1q(timestamps,Auxdata2,AuxData(:,1)); % thermistor
-    % create a continuous TrialOn vector
-    for MyTrial = 1:size(TTLs.Trial,1)
-        [~,start_idx] = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,1)));
-        [~,stop_idx]  = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,2)));
-        AuxData(start_idx:stop_idx,4) = 1;
+    if UseSortingFolder
+        %if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
+        
+    else
+
+        %% Get analog/digital AuxData from Oeps files - for comparison with behavior data
+        foo = dir(fullfile(myKsDir,'*_ADC1.continuous')); % pressure sensor
+        filename = fullfile(myKsDir,foo.name);
+        [Auxdata1, timestamps, ~] = load_open_ephys_data(filename); % data has channel IDs
+        foo = dir(fullfile(myKsDir,'*_ADC2.continuous')); % thermistor
+        filename = fullfile(myKsDir,foo.name);
+        [Auxdata2, ~, ~] = load_open_ephys_data(filename); % data has channel IDs
+
+        % adjust for clock offset between open ephys and kilosort
+        timestamps = timestamps - offset;
+
+        % downsample to behavior resolution
+
+        AuxData(:,1) = 0:1/SampleRate:max(timestamps);
+        AuxData(:,2) = interp1q(timestamps,Auxdata1,AuxData(:,1)); % pressure sensor
+        AuxData(:,3) = interp1q(timestamps,Auxdata2,AuxData(:,1)); % thermistor
+        % create a continuous TrialOn vector
+        for MyTrial = 1:size(TTLs.Trial,1)
+            [~,start_idx] = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,1)));
+            [~,stop_idx]  = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,2)));
+            AuxData(start_idx:stop_idx,4) = 1;
+        end
     end
 end
 end

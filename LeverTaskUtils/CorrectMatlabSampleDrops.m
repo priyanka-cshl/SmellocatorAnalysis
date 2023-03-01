@@ -38,6 +38,10 @@ Trial.Indices = [TrialOn TrialOff (TrialOff-TrialOn)];
 Trial.TimeStamps(find(TrialOn),1) = MyData(TrialOn(find(TrialOn)),1); 
 Trial.TimeStamps(:,2) = MyData(TrialOff,1);
 Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
+% also save trial durations as per indices multiplied by sample rate
+% this is due to an annoying bug, where samples are dropped only on analog
+% lines (along with timestamps, but not on digital lines)
+Trial.TimeStamps(:,4) = Trial.Indices(:,3)/SampleRate;
 
 if Trial.TimeStamps(1,1) == 0
     Trial.Indices(1,1) =  1;
