@@ -92,7 +92,7 @@ function LoadSession_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 if isempty(handles.SessionPath.String)
-        [RecordingFile, WhichSession] = uigetfile('*.dat',...
+        [RecordingFile, WhichSession] = uigetfile('/mnt/data/Sorted/Q8/2022-12-09_14-37-11/mybinaryfile.dat',...
                                 'Select a processed binary file');
     handles.SessionPath.String = WhichSession;
     
@@ -102,7 +102,7 @@ if isempty(handles.SessionPath.String)
     % load units if available
     if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
         [handles.Units.List, handles.units.spikes] = GetSortingSummary(WhichSession);
-        handles.UnitList.Data = handles.Units.List(:,1:2);
+        handles.UnitList.Data = handles.Units.List(:,[1 2 6]);
     end
 end
 
