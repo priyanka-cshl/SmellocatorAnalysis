@@ -273,6 +273,24 @@ for thisTrial = 1:numel(TrialOn)
     LastTrialIdx = TrialOff(thisTrial); % current trial's end Idx
 end
 
+%% hack : sometimes there are two templates but only one was replayed
+% lets assume its the second one for now
+% in such cases, there are no replay trials between the two templates
+TemplateTrials(:,1) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))== 1) + 1;
+if ~strcmp(TrialInfo.Perturbation(end,1),'OL-Template')
+    TemplateTrials(:,2) = find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))==-1);
+else
+    TemplateTrials(:,2) = [find(diff(strcmp(TrialInfo.Perturbation,'OL-Template'))==-1); size(TrialInfo.Perturbation,1)];
+end
+if size(TemplateTrials,1)>1
+    first_replay = find(strcmp(TrialInfo.Perturbation,'OL-Replay'),1,'first');
+    first_valid_template = find(TemplateTrials(:,2)<first_replay,1,'last');
+    for t = 1:(first_valid_template-1)
+        invalid_templates = TemplateTrials(t,1):TemplateTrials(t,2);
+        TrialInfo.Perturbation(invalid_templates) = [];
+    end
+end
+
 %% Extras: count trials of each target zone type
 for i = 1:size(TargetZones,1)
     TargetZones(i,4) = numel( find(TrialInfo.TargetZoneType == i));
