@@ -35,8 +35,12 @@ if any(splitTrials)
 end
 
 MyTrials = [NaN*ones(length(TrialOn),2) TrialOn TrialOff MyData(TrialOn,1) MyData(TrialOff,1)];
-MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); 
-% MyTrials = [Location, OdorId, T-ON-idx, T-OFF-idx, T-ON-TS, T-OFF-TS, T-duration-TS]
+% MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); % see comment below
+% its better to calculate trial duration for on-off indices X sample rate
+% timestamps are dropped intermittently - but only for analog lines
+MyTrials(:,7) = (MyTrials(:,4) - MyTrials(:,3))/SampleRate;
+
+% MyTrials = [Location, OdorId, T-ON-idx, T-OFF-idx, T-ON-TS, T-OFF-TS, T-duration]
 
 %% Odor ON-OFF timestamps
 OdorColumn = MyData(:,find(ismember(DataTags,'InRewardZone'))); % In reward zone column was used
