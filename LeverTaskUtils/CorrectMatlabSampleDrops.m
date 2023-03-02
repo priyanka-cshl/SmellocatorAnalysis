@@ -21,7 +21,8 @@ LeverCol = find(cellfun(@isempty,regexp(DataTags,'Lever'))==0);
 %% Get Trial ON-OFF timestamps
 TrialColumn = MyData(:,TrialCol);
 TrialColumn(TrialColumn~=0) = 1; % make logical
-TrialOn = find(diff([0; TrialColumn])>0) -1;
+TrialOn = find(diff([0; TrialColumn])>0); % this should work better in case samples were dropped in NI : PG 23/03/02
+% TrialOn = find(diff([0; TrialColumn])>0) -1;
 TrialOff =  find(diff(TrialColumn)<0)+1;
 
 % account for cases where acquisition started/ended in between a trial
@@ -34,17 +35,41 @@ end
 
 Trial.Indices = [TrialOn TrialOff (TrialOff-TrialOn)];
 
-% if acq started when trial was already high - TrialOn(1) == 0
+% if acq started when trial was already high - TrialOn(1) == 0 : PG 23/03/02 - no longer
+% valid - TrialOn(1) cannot be less than 1 - next line still works though
 Trial.TimeStamps(find(TrialOn),1) = MyData(TrialOn(find(TrialOn)),1); 
+
 Trial.TimeStamps(:,2) = MyData(TrialOff,1);
 Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
-% also save trial durations as per indices multiplied by sample rate
-% this is due to an annoying bug, where samples are dropped only on analog
-% lines (along with timestamps, but not on digital lines)
-Trial.TimeStamps(:,4) = Trial.Indices(:,3)/SampleRate;
 
-if Trial.TimeStamps(1,1) == 0
+if Trial.TimeStamps(1,1) == 0 % PG 23/03/02 - no longer valid - TrialOn(1) cannot be less than 1
     Trial.Indices(1,1) =  1;
+end
+
+% check for timestamp drops
+TimeStamp_drops = find(abs(diff(MyData(:,1)))>((1/SampleRate)+0.0001)) + 1;
+if ~isempty(TimeStamp_drops)
+    errorflags(2) = 1;
+    % these timestamp drops seem to happen only in chunks with Trial Starts
+    % right at the end - check this
+    if isequal(TimeStamp_drops,intersect(TrialOn,TimeStamp_drops))
+        disp(['Warning: timestamps dropped at ', num2str(numel(TimeStamp_drops)), ' trial starts']);
+    else
+        disp('Warning: timestamps dropped - not just at trial starts - ignoring those');
+        keyboard;
+    end
+    for i = 1:numel(TimeStamp_drops)
+        f = find(TrialOn==TimeStamp_drops(i));
+        if ~isempty(f)
+            Trial.TimeStamps(f,1) = Trial.TimeStamps(f,1) - (1/SampleRate);
+            Trial.TimeStampDrops(f,1) = 1;
+        end
+    end
+    % recompute trial durations
+    Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
+else
+   disp('No timestamps dropped');
+   Trial.TimeStampDrops(1:numel(TrialOn),1) = 0;
 end
 
 % for trial On detection 
@@ -75,14 +100,18 @@ for thisTrial = 1:size(Trial.Indices,1)
         LeverTemp(LeverTemp>0) = 1;
         % get all initiation hold periods
         Initiations = [find(diff([0; LeverTemp; 0])==1) find(diff([0; LeverTemp; 0])==-1)-1];
-        
+        TS = MyData(LastTrialIdx:thisTrialIdx, 1);
+        if Trial.TimeStampDrops(thisTrial) && Initiations(end) == (numel(LeverSnippet)-1)
+            Initiations(end) = Initiations(end)+1;
+        end
+        Initiations_durations = 1000*diff([TS(Initiations(:,1),1) TS(Initiations(:,2),1)],1,2); % in ms
+
         if ~isempty(Initiations)
             % Odor ON timestamp - find the first initiation period > trigger hold
             TriggerHold = MySettings(...
                                 find(MySettings(:,1)<=Trial.TimeStamps(thisTrial,1),1,'last') ...
                                     ,13); % in msec
-            TriggerHold = floor(TriggerHold*SampleRate/1000); % in samples
-            OdorStart = find(diff(Initiations,1,2)>=(TriggerHold-1),1,'last');
+            OdorStart = find(Initiations_durations>=TriggerHold, 1, 'last');
             if isempty(OdorStart)
                 if size(Initiations,1) > 1
                     % no initiation bout longer than TriggerHold (bug)
@@ -105,7 +134,8 @@ for thisTrial = 1:size(Trial.Indices,1)
             
             % Trial ON timestamp - find the first initiation period > trigger hold
             TrialStartOffsets(thisTrial,1) = Initiations(OdorStart,2) - numel(LeverSnippet);
-            OdorStartOffsets(thisTrial,1) = Initiations(OdorStart,1) + TriggerHold - numel(LeverSnippet);
+            %OdorStartOffsets(thisTrial,1) = Initiations(OdorStart,1) + TriggerHold - numel(LeverSnippet);
+            OdorStartOffsets(thisTrial,1) = TS(Initiations(OdorStart,1)) - TS(end) + TriggerHold/1000;
         else
             %TrialStartOffsets(thisTrial,1) = NaN;
             OdorStartOffsets(thisTrial,1) = NaN;
@@ -169,13 +199,6 @@ if ~any(abs(diff(x,1,2))>5)
 else
     disp('Warning: Samples dropped between digital and analog');
     errorflags(1) = 1;
-end
-
-if ~any(unique(round(diff(MyData(:,1)),4))~=0.0020)
-     disp('No timestamps dropped');
-else
-    disp('Warning: timestamps dropped');
-    errorflags(2) = 1;
 end
 
 end
