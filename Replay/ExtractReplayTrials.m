@@ -42,7 +42,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
         OpenLoop.ReplayTraces.TrialIDs{i} = whichTrials;
         TrialOFF = [];
         Nsubtrials = diff(TemplateTrials(i,:))+1;
-        for r = 1:numel(whichTrials)
+        for r = 1:numel(whichTrials) % for every replay
             % the replay trace is already concatenated - but need to know
             % how to split it into subtrials such that the template can
             % be aligned to it
@@ -216,8 +216,9 @@ for i = 1:size(TemplateTrials,1) % no. of templates
         % ignore residuals before first trial start and last trial end
         Residuals(1:(SampleRate*startoffset),:) = 0; % being generous about errors at the beginning
         Residuals(X(end,4):end,:) = 0;
-        
-        ErrorDist = fitdist(Residuals(:),'normal');
+
+        %ErrorDist = fitdist(Residuals(:),'normal');
+        ErrorDist = fitdist(Residuals(~isinf(Residuals(:))),'normal'); % if timestamps were dropped - traces have Infs in them
         % check if mean is ~0 and if sigma is very small (<5)
         if (ErrorDist.mean<0.1) && ErrorDist.sigma<5
             disp('template and replay traces align well');

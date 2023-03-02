@@ -15,7 +15,8 @@ global startoffset; % = 1; % seconds
 %% Get Trial ON-OFF timestamps
 TrialColumn = MyData(:,6);
 TrialColumn(TrialColumn~=0) = 1; % make logical
-TrialOn = find(diff(TrialColumn)>0);
+TrialOn = find(diff([0; TrialColumn])>0); % this should work better in case samples were dropped in NI : PG 23/03/02
+% TrialOn = find(diff(TrialColumn)>0);
 TrialOff =  find(diff(TrialColumn)<0)+1;
 
 % account for cases where acquisition started/ended in between a trial
@@ -35,10 +36,7 @@ if any(splitTrials)
 end
 
 MyTrials = [NaN*ones(length(TrialOn),2) TrialOn TrialOff MyData(TrialOn,1) MyData(TrialOff,1)];
-% MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); % see comment below
-% its better to calculate trial duration for on-off indices X sample rate
-% timestamps are dropped intermittently - but only for analog lines
-MyTrials(:,7) = (MyTrials(:,4) - MyTrials(:,3))/SampleRate;
+MyTrials(:,7) = MyTrials(:,6) - MyTrials(:,5); 
 
 % MyTrials = [Location, OdorId, T-ON-idx, T-OFF-idx, T-ON-TS, T-OFF-TS, T-duration]
 

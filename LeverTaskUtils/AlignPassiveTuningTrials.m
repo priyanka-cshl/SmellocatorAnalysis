@@ -71,7 +71,7 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
         while alignment<=0
             % Looks like if there were passive replays - spurious trials get inserted
             % 1. match trial durations across TuningTrials and EphysTuningTrials
-            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(1:size(TuningTrials,1),3))>0.005)
+            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(1:size(TuningTrials,1),3))>0.01)
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TuningTrials

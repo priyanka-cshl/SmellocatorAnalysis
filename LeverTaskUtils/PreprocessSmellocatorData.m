@@ -50,9 +50,20 @@ disp(MyFileName);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
-[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
+[Trials,InitiationsFixed] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
 [MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags); % check that manifold actually moved as expected
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
+
+% sanity check - did some guess work in CorrectMatlabSampleDrops to compute
+% odor start - check if it made sense
+if ~isempty(InitiationsFixed)
+    if any(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01)
+        disp('something funky with computing odorstart from Lever trace');
+        keyboard;
+        weirdo = find(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01);
+        TrialInfo.OdorStart(weirdo,1) = TrialInfo.OdorStart(weirdo,2);
+    end
+end
 
 %% Check if passive tuning was done
 MyTuningTrials = []; TrialSequence = []; PassiveReplayTraces = [];
