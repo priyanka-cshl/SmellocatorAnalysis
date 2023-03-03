@@ -1,5 +1,15 @@
-function [] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials)
+function [] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials, varargin)
 
+narginchk(1,inf)
+params = inputParser;
+params.CaseSensitive = false;
+params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
+
+% extract values from the inputParser
+params.parse(varargin{:});
+plotspikes = params.Results.plotspikes;
+plotevents = params.Results.plotevents;
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
@@ -65,29 +75,35 @@ switch AlignTo
         Xlims = [-1.2 -1];
 end
 
-EventPlotter(myEvents,trialsdone);
-
-% Plot TrialType
-TrialTypePlotter(perturbationTrials(:,2),-whichodor,Xlims,trialsdone);
-
-TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone+size(perturbationTrials,1));
+if plotevents
+    EventPlotter(myEvents,trialsdone);
+    
+    % Plot TrialType
+    TrialTypePlotter(perturbationTrials(:,2),-whichodor,Xlims,trialsdone);
+    
+    TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone+size(perturbationTrials,1));
+end
 
 % Plot Spikes
 for x = 1:size(allTrials,1)
     
-    % Plot Target Zone periods - adjust times if needed
-    ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
-    InZonePlotter(ZoneTimes', x+trialsdone);
+    if plotevents
+        % Plot Target Zone periods - adjust times if needed
+        ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
+        InZonePlotter(ZoneTimes', x+trialsdone);
+    end
     
-    % Plot Spikes
-    thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
-    % adjust spiketimes if needed
-    thisTrialSpikes = thisTrialSpikes - Offset(x);
-    
-    if x>size(perturbationTrials,1)
-        PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('b'));
-    else
-        PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('r'));
+    if plotspikes
+        % Plot Spikes
+        thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
+        % adjust spiketimes if needed
+        thisTrialSpikes = thisTrialSpikes - Offset(x);
+        
+        if x>size(perturbationTrials,1)
+            PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('b'));
+        else
+            PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('r'));
+        end
     end
 end
 
