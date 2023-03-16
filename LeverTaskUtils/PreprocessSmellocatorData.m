@@ -58,10 +58,16 @@ disp(MyFileName);
 % odor start - check if it made sense
 if ~isempty(InitiationsFixed)
     if any(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01)
-        disp('something funky with computing odorstart from Lever trace');
-        keyboard;
         weirdo = find(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01);
-        TrialInfo.OdorStart(weirdo,1) = TrialInfo.OdorStart(weirdo,2);
+        if any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
+            disp('something funky with computing odorstart from Lever trace');
+            keyboard;
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+        else
+            % Initiation hold was larger than a second - that's couldn't
+            % compute it accurately from trial traces
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+        end
     end
 end
 
@@ -134,6 +140,9 @@ if ~isempty(TTLs)
 end
 
 %% Saving stuff in one place
+if ~exist(fileparts(savepath),'dir')
+    mkdir(fileparts(savepath));
+end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
                'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
