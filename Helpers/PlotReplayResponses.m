@@ -5,7 +5,12 @@ if strcmp(computer, 'MACI64')
 elseif strcmp(computer,'PCWIN64')
     datapath = 'C:\Users\Marie\Documents\data\Smellocator\Processed\Behavior';
 else
-    datapath = '/mnt/data/Processed/Behavior/';
+    try
+        datapath = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior';
+    catch
+        warning('Grid not mounted. Trying to use a local copy.');
+        datapath = '/mnt/data/Processed/Behavior/';
+    end
 end
 MySession = fullfile(datapath,SessionPath);
 
