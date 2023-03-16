@@ -130,7 +130,8 @@ whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
 MyColors1 = brewermap(15,'*PuBu');
 MyColors2 = brewermap(15,'*OrRd');
-handles.tetrode.String = num2str(handles.whichtetrode(whichUnit));
+handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
+handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 switch AlignType
     case {1,2,6}
         myXlim = [-1.2 6];
@@ -188,7 +189,8 @@ whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
 MyColors1 = brewermap(15,'*PuBu');
 MyColors2 = brewermap(15,'*OrRd');
-handles.tetrode.String = num2str(handles.whichtetrode(whichUnit));
+handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
+handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 switch AlignType
     case {1,2,6}
         myXlim = [-1.2 6];
