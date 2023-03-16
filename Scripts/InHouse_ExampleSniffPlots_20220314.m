@@ -56,6 +56,11 @@ TracesOut(:,3) = filtfilt(b,a,TracesOut(:,3)); %apply the filter to x(t)
 %% Trial Aligned Sniff times?
 [AlignedSniffs] =  TrialAlignedSniffTimes(pkloc,TracesOut(:,5),SampleRate);
 
+%% Trial Aligned spikeTimes
+% Get all spikes, all units aligned to trials
+[AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
+    size(TrialInfo.TrialID,2),TrialInfo,MySession);
+
 %%
 whichOdor = 1; 
 for tz = 1:12
