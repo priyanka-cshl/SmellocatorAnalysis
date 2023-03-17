@@ -124,11 +124,17 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     TrialTrace(1:traceOverlap,1) = 0;
     % get trial ON-OFF indices
     Idx = [find(diff(TrialTrace>0)==1)+1 find(diff(TrialTrace>0)==-1)];
-    % get OdorStart Times w.r.t. Trial start (from the behavior file)
+    % get OdorStart Times w.r.t. Trial start (from the behavior file) 
     Idx(:,3) = Idx(:,1) + ceil(SampleRate*TrialInfo.OdorStart(whichTrials,1));
     if ~isempty(TTLs)
         % OdorStart Times can also be extracted from OEPS TTLs
         Idx(:,4) = Idx(:,1) + ceil(SampleRate*TTLs.Trial(whichTrials,4));
+        
+        % If Timestamps were dropped - replace odor start values with those
+        % from the Ephys file
+        if any(TrialInfo.TimeStampsDropped(whichTrials))
+            Idx(find(TrialInfo.TimeStampsDropped(whichTrials)),3) = Idx(find(TrialInfo.TimeStampsDropped(whichTrials)),4);
+        end
         if numel(find(abs(Idx(:,3)-Idx(:,4))>5))>1
             disp('mismatch in OdorOn Timestamps between behavior and OEPS files');
             keyboard;
