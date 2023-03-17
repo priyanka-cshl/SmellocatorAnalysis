@@ -181,7 +181,7 @@ for i = 1:3
 %         end
 %     end
 %     set(gca, 'XLim', myXlim);
-    
+    UpdateUnits(handles);
 end
 
 function UpdateUnits(handles)
