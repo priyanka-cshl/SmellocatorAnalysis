@@ -27,6 +27,10 @@ if nargin < 2 || isempty(MyUnits)
     MyUnits = 1:N;
 end
 
+% sort units by tetrodes
+foo = cell2mat(arrayfun(@(x) [x.tetrode; x.id], SingleUnits, 'UniformOutput', false))';
+[~, MyUnits] = sortrows(foo,[1 2]);
+
 %% Get the replay traces and spikes
 [MyTraces,timestamps,PSTH,Raster] = ...
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
