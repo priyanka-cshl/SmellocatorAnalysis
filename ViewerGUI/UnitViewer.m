@@ -101,6 +101,9 @@ MySession = handles.WhereSession.String;
     ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, OpenLoop] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
+handles.SingleUnits = SingleUnits;
+handles.TimestampAdjuster = TimestampAdjuster;
+
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSpikes, handles.Events, handles.whichtetrode] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
     size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
@@ -221,6 +224,7 @@ for i = 1:3
             handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotevents', 0);
     end
     set(gca, 'XLim', myXlim);
+    set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
     
     if handles.plotPSTH.Value
         axes(handles.(['axes',num2str(i+3)]));
@@ -244,6 +248,15 @@ for i = 1:3
         set(gca, 'XLim', myXlim);
     end
     
+    % plot spike amplitudes
+    thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
+    axes(handles.amplitudeaxes);
+    plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
+    hold on
+    session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
+    line([session_end session_end],get(gca,'YLim'),'Color','k');
+    hold off
+    % find 
 end
 
 function WhereSession_Callback(hObject, eventdata, handles)
