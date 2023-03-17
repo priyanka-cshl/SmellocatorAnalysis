@@ -2,7 +2,11 @@
 % into trials, with relevant continuous (lever, motor, respiration, lickpiezo)
 % and event data (licks, target zone flags, odor ON-OFF, etc) for each trial
 
-function [] = PreprocessSmellocatorData(MyFilePath)
+function [] = PreprocessSmellocatorData(MyFilePath,overwriteflag)
+
+if nargin<2
+    overwriteflag = 0;
+end
 
 %% Add relevant repositories
 Paths = WhichComputer();
@@ -36,7 +40,7 @@ end
 
 %% check if the preprocessed version already exists - locally or on the server
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
-if exist(savepath)
+if ~overwriteflag && exist(savepath)
     reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
     if strcmp(reply,'N')
         return;
