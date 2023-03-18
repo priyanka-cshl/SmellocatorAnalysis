@@ -2,7 +2,11 @@
 % into trials, with relevant continuous (lever, motor, respiration, lickpiezo)
 % and event data (licks, target zone flags, odor ON-OFF, etc) for each trial
 
-function [] = PreprocessSmellocatorData(MyFilePath)
+function [] = PreprocessSmellocatorData(MyFilePath,overwriteflag)
+
+if nargin<2
+    overwriteflag = 0;
+end
 
 %% Add relevant repositories
 Paths = WhichComputer();
@@ -36,7 +40,7 @@ end
 
 %% check if the preprocessed version already exists - locally or on the server
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
-if exist(savepath)
+if ~overwriteflag && exist(savepath)
     reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
     if strcmp(reply,'N')
         return;
@@ -50,9 +54,26 @@ disp(MyFileName);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
-[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
+[Trials,InitiationsFixed] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
 [MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags); % check that manifold actually moved as expected
 [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
+
+% sanity check - did some guess work in CorrectMatlabSampleDrops to compute
+% odor start - check if it made sense
+if ~isempty(InitiationsFixed)
+    if any(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01)
+        weirdo = find(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01);
+        if any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
+            disp('something funky with computing odorstart from Lever trace');
+            keyboard;
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+        else
+            % Initiation hold was larger than a second - that's couldn't
+            % compute it accurately from trial traces
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+        end
+    end
+end
 
 %% Check if passive tuning was done
 MyTuningTrials = []; TrialSequence = []; PassiveReplayTraces = [];
@@ -123,6 +144,9 @@ if ~isempty(TTLs)
 end
 
 %% Saving stuff in one place
+if ~exist(fileparts(savepath),'dir')
+    mkdir(fileparts(savepath));
+end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
                'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');

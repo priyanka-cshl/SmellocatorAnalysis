@@ -103,6 +103,27 @@ for thisTrial = 1:numel(TrialOn)
             Traces.TimestampsAnalog(thisTrial) = { MyData(start_idxCorrected:stop_idxCorrected, 1) };
         end
         
+        % handing timestamp drops
+        TrialInfo.TimeStampsDropped(thisTrial) = Trial.TimeStampDrops(thisTrial);
+        if TrialInfo.TimeStampsDropped(thisTrial)
+            % find the location where missing samples need to be patched in
+           f = find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001);
+           samples_missing = int16((Traces.Timestamps{thisTrial}(f+1) - Traces.Timestamps{thisTrial}(f))*SampleRate - 1);
+           timestamps_missing = linspace(Traces.Timestamps{thisTrial}(f),Traces.Timestamps{thisTrial}(f+1),samples_missing+2);
+           timestamps_missing(:,1) = [];
+           timestamps_missing(:,end) = [];
+           % pad NaNs into the Traces
+           Traces.Lever{thisTrial} = [Traces.Lever{thisTrial}(1:f); Inf(samples_missing,1); Traces.Lever{thisTrial}(f+1:end)];
+           Traces.Motor{thisTrial} = [Traces.Motor{thisTrial}(1:f); Inf(samples_missing,1); Traces.Motor{thisTrial}(f+1:end)];
+           Traces.Sniffs{thisTrial} = [Traces.Sniffs{thisTrial}(1:f); Inf(samples_missing,1); Traces.Sniffs{thisTrial}(f+1:end)];
+           Traces.Licks{thisTrial} = [Traces.Licks{thisTrial}(1:f); Inf(samples_missing,1); Traces.Licks{thisTrial}(f+1:end)];
+           Traces.Rewards{thisTrial} = [Traces.Rewards{thisTrial}(1:f); Inf(samples_missing,1); Traces.Rewards{thisTrial}(f+1:end)];
+           % making an assumption here
+           Traces.Trial{thisTrial} = [Traces.Trial{thisTrial}(1:f); zeros(samples_missing-1,1); 1; Traces.Trial{thisTrial}(f+1:end)];
+           Traces.Timestamps{thisTrial} = [Traces.Timestamps{thisTrial}(1:f); timestamps_missing'; Traces.Timestamps{thisTrial}(f+1:end)];
+           Traces.TimestampsAnalog{thisTrial} = [Traces.TimestampsAnalog{thisTrial}(1:f); timestamps_missing'; Traces.TimestampsAnalog{thisTrial}(f+1:end)];
+        end
+        
         %% Extract Trial Timestamps
         % w.r.t SessionStart (to go back to raw data if needed)
         thisTrialIdx = [TrialOn(thisTrial) TrialOff(thisTrial)]; %uncorrected
@@ -112,21 +133,27 @@ for thisTrial = 1:numel(TrialOn)
         % w.r.t TrialStart
         TrialInfo.TimeIndices(thisTrial,:) = max(1,thisTrialIdx - start_idx); % when session starts with trial ON - this value becomes zero
         TrialInfo.Timestamps(thisTrial,:) = MyData(thisTrialIdx,1) - MyData(start_idx,1); % in seconds
-        TrialInfo.Duration(thisTrial,1) = (diff(thisTrialIdx) + 1)/SampleRate; % in seconds
-                
+        %TrialInfo.Duration(thisTrial,1) = (diff(thisTrialIdx) + 1)/SampleRate; % in seconds
+        TrialInfo.Duration(thisTrial,1) = diff(TrialInfo.Timestamps(thisTrial,:));
+        
         %% Which odor
         TrialInfo.Odor(thisTrial,1) = mode(MyData(thisTrialIdx(1):thisTrialIdx(2),TrialCol));
         % Odor ON timestamp (from the InRewardZone column - enocdes Odor ON before trialstart - see GUI)
         thisTrialInZone = find(diff(MyData(LastTrialIdx:thisTrialIdx(1), RZoneCol))==-1);
+        if TrialInfo.TimeStampsDropped(thisTrial) && thisTrialInZone(end) == (numel(LastTrialIdx:thisTrialIdx(1)) - 1)
+                thisTrialInZone = []; % cannot determine accurately when the Odor went ON - transition samples are missing
+        end
+
         if ~isempty(thisTrialInZone)
-            TrialInfo.OdorStart(thisTrial,1) = LastTrialIdx + thisTrialInZone(end) - thisTrialIdx(1); % odor start idx w.r.t trial start
+            %TrialInfo.OdorStart(thisTrial,1) = LastTrialIdx + thisTrialInZone(end) - thisTrialIdx(1); % odor start idx w.r.t trial start
+            TrialInfo.OdorStart(thisTrial,1) = MyData(LastTrialIdx + thisTrialInZone(end) - 1,1) - MyData(thisTrialIdx(1),1); % odor start idx w.r.t trial start
         else
-            TrialInfo.OdorStart(thisTrial,1) = NaN;
+            TrialInfo.OdorStart(thisTrial,1) = OdorOffsets(thisTrial);
         end
         
         %% Timestamps for Odor ON and Trial ON - reconstructed from Lever trace
         TrialInfo.OdorStart(thisTrial,2) = OdorOffsets(thisTrial);
-        TrialInfo.OdorStart(thisTrial,:) = TrialInfo.OdorStart(thisTrial,:)/SampleRate;
+        %TrialInfo.OdorStart(thisTrial,:) = TrialInfo.OdorStart(thisTrial,:)/SampleRate;
         
         %% Which TargetZone
         if ~isempty(find(TargetZones(:,1) == mode(MyData(thisTrialIdx(1):thisTrialIdx(2),2)),1))

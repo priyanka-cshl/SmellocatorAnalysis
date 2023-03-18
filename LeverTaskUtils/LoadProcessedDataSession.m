@@ -32,7 +32,7 @@ TracesOut = vertcat(zeros(TrialInfo.TraceIndices(1,1),size(TracesOut,2)), Traces
 fband = [0.5 30];
 Np    = 4; % filter order
 [b,a] = butter(Np,fband/(SampleRate/2)); % band pass Butterworth filter coefficients
-TracesOut(:,3) = filtfilt(b,a,TracesOut(:,3)); %apply the filter to x(t)
+%TracesOut(:,3) = filtfilt(b,a,TracesOut(:,3)); %apply the filter to x(t)
 
 %% calculate the timestamp difference between Ephys and Behavior - not used in this function
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
@@ -45,7 +45,7 @@ TrialTrace = TracesOut(:,find(strcmp(ColNames,'Trial')))';
 % for every trial - patch in the odor ON period
 for i = 1:size(TrialInfo.TrialID,2)
     x2 = TrialInfo.SessionIndices(i,1); % replay start
-    x1 = x2 + TrialInfo.OdorStart(i,1)*SampleRate;
+    x1 = round(x2 + TrialInfo.OdorStart(i,1)*SampleRate);
     if ~isnan(x1)
         TrialTrace(1,x1:x2) = -TrialInfo.Odor(i);
     end

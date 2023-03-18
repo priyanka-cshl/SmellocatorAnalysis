@@ -11,7 +11,6 @@ for j = 1:size(whichTraces,1)
     temp = cellfun(@(x) ...
         x(1:end-traceOverlap), Traces.(whichTraces{j})(whichTrials), ...
         'UniformOutput', false);
-    
     % add in the overlap for the very last trial if needed
     % also make sure that there are atleast startoffset*SampleRate
     % samples after TrialOFF

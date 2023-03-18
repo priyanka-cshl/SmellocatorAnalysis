@@ -5,15 +5,16 @@ AlignTo = [2 2 2];
 ChosenUnits = [18 25 53];
 HaltUnits = [63 15 10]; % 31 17]
 HaltUnits = [31 17 18];
+HaltUnits = [15 17 18]; % for consistency with RO1 and poster
 FRmax = [0 50];
 
 %% for O3
-SessionPath = 'O3/O3_20210929_r0_processed.mat';
-% Trial ON (1), odor ON (2), Trial OFF (3), Reward (4), Halt Start (6)
-AlignTo = [2 2 2]; 
-ChosenUnits = [18 25 53];
-HaltUnits = [16 74 15];
-FRmax = [0 50];
+% SessionPath = 'O3/O3_20210929_r0_processed.mat';
+% % Trial ON (1), odor ON (2), Trial OFF (3), Reward (4), Halt Start (6)
+% AlignTo = [2 2 2]; 
+% ChosenUnits = [18 25 53];
+% HaltUnits = [16 74 15];
+% FRmax = [0 50];
 
 % %% for PCX4
 % SessionPath = 'PCX4/PCX4_20210713_r0_processed.mat';
@@ -98,7 +99,7 @@ for x = 1:nCols
         
         [nTrials, FRs, BinOffset] = ...
             UnitPlotter(whichUnit, whichOdor, -whichTZ, AlignedSpikes, Events, TrialInfo, 6, trialsdone, trialboxcolor);
-        
+        myXlim = [-1.2 6];
         set(gca, 'XLim', myXlim, 'TickDir', 'out');
         
         trialsdone = trialsdone + nTrials;

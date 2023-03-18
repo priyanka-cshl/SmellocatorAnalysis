@@ -12,6 +12,12 @@ else
     varout1 = Temp.session_data.TrialSequence; % location, odor
     if isfield(Temp.session_data,'LocationSequence')
         varout2 = Temp.session_data.LocationSequence;
+        if (size(varout2,1)==(size(varout1,1)-1)) && (varout1(end,1)>997)
+            % if last trial happens to be a passive replay then there is no
+            % entry in the location sequence for that - it should just be
+            % all zeros
+            varout2(end+1,:) = 0;
+        end
     else
         varout2 = zeros(size(varout1,1),1);
     end

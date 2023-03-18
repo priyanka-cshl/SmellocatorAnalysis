@@ -71,7 +71,7 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
         while alignment<=0
             % Looks like if there were passive replays - spurious trials get inserted
             % 1. match trial durations across TuningTrials and EphysTuningTrials
-            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(1:size(TuningTrials,1),3))>0.005)
+            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(1:size(TuningTrials,1),3))>0.01)
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TuningTrials
@@ -112,16 +112,24 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                 alignment = 1;
             else
                 if alignment == 0
-                    if any(find(TrialSequence(:,1)==800))
-                        U1 = unique(round(TuningTrials(:,7),0,'decimal'));
-                        U2 = unique(round(EphysTuningTrials(:,3),0,'decimal'));
-                        culprit = U2(find(~ismember(U2,U1,'rows')));
-                        spuriousTrials = find(round(EphysTuningTrials(:,3),0,'decimal') == culprit);
-                        EphysTuningTrials(spuriousTrials,:) = [];
+                    % PG - 23/03/16: sometimes there are samples dropped in
+                    % NI which causes misestimation of trial duration by
+                    % exactly 50 ms
+                    weirdo = find(abs(TuningTrials(:,7) - EphysTuningTrials(1:size(TuningTrials,1),3))>0.01);
+                    if ~any(round((TuningTrials(weirdo,7) - EphysTuningTrials(weirdo,3)),2,'decimal')~=0.05)
+                        TuningTrials(weirdo,7) = EphysTuningTrials(weirdo,3);
                     else
-                        EphysTuningTrials(1,:) = [];
+                        if any(find(TrialSequence(:,1)==800))
+                            U1 = unique(round(TuningTrials(:,7),0,'decimal'));
+                            U2 = unique(round(EphysTuningTrials(:,3),0,'decimal'));
+                            culprit = U2(find(~ismember(U2,U1,'rows')));
+                            spuriousTrials = find(round(EphysTuningTrials(:,3),0,'decimal') == culprit);
+                            EphysTuningTrials(spuriousTrials,:) = [];
+                        else
+                            EphysTuningTrials(1,:) = [];
+                        end
+                        alignment = -1;
                     end
-                    alignment = -1;
                 else
                     disp('ephys file has extra trials!');
                     keyboard;

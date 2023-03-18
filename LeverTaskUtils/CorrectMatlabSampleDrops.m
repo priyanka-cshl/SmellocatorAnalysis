@@ -1,5 +1,5 @@
 % organize the session data into a cell array of trials
-function [Trial] = ...
+function [Trial,InitiationsFixed] = ...
     CorrectMatlabSampleDrops(MyData, MySettings, DataTags)
 
 % Check if there were any sample drop issues between digital and analog data
@@ -47,6 +47,7 @@ if Trial.TimeStamps(1,1) == 0 % PG 23/03/02 - no longer valid - TrialOn(1) canno
 end
 
 % check for timestamp drops
+Trial.TimeStampDrops(1:numel(TrialOn),1) = 0;
 TimeStamp_drops = find(abs(diff(MyData(:,1)))>((1/SampleRate)+0.0001)) + 1;
 if ~isempty(TimeStamp_drops)
     errorflags(2) = 1;
@@ -61,26 +62,24 @@ if ~isempty(TimeStamp_drops)
     for i = 1:numel(TimeStamp_drops)
         f = find(TrialOn==TimeStamp_drops(i));
         if ~isempty(f)
-            Trial.TimeStamps(f,1) = Trial.TimeStamps(f,1) - (1/SampleRate);
+%             Trial.TimeStamps(f,1) = Trial.TimeStamps(f,1) - (1/SampleRate);
             Trial.TimeStampDrops(f,1) = 1;
         end
     end
     % recompute trial durations
-    Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
+%     Trial.TimeStamps(:,3) = Trial.TimeStamps(:,2) - Trial.TimeStamps(:,1);
 else
    disp('No timestamps dropped');
-   Trial.TimeStampDrops(1:numel(TrialOn),1) = 0;
 end
 
 % for trial On detection 
 LeverThresh = median(MySettings(:,11));
 trialflag = [];
-
+InitiationsFixed = []; 
 %% Process lever snippets trial-by-trial
 for thisTrial = 1:size(Trial.Indices,1)
     
     if TrialOn(thisTrial)
-    
         % extract continuous traces for lever
         % extract from previous trial OFF and upto this trial start
         if thisTrial == 1 % all except first trial
@@ -126,10 +125,20 @@ for thisTrial = 1:size(Trial.Indices,1)
                 %disp(['Trial ',num2str(thisTrial),': No valid Initiations found!']);
                 trialflag(thisTrial) = -1;
             elseif OdorStart < size(Initiations,1) % changed for batch Q:
-                % I don't know why we would ever pick anything but the last one 
-                OdorStart = size(Initiations,1);
-                disp(thisTrial);
-                trialflag(thisTrial) = -1;
+                % sometimes there's noise and lines toggle 
+                toggles = Initiations(OdorStart:end-1,2) - Initiations(OdorStart+1:end,1);
+                %if OdorStart == size(Initiations,1)-1 && (Initiations(end,1) - Initiations(OdorStart,2) <= 3)
+                if ~any(abs(toggles)>5)
+                    InitiationsFixed = [InitiationsFixed; thisTrial];
+                    Initiations(OdorStart,2) = Initiations(end,2);
+                    Initiations(OdorStart+1:end,:) = [];
+                else
+                    % I don't know why we would ever pick anything but the last one 
+                    disp(thisTrial);
+                    keyboard;
+                    OdorStart = size(Initiations,1);
+                    trialflag(thisTrial) = -1;
+                end
             end
             
             % Trial ON timestamp - find the first initiation period > trigger hold

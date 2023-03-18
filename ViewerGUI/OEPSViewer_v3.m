@@ -22,7 +22,7 @@ function varargout = OEPSViewer_v3(varargin)
 
 % Edit the above text to modify the response to help OEPSViewer_v3
 
-% Last Modified by GUIDE v2.5 02-Feb-2023 10:32:29
+% Last Modified by GUIDE v2.5 04-Mar-2023 15:14:55
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -154,6 +154,14 @@ MyData = fread(fid, [Nchan Nsamples], '*int16');
 fclose(fid);
 
 channelSpacing = str2double(handles.Spacing.String);
+
+% subtract mean of a perticular channel from that tetrode - easy way to check for shorts
+if ~isnan(handles.substractTT.Data(1))
+    mychannel = handles.substractTT.Data(1);
+    myTT = ceil(mychannel/4);
+    mychannels = (myTT-1)*4 + (1:4);
+    MyData(mychannels,:) = MyData(mychannels,:) - MyData(mychannel,:);
+end
 
 MyData = MyData';
 MyData = fliplr(MyData);
@@ -365,3 +373,16 @@ function PlotUnits_Callback(hObject, eventdata, handles)
 % if handles.PlotUnits.Value
 %     UpdatePlot(hObject, eventdata, handles);
 % end
+
+
+% --- Executes when entered data in editable cell(s) in substractTT.
+function substractTT_CellEditCallback(hObject, eventdata, handles)
+% hObject    handle to substractTT (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
+%	Indices: row and column indices of the cell(s) edited
+%	PreviousData: previous data for the cell(s) edited
+%	EditData: string(s) entered by the user
+%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
+%	Error: error string when failed to convert EditData to appropriate value for Data
+% handles    structure with handles and user data (see GUIDATA)
+UpdatePlot(hObject, eventdata, handles);

@@ -27,6 +27,7 @@ if UseSortingFolder
         TTLs = [];
         EphysTuningTrials = [];
         AuxData = [];
+        ReplayTTLs = [];
         disp('empty events file');
         return
     end
@@ -40,6 +41,7 @@ else
             TTLs = [];
             EphysTuningTrials = [];
             AuxData = [];
+            ReplayTTLs = [];
             disp('empty events file');
             return
         end

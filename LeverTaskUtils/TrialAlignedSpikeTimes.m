@@ -52,7 +52,7 @@ end
 for whichunit = 1:N % every unit
     thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
     trialtags = SingleUnits(whichunit).trialtags;
-    TetrodeOrder(whichunit) = SingleUnits(whichunit).tetrode;
+    TetrodeOrder(whichunit,:) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
     for whichtrial = 1: nTrials % every trial 
         thisTrialspikes = thisUnitspikes(trialtags==whichtrial);
         if whichtrial>1
