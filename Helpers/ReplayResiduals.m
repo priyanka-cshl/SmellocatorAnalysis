@@ -6,12 +6,12 @@ for MyUnit = 1:size(PSTH,3) % every unit
     Residuals = []; Tags = [];
     % CL-OL
     whichCols = Trialcounts(1) + (1:Trialcounts(2)); % OL reps
-    Residuals = vertcat(Residuals,mean((MyFRs(:,whichCols) - MyFRs(Trialcounts(1))).^2)');
+    Residuals = vertcat(Residuals,mean((MyFRs(:,whichCols) - MyFRs(:,Trialcounts(1))).^2)');
     Tags      = vertcat(Tags,repmat(12,numel(whichCols),1));
     
     % CL-PR
     whichColsPassive = Trialcounts(1) + Trialcounts(2) + (1:Trialcounts(3));
-    Residuals = vertcat(Residuals,mean((MyFRs(:,whichColsPassive) - MyFRs(Trialcounts(1))).^2)');
+    Residuals = vertcat(Residuals,mean((MyFRs(:,whichColsPassive) - MyFRs(:,Trialcounts(1))).^2)');
     Tags      = vertcat(Tags,repmat(13,numel(whichColsPassive),1));
     
     % OL-OL
@@ -30,7 +30,7 @@ for MyUnit = 1:size(PSTH,3) % every unit
     Residuals = vertcat(Residuals, mean((MyFRs(:,pairs(:,1)) - MyFRs(:,pairs(:,2))).^2)');
     Tags      = vertcat(Tags,repmat(23,size(pairs,1),1));
     
-    Residuals = Residuals/meanOL;
-    
+    %Residuals = Residuals/meanOL;
+    Residuals = sqrt(Residuals);
     ResidualsFull(:,MyUnit) = Residuals;
 end
