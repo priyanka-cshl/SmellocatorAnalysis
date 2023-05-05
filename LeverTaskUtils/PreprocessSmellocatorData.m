@@ -76,10 +76,10 @@ if ~isempty(InitiationsFixed)
 end
 
 %% Check if passive tuning was done
-MyTuningTrials = []; TrialSequence = []; PassiveReplayTraces = [];
+MyTuningTrials = []; TuningTrialSequence = []; PassiveReplayTraces = []; TuningParams = [];
 [TuningFile] = WhereTuningFile(FilePaths,MyFileName);
 if ~isempty(TuningFile)
-    [MyTuningTrials, TrialSequence, PassiveReplayTraces] = ParseTuningSession(TuningFile);
+    [MyTuningTrials, TuningTrialSequence, PassiveReplayTraces, TuningParams] = ParseTuningSession(TuningFile);
     disp(['Found Tuning File: ',TuningFile]);
     FileLocations.Tuning = TuningFile;
 end
@@ -92,7 +92,7 @@ TTLs = []; ReplayTTLs = []; TuningTTLs = []; myephysdir = [];
 if ~isempty(mySortingdir)
     % process the TTLs
     [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
+            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
 end
 
 if isempty(TTLs)
@@ -100,11 +100,11 @@ if isempty(TTLs)
     if ~isempty(myephysdir)
         if size(myephysdir,1) == 1
             [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TrialSequence); % send 'ADC', 1 to also get analog aux data
+                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence); % send 'ADC', 1 to also get analog aux data
         else
             while isempty(TTLs) && ~isempty(myephysdir)
                 [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TrialSequence);
+                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TuningTrialSequence);
                 if isempty(TTLs)
                     myephysdir(1,:) = [];
                 end
@@ -119,6 +119,11 @@ if isempty(TTLs)
     disp('no matching recording file found');
 else
     FileLocations.OEPS = myephysdir;
+end
+
+if ~isempty(TuningTTLs)
+    Tuningextras.sessionsettings = TuningParams;
+    Tuningextras.sequence = TuningTrialSequence;
 end
 
 %% Get spikes - label spikes by trials
@@ -149,6 +154,6 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras');
     
 end
