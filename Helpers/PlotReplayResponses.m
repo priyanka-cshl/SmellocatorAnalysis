@@ -4,13 +4,10 @@ if strcmp(computer, 'MACI64')
     datapath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/';
 elseif strcmp(computer,'PCWIN64')
     datapath = 'C:\Users\Marie\Documents\data\Smellocator\Processed\Behavior';
+elseif strcmp(computer, 'GLNXA64') % nicobar
+    datapath = '/mnt/data/Processed/Behavior/';
 else
-    try
-        datapath = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior';
-    catch
-        warning('Grid not mounted. Trying to use a local copy.');
-        datapath = '/mnt/data/Processed/Behavior/';
-    end
+    datapath = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior';
 end
 MySession = fullfile(datapath,SessionPath);
 
