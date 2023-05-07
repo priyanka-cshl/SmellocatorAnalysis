@@ -11,57 +11,53 @@ params.parse(varargin{:});
 plotspikes = params.Results.plotspikes;
 plotevents = params.Results.plotevents;
 
-% colormap
-cmap = colormap(
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
+
+% colormap
+%[whichcolor] = GetLocationColor(x);
+
 whichUnit = abs(whichUnit);
-
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
-whichodor = whichOdor;
 % get trials of the particular odor
-whichTrials = find(TrialSequence(:,2)==whichodor);
+whichTrials = find(TrialSequence(:,2)==whichOdor);
 
-% create a Events matrix - [LocationStart LocationEnd Location]
-Offset(1:whichTrials) = 0; % for alignment
+LMat = TrialSequence(whichTrials,3:end);
+if AlignTo == 1 % Trial ON
+    Offset(1:numel(whichTrials)) = Events.Odor(1);
+end
+if AlignTo == 2 % odor ON
+    Offset(1:numel(whichTrials)) = Events.Odor(1);
+end
+if AlignTo>2 % align to a specific location
+    whichLocation = 1000-AlignTo;
+    for x = 1:size(whichTrials,1)
+        idx = find(LMat(x,:)==whichLocation);
+        Offset(x) = Events.LocationShifts(idx,1);
+        if Offset(x)<0
+            Offset(x) = Events.Odor(1);
+        end
+        LMat(x,:) = circshift(LMat(x,:),-idx + ceil(size(LMat,2)/2));
+    end
+    Offset = Offset - mode(diff(Events.LocationShifts'));
+end
 
 if plotting
     
-    % Plot Spikes
-    for x = 1:size(whichTrials,1)
+    % Plot Spikes 
         if plotevents
-            % Plot Target Zone periods - adjust times if needed
-            LocationTimes = [Events - Offset(x) TrialSequence(whichTrials(x),3:end)'];
-            LocationPlotter(LocationTimes, x);
+            image(LMat+250);
         end
+        
         if plotspikes
+            for x = 1:size(whichTrials,1)
             % Plot Spikes
             thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
             
             % adjust spiketimes if needed
             thisTrialSpikes = thisTrialSpikes - Offset(x);
             PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
+            end
         end
-    end
 end
-
-x = size(whichTrials,1);
-% calculate PSTH
-AlignedFRs = []; RawSpikeCounts = [];
-BinOffset = Xlims(1)*1000;
-x = size(allTrials,1);
-
-%%
-
-
-    function LocationPlotter(TS, rowidx)
-        foo = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.4);
-        foo.EdgeColor = 'none';
-        if ~isempty(TS)
-            foo.Vertices = [ ...
-                reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
-                repmat([rowidx-1 rowidx rowidx rowidx-1]',size(TS,2),1)];
-            foo.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
-        end
-    end
 
 end

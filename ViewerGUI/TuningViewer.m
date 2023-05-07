@@ -127,6 +127,13 @@ end
 handles.NumUnits.String = num2str(size(handles.SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
+% Update AlignTo List
+AllLocations = unique(handles.Tuning.extras.sequence(:,3:end));
+AllLocations(isnan(AllLocations)) = [];
+for i = 1:numel(AllLocations)
+    handles.AlignTo.String{i+2,1} = num2str(AllLocations(i)); 
+end
+
 UpdatePlots(handles);
 
 % Update handles structure
@@ -135,44 +142,34 @@ guidata(hObject, handles);
 function UpdatePlots(handles)
 whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
-MyColors1 = brewermap(15,'*PuBu');
-MyColors2 = brewermap(15,'*OrRd');
-handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
-handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
-switch AlignType
-    case {1,2,6}
-        myXlim = [-1.2 6];
-    case {3,4}
-        myXlim = [-5.2 1];
-    case 5
-        myXlim = [-2.2 5];
+if AlignType>2
+    AlignType = 1000+str2double(handles.AlignTo.String{AlignType,1});
 end
     
 for i = 1:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
-    hold on
-    % plot odor ON, location ON periods
-    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType); %, varargin);
-    %[trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType, 'plotspikes', 0);
-    set(gca, 'XLim', myXlim);
+    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, 'plotspikes', 0); %, varargin);
+    colormap(handles.(['axes',num2str(i)]),brewermap([500],'rdbu'));
     UpdateUnits(handles);
 end
 
 function UpdateUnits(handles)
 whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
-MyColors1 = brewermap(15,'*PuBu');
-MyColors2 = brewermap(15,'*OrRd');
+if AlignType>2
+    AlignType = 1000+str2double(handles.AlignTo.String{AlignType,1});
+end
 handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
 handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
+LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+HalfLocations = size(handles.TuningTiming.LocationShifts,1)/2;
 switch AlignType
-    case {1,2,6}
-        myXlim = [-1.2 6];
-    case {3,4}
-        myXlim = [-5.2 1];
-    case 5
-        myXlim = [-2.2 5];
+    case {1,2}
+        myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
+        myXlim(1) = myXlim(1) - LocationDuration;
+    otherwise
+        myXlim = LocationDuration*[-floor(HalfLocations) floor(HalfLocations)];
 end
     
 for i = 1:3
@@ -181,41 +178,20 @@ for i = 1:3
     set(gca,'color','none');
     hold on
     % plot baseline trials
-    [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType, 'plotevents', 0);
+    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, 'plotevents', 0); %, varargin);
+
+    %[trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType, 'plotevents', 0);
     set(gca, 'XLim', myXlim);
-    set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
     
-    if handles.plotPSTH.Value
-        axes(handles.(['axes',num2str(i+3)]));
-        cla reset;
-        hold on
-        
-        if ~any(strcmp(handles.TrialInfo.Perturbation(:,1),'RuleReversal'))
-            for t = 1:size(FRs,1)
-                plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
-            end
-            
-            if ~handles.HidePSTH2.Value
-                if ~isempty(P_FRs)
-                    for t = 1:size(FRs,1)
-                        set(groot,'defaultAxesColorOrder',MyColors2);
-                        plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
-                    end
-                end
-            end
-        end
-        set(gca, 'XLim', myXlim);
-    end
-    
-    % plot spike amplitudes
-    thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
-    axes(handles.amplitudeaxes);
-    plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
-    hold on
-    session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
-    line([session_end session_end],get(gca,'YLim'),'Color','k');
-    hold off
-    % find 
+%     % plot spike amplitudes
+%     thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
+%     axes(handles.amplitudeaxes);
+%     plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
+%     hold on
+%     session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
+%     line([session_end session_end],get(gca,'YLim'),'Color','k');
+%     hold off
+%     % find 
 end
 
 function WhereSession_Callback(hObject, eventdata, handles)
