@@ -97,8 +97,8 @@ end
 
 %% get the data loaded
 MySession = handles.WhereSession.String;
-[~, ~, ~, handles.SingleUnits, ~, ...
-    ~, handles.SampleRate, ~, ~, ~, ...
+[~, ~, handles.TrialInfo, handles.SingleUnits, ~, ...
+    ~, handles.SampleRate, handles.TimestampAdjuster, ~, ~, ...
     ~, handles.Tuning] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
@@ -145,12 +145,21 @@ AlignType = handles.AlignTo.Value;
 if AlignType>2
     AlignType = 1000+str2double(handles.AlignTo.String{AlignType,1});
 end
-    
-for i = 1:3
+LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+HalfLocations = size(handles.TuningTiming.LocationShifts,1)/2;
+switch AlignType
+    case {1,2}
+        myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
+        myXlim(1) = myXlim(1) - LocationDuration;
+    otherwise
+        myXlim =  [0 HalfLocations*2];
+end
+for i = 1:4
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
-    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, 'plotspikes', 0); %, varargin);
+    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, myXlim, 'plotspikes', 0); %, varargin);
     colormap(handles.(['axes',num2str(i)]),brewermap([500],'rdbu'));
+    set(gca, 'XLim', myXlim, 'XTick', [], 'YTick', []);
     UpdateUnits(handles);
 end
 
@@ -171,28 +180,45 @@ switch AlignType
     otherwise
         myXlim = LocationDuration*[-floor(HalfLocations) floor(HalfLocations)];
 end
-    
-for i = 1:3
+   
+PSTHLims = [];
+for i = 1:4
     axes(handles.(['axes',num2str(i+9)])); 
     cla reset; 
     set(gca,'color','none');
     hold on
-    % plot baseline trials
-    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, 'plotevents', 0); %, varargin);
-
-    %[trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, handles.TrialInfo, AlignType, 'plotevents', 0);
-    set(gca, 'XLim', myXlim);
+    [FRs, BinOffset] = PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, myXlim, 'plotevents', 0); %, varargin);
+    myYlim = get(handles.(['axes',num2str(i)]),'YLim') - 0.5;
+    set(gca, 'XLim', myXlim, 'XTick', [], 'YLim', myYlim, 'YTick', [], 'TickDir', 'out');
     
-%     % plot spike amplitudes
-%     thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
-%     axes(handles.amplitudeaxes);
-%     plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
-%     hold on
-%     session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
-%     line([session_end session_end],get(gca,'YLim'),'Color','k');
-%     hold off
-%     % find 
+    if handles.plotPSTH.Value
+        axes(handles.(['axes',num2str(i+4)]));
+        cla reset;
+        hold on
+        plot((1:size(FRs,1))*0.002+BinOffset/1000,FRs,'Color','k','Linewidth',1);
+        
+        set(gca, 'XLim', myXlim);
+        PSTHLims(i, :) = get(gca, 'YLim');
+    end
 end
+
+if handles.plotPSTH.Value
+    myYlim = [min(PSTHLims(:,1)) max(PSTHLims(:,2))];
+    for i = 1:4
+        axes(handles.(['axes',num2str(i+4)]));
+        set(gca, 'YLim', myYlim, 'TickDir', 'out', 'TickLength',[0.002 0.025]);
+    end
+end
+
+% plot spike amplitudes
+thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
+axes(handles.amplitudeaxes);
+hold off
+plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.b');
+hold on
+session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
+line([session_end session_end],get(gca,'YLim'),'Color','k');
+
 
 function WhereSession_Callback(hObject, eventdata, handles)
 % hObject    handle to WhereSession (see GCBO)
@@ -260,31 +286,6 @@ function CurrentUnit_CellEditCallback(hObject, eventdata, handles)
 UpdateUnits(handles);
 % Update handles structure
 guidata(hObject, handles);
-
-
-% --- Executes on button press in SortReplay.
-function SortReplay_Callback(hObject, eventdata, handles)
-% hObject    handle to SortReplay (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of SortReplay
-UpdatePlots(handles);
-UpdateUnits(handles);
-% Update handles structure
-guidata(hObject, handles);
-
-
-% --- Executes on button press in HidePSTH2.
-function HidePSTH2_Callback(hObject, eventdata, handles)
-% hObject    handle to HidePSTH2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-UpdatePlots(handles);
-% Update handles structure
-guidata(hObject, handles);
-% Hint: get(hObject,'Value') returns toggle state of HidePSTH2
-
 
 
 function edit4_Callback(hObject, eventdata, handles)

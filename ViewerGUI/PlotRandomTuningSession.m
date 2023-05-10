@@ -1,4 +1,4 @@
-function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = PlotRandomTuningSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialSequence, AlignTo, varargin)
+function [AlignedFRs, BinOffset, RawSpikeCounts] = PlotRandomTuningSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialSequence, AlignTo, XLims, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -20,13 +20,14 @@ whichUnit = abs(whichUnit);
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 % get trials of the particular odor
 whichTrials = find(TrialSequence(:,2)==whichOdor);
+BinOffset = XLims(1)*1000;
 
 LMat = TrialSequence(whichTrials,3:end);
 if AlignTo == 1 % Trial ON
-    Offset(1:numel(whichTrials)) = Events.Odor(1);
+    Offset(1:numel(whichTrials)) = 0;
 end
 if AlignTo == 2 % odor ON
-    Offset(1:numel(whichTrials)) = Events.Odor(1);
+    Offset(1:numel(whichTrials)) = 0;
 end
 if AlignTo>2 % align to a specific location
     whichLocation = 1000-AlignTo;
@@ -38,26 +39,26 @@ if AlignTo>2 % align to a specific location
         end
         LMat(x,:) = circshift(LMat(x,:),-idx + ceil(size(LMat,2)/2));
     end
-    Offset = Offset - mode(diff(Events.LocationShifts'));
 end
 
 if plotting
+    if plotevents
+        image(LMat+250);
+    end
     
-    % Plot Spikes 
-        if plotevents
-            image(LMat+250);
-        end
-        
-        if plotspikes
-            for x = 1:size(whichTrials,1)
+    if plotspikes
+        for x = 1:size(whichTrials,1)
             % Plot Spikes
             thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
             
             % adjust spiketimes if needed
             thisTrialSpikes = thisTrialSpikes - Offset(x);
             PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
-            end
         end
+    end
 end
+
+thisodorSpikes = thisUnitSpikes(whichTrials);
+[AlignedFRs, RawSpikeCounts] = MakePSTH_v3(thisodorSpikes,Offset,BinOffset,'downsample',500);
 
 end
