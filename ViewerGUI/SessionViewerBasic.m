@@ -114,6 +114,10 @@ function LoadSession_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global TargetZones;
+global SampleRate; 
+global startoffset;
+startoffset = 1;
+SampleRate = 500;
 
 if isempty(handles.WhereSession.String)
     [Paths] = WhichComputer();

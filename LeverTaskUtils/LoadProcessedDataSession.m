@@ -1,6 +1,6 @@
 function [TracesOut, ColNames, TrialInfo, SingleUnits, TTLs, ...
     ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, ...
-    OpenLoop] = LoadProcessedDataSession(MySession);
+    OpenLoop, Tuning] = LoadProcessedDataSession(MySession);
 
 if ~nargin
     MySession = [];
@@ -18,7 +18,14 @@ end
 % Load the relevant variables
 load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
     'startoffset', 'errorflags', 'SampleRate', ...
-    'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
+    'TTLs', 'ReplayTTLs', 'Tuning*', 'SingleUnits');
+
+Tuning.TTLs = TuningTTLs;
+if ~exist('Tuningextras')
+    Tuning.extras = [];
+else
+    Tuning.extras = Tuningextras;
+end
 
 %% Concatenate traces and get one matrix with all behavior variables
 % SampleRate = behavior sample rate;

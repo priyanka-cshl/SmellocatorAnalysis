@@ -205,7 +205,7 @@ end
 
 % Align Passive Tuning trials
 if ~isempty(TuningTrials)
-    EphysTuningTrials = AlignPassiveTuningTrials(TuningTrials, TTLs, size(BehaviorTrials,1), TrialSequence);
+    [EphysTuningTrials] = AlignPassiveTuningTrials(TuningTrials, TTLs, size(BehaviorTrials,1), TrialSequence);
 else
     EphysTuningTrials = [];
 end
