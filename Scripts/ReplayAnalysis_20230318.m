@@ -6,6 +6,7 @@ else
 end
 MySession = fullfile(datapath,'O3','O3_20211005_r0_processed.mat');
 %MySession = fullfile(datapath,'O8','O8_20220702_r0_processed.mat');
+%MySession = fullfile(datapath,'O9','O9_20220630_r0_processed.mat');
 %MySession = fullfile(datapath,'Q4','Q4_20221112_r0_processed.mat');
 %MySession = fullfile(datapath,'Q9','Q9_20221119_r0_processed.mat');
 
@@ -70,6 +71,27 @@ for whichodor = 1:3
     [PSTHResiduals{1+whichodor}] = ReplayResiduals(OpenLoopPSTH(:,MyIdx,:),reps_per_condition);
 end
 
+%% analyzing behavior traces
+% isolate indices that correspond to 500 ms stretches before and after each
+% trial start
+pairs = [ones(10,1) (2:11)'];
+for i = 1:size(pairs,1)
+    % full trace
+    %thispairCorr = corrcoef(OpenLoopTraces(:,1,pairs(i,1)),OpenLoopTraces(:,1,pairs(i,2)));
+    %pairs(i,3) = thispairCorr(2,1);
+    % lever snipped
+    for j = 1:size(TrialTS,1) % every trial
+%         thistrialcorr = corrcoef(...
+%                         OpenLoopTraces(TrialTS(j,2)+[0:1:100],1,pairs(i,1)),...
+%                         OpenLoopTraces(TrialTS(j,2)+[0:1:100],1,pairs(i,2)) );
+%         pairs(i,2+j) = thistrialcorr(2,1);
+        snip = TrialTS(j,2)+ [-200:1:200];
+        thistrialresidual = OpenLoopTraces(snip,1,pairs(i,1)) - ...
+                            OpenLoopTraces(snip,1,pairs(i,2)) ;
+        pairs(i,2+j) = sqrt(mean(thistrialresidual.^2));
+    end
+    pairs(i,2+j+1) = mean(pairs(i,(3:2+j)));
+end
 
 %% getting means and errors across pairs of either residuals or corrs
 % correlations
@@ -103,7 +125,7 @@ end
 [~,SortedbyCorr] = sort(CorrsMedian{1}(:,3),'descend');
 SortedbyCorr = circshift(SortedbyCorr,-1); % first value was NaN'
 
-whichtype = 1;
+whichtype = 4;
 MedianCorrs = CorrsMedian{whichtype};
 STDCorrs = CorrsSTD{whichtype};
 MedianResiduals = ResidualsMean{whichtype};
@@ -176,31 +198,32 @@ xtickangle(gca,90);
 figure, 
 subplot(1,2,1), hold on
 subplot(1,2,2), hold on
+MedianCorrs = []; STDCorrs = []; MedianResiduals =[]; STDResiduals =[];
 for whichtype = 2:4
     %whichtype = 4;
-    MedianCorrs = CorrsMedian{whichtype};
-    STDCorrs = CorrsSTD{whichtype};
-%     MedianResiduals = ResidualsMedian{whichtype};
-%     STDResiduals = ResidualsSTD{whichtype};
+    MedianCorrs = [MedianCorrs;  CorrsMedian{whichtype}];
+    STDCorrs = [STDCorrs; CorrsSTD{whichtype}];
 
-    MedianResiduals = ResidualsMean{whichtype};
-    STDResiduals = ResidualsCI95{whichtype};
+    MedianResiduals = [MedianResiduals; ResidualsMean{whichtype}];
+    STDResiduals = [STDResiduals; ResidualsCI95{whichtype}];
+end
 
     subplot(1,2,1)
-    line([MedianResiduals(:,5) MedianResiduals(:,5)]', ...
-        [(MedianResiduals(:,5) + STDResiduals(:,5)) (MedianResiduals(:,5) - STDResiduals(:,5))]', ...
-        'Color', 'k');
-    plot(MedianResiduals(:,5),MedianResiduals(:,2),'or');
-%     line([MedianResiduals(:,5) MedianResiduals(:,5)]', ...
-%         [(MedianResiduals(:,2) + STDResiduals(:,2)) (MedianResiduals(:,2) - STDResiduals(:,2))]', ...
-%         'Color', 'r');
-    
+    [~,sortorder] = sort(MedianResiduals(:,5));
+    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5) + STDResiduals(sortorder,5),':k');
+    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5) - STDResiduals(sortorder,5),':k');
+    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5),'k');
+    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,2),'or');
+    axis square;
+    set(gca,'TickDir','out','YLim',[0 20],'XLim',[0 20]);
     subplot(1,2,2)
-    line([MedianResiduals(:,3) MedianResiduals(:,3)]', ...
-        [(MedianResiduals(:,3) + STDResiduals(:,3)) (MedianResiduals(:,3) - STDResiduals(:,3))]', ...
-        'Color', 'k');
-    plot(MedianResiduals(:,3),MedianResiduals(:,1),'or');
-end
+    [~,sortorder] = sort(MedianResiduals(:,3)+STDResiduals(:,3));
+    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3) + STDResiduals(sortorder,3),':k');
+    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3) - STDResiduals(sortorder,3),':k');
+    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3),'k');
+    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,1),'or');
+    axis square;
+    set(gca,'TickDir','out','YLim',[0 20],'XLim',[0 20]);
 
 %%
 figure;
@@ -256,7 +279,85 @@ axis square
 % Plot specific Units
 %PlotUnits = [58 35 34 55 21];
 PlotUnits = [34 55 27 32 30 51 6 26 57 52 41 46 12 44 28];
-PlotUnits = [5 18 60 10 12];
+PlotUnits = [55 44 39 28 10];
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
         'plotephys', 1, 'UnitsPerFig', 5, 'whichunits', PlotUnits, 'PlotOpenLoop', 1);
 
+
+%% bar plots for selected units
+PlotUnits = [21 55 34 44 8 39 10 28];
+MedianCorrs = []; STDCorrs = []; MedianResiduals =[]; STDResiduals =[];
+for k = 1:length(PlotUnits)
+    for whichtype = 1:4
+        MedianCorrs = [MedianCorrs; CorrsMedian{whichtype}(PlotUnits(k),:)];
+        STDCorrs = [STDCorrs; CorrsSTD{whichtype}(PlotUnits(k),:)];
+        MedianResiduals = [MedianResiduals; ResidualsMean{whichtype}(PlotUnits(k),:)];
+        STDResiduals = [STDResiduals; ResidualsSTD{whichtype}(PlotUnits(k),:)];
+    end
+end
+
+N = 1:size(MedianResiduals,1);
+SortedbyCorr = 1:size(MedianResiduals,1);
+
+figure;
+subplot(4,1,1);
+xpts = (1:4:4*N);
+% OL-OL
+bar(xpts, MedianCorrs(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
+hold on
+line(repmat(xpts,2,1), ...
+    [(MedianCorrs(SortedbyCorr,3) + STDCorrs(SortedbyCorr,3))'; (MedianCorrs(SortedbyCorr,3) - STDCorrs(SortedbyCorr,3))'], ...
+    'color', [1 0 0], 'Linewidth', 2);
+%CL-OL
+bar(xpts, MedianCorrs(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
+line(repmat(xpts,2,1), ...
+    [(MedianCorrs(SortedbyCorr,1) + STDCorrs(SortedbyCorr,1))'; (MedianCorrs(SortedbyCorr,1) - STDCorrs(SortedbyCorr,1))'], ...
+    'color', [0 0 0],'Linewidth', 2);
+
+subplot(4,1,2);
+% PR-PR
+xpts = (2:4:4*N);
+bar(xpts, MedianCorrs(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
+hold on
+line(repmat(xpts,2,1), ...
+    [(MedianCorrs(SortedbyCorr,5) + STDCorrs(SortedbyCorr,5))'; (MedianCorrs(SortedbyCorr,5) - STDCorrs(SortedbyCorr,5))'], ...
+    'color', [0.1 0.4 0.2], 'Linewidth', 2);
+% CL-PR
+bar(xpts, MedianCorrs(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
+line(repmat(xpts,2,1), ...
+    [(MedianCorrs(SortedbyCorr,2) + STDCorrs(SortedbyCorr,2))'; (MedianCorrs(SortedbyCorr,2) - STDCorrs(SortedbyCorr,2))'], ...
+    'color', [0 0 0], 'Linewidth', 2);
+set(gca, 'XTick', xpts);
+%xticklabels(num2str(MyUnits(SortedbyCorr)));
+xtickangle(gca,90);
+
+subplot(4,1,3);
+xpts = (1:4:4*N);
+% OL-OL
+bar(xpts, MedianResiduals(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
+hold on
+line(repmat(xpts,2,1), ...
+    [(MedianResiduals(SortedbyCorr,3) + STDResiduals(SortedbyCorr,3))'; (MedianResiduals(SortedbyCorr,3) - STDResiduals(SortedbyCorr,3))'], ...
+    'color', [1 0 0], 'Linewidth', 2);
+%CL-OL
+bar(xpts, MedianResiduals(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
+line(repmat(xpts,2,1), ...
+    [(MedianResiduals(SortedbyCorr,1) + STDResiduals(SortedbyCorr,1))'; (MedianResiduals(SortedbyCorr,1) - STDResiduals(SortedbyCorr,1))'], ...
+    'color', [0 0 0],'Linewidth', 2);
+
+subplot(4,1,4);
+% PR-PR
+xpts = (2:4:4*N);
+bar(xpts, MedianResiduals(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
+hold on
+line(repmat(xpts,2,1), ...
+    [(MedianResiduals(SortedbyCorr,5) + STDResiduals(SortedbyCorr,5))'; (MedianResiduals(SortedbyCorr,5) - STDResiduals(SortedbyCorr,5))'], ...
+    'color', [0.1 0.4 0.2], 'Linewidth', 2);
+% CL-PR
+bar(xpts, MedianResiduals(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
+line(repmat(xpts,2,1), ...
+    [(MedianResiduals(SortedbyCorr,2) + STDResiduals(SortedbyCorr,2))'; (MedianResiduals(SortedbyCorr,2) - STDResiduals(SortedbyCorr,2))'], ...
+    'color', [0 0 0], 'Linewidth', 2);
+set(gca, 'XTick', xpts);
+%xticklabels(num2str(MyUnits(SortedbyCorr)));
+xtickangle(gca,90);
