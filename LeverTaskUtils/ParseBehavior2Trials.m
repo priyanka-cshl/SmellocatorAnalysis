@@ -248,16 +248,19 @@ for thisTrial = 1:numel(TrialOn)
                         if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1))
                             OffsetStart = ...
                                 find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1);
-                            FeedbackStart = ...
+                            CorrectionStart = ...
                                 find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1,1,'last');
-                            % convert to seconds w.r.t. trial start
-%                             OffsetStart = TrialInfo.PerturbationStart(thisTrial)/SampleRate;
-%                             FeedbackStart = TrialInfo.FeedbackStart(thisTrial)/SampleRate;
-                            OffsetStart = OffsetStart/SampleRate;
-                            FeedbackStart = FeedbackStart/SampleRate;
-                            
-                            TrialInfo.Perturbation{thisTrial,2} = ...
-                                [PerturbationValue OffsetStart FeedbackStart]; % offset added, offset start, feedback start w.r.t. trial start
+                            % check if correction start preceeds trial end
+                            % - otherwise animal didn't correct in this trial
+                            if CorrectionStart<(TrialOff(thisTrial)-TrialOn(thisTrial))
+                                if MyData(TrialOn(thisTrial)+CorrectionStart,LeverCol) > TargetZones(TrialInfo.TargetZoneType(thisTrial,1),2)
+                                    CorrectionStart = -CorrectionStart; % upward movement (closer to the body)
+                                end
+                            else
+                                CorrectionStart = NaN;
+                            end
+                            % OffsetLocation = PerturbationValue
+                            TrialInfo.Perturbation{thisTrial,2} = [OffsetStart CorrectionStart PerturbationValue];
                         end
                     case 800 % gain change
                         TrialInfo.Perturbation{thisTrial,1} = 'GainChange';
@@ -277,6 +280,23 @@ for thisTrial = 1:numel(TrialOn)
                             HaltStop = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1);
                             % HaltLocation = PerturbationValue
                             TrialInfo.Perturbation{thisTrial,2} = [HaltStart HaltStop PerturbationValue];
+                        end
+                    case 1506 % offsets II that also were used as open loop templates
+                        TrialInfo.Perturbation{thisTrial,1} = 'Offset-II-Template';
+                        if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1))
+                            OffsetStart = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1);
+                            CorrectionStart = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1);
+                            % check if correction start preceeds trial end
+                            % - otherwise animal didn't correct in this trial
+                            if CorrectionStart<(TrialOff(thisTrial)-TrialOn(thisTrial))
+                                if MyData(TrialOn(thisTrial)+CorrectionStart,LeverCol) > TargetZones(TrialInfo.TargetZoneType(thisTrial,1),2)
+                                    CorrectionStart = -CorrectionStart; % upward movement (closer to the body)
+                                end
+                            else
+                                CorrectionStart = NaN;
+                            end
+                            % OffsetLocation = PerturbationValue
+                            TrialInfo.Perturbation{thisTrial,2} = [OffsetStart CorrectionStart PerturbationValue];
                         end
                     case 1100 % block shift perturbations
                         TrialInfo.Perturbation{thisTrial,1} = 'BlockShift';
