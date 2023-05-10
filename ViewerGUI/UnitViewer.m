@@ -120,6 +120,12 @@ if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
         ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop);
 end
 
+if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
+    [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
+        PerturbationReplayAlignedSpikeTimes(SingleUnits,TTLs,...
+        ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop);
+end
+
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
