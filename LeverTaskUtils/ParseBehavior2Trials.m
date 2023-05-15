@@ -199,6 +199,16 @@ for thisTrial = 1:numel(TrialOn)
             TrialInfo.InZone(thisTrial) = { [] };
         end
         
+        %% Get the required trigger and target hold times for this Trial.
+        TrialInfo.HoldSettings(thisTrial,:) = MySettings(thisTrial,[12 5 7]+1)/1000; % trigger hold, target hold, summed target hold in seconds
+        % which criterion did the mouse get water through?
+        AllHolds = diff(TrialInfo.InZone{thisTrial}',1);
+        if any(AllHolds>=TrialInfo.HoldSettings(thisTrial,2))
+           TrialInfo.Success(thisTrial,2) = 1; 
+        elseif (sum(AllHolds)>= TrialInfo.HoldSettings(thisTrial,3))
+           TrialInfo.Success(thisTrial,2) = 2; 
+        end
+        
         %% Which Perturbation
         WhichPerturbation = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(1)) );
         PerturbationValue = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(2)) );

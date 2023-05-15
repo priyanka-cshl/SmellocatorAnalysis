@@ -41,6 +41,53 @@ if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
         end
     end
     
+    if any(strcmp(TrialInfo.Perturbation(x,1),'Offset-II')) || ...
+            any(strcmp(TrialInfo.Perturbation(x,1),'Offset-II-Template'))
+        
+        OffsetTrials = [find(strcmp(TrialInfo.Perturbation(:,1),'Offset-II')); ...
+                      find(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template')) ];
+                  
+        load(MySession,'SampleRate');
+        PerturbationParams = TrialInfo.Perturbation{OffsetTrials(1),2}; % offset and perturbation start w.r.t. TrialStart, and offset odor location
+        Duration = PerturbationParams(2) - PerturbationParams(1);
+        
+        % for all control trials, find perturbation start point
+        % time-point when 0.9x of the hold times are reached
+        for i = 1:nTrials
+            if ~ismember(i,OffsetTrials)
+                
+                % get all target zone stays
+                thisTrialHolds = TrialInfo.HoldSettings(i,2:3); % contiguous, aggegate in seconds
+                AllHolds = diff(TrialInfo.InZone{i}',1);
+                
+                PertubationStart = NaN;
+                if ~isempty(AllHolds)
+                    whichSegment = find(AllHolds>=0.9*thisTrialHolds(1),1,'first'); % any contiguous hold that would trigger offset perturbation
+                    if isempty(whichSegment)
+                        whichSegment = ...
+                            find(cumsum(AllHolds)>=0.9*thisTrialHolds(2),1,'first'); % any aggregate hold that would trigger offset perturbation
+                        if ~isempty(whichSegment)
+                            deltaT = sum(AllHolds)-0.9*thisTrialHolds(2);
+                            PertubationStart = SampleRate* ...
+                                (TrialInfo.InZone{i}(whichSegment,2) - deltaT); % in indices w.r.t. TrialStart
+                        end
+                    else
+                        PertubationStart = SampleRate* ...
+                                (TrialInfo.InZone{i}(whichSegment,1) + thisTrialHolds(1)*0.9); % in indices w.r.t. TrialStart
+                    end
+                end
+                PerturbationEvents(i,:) = [PertubationStart NaN NaN];
+            else
+                if ~isempty(TrialInfo.Perturbation{i,2})
+                    PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
+                else
+                    PerturbationEvents(i,:) = [NaN NaN NaN];
+                end
+            end
+        end
+                  
+    end
+    
     if any(strcmp(TrialInfo.Perturbation(x,1),'RuleReversal'))
         load(MySession,'SampleRate');
         PerturbationEvents(1:nTrials,1) = 0;

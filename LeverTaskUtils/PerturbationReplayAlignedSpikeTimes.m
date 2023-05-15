@@ -89,6 +89,7 @@ for whichunit = 1:N % every unit
                     ReplayInfo.Duration(trialcount,1)       = TrialInfo.Duration(templatetrials(j));
                     ReplayInfo.InZone{trialcount}           = TrialInfo.InZone{templatetrials(j)};
                     ReplayInfo.Perturbed(trialcount,1)      = isequal(j,perturbedtrial);
+                    ReplayInfo.Perturbation(trialcount,:)   = TrialInfo.Perturbation(templatetrials(j),:);
                     if thisReplay <= TrialInfo.TrialID(end)
                         ReplayInfo.TrialID(trialcount)          =  whichReplay + j/100;
                     else
