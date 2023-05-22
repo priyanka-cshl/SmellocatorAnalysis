@@ -57,7 +57,7 @@ OdorOffsets = Trial.Offsets(:,2);
 %% Crunch data trial-by-trial
 for thisTrial = 1:numel(TrialOn)
     % store original trial ID - some trials may get deleted later because of weird target zones
-    TrialInfo.TrialID(thisTrial) = thisTrial;
+    TrialInfo.TrialID(thisTrial,1) = thisTrial;
     thisTrialOffset = TrialOffsets(thisTrial); % this will be zero if there were no digital-analog sample drops
     
     if ~isnan(thisTrialOffset)
@@ -104,8 +104,8 @@ for thisTrial = 1:numel(TrialOn)
         end
         
         % handing timestamp drops
-        TrialInfo.TimeStampsDropped(thisTrial) = Trial.TimeStampDrops(thisTrial);
-        if TrialInfo.TimeStampsDropped(thisTrial)
+        TrialInfo.TimeStampsDropped(thisTrial,1) = Trial.TimeStampDrops(thisTrial);
+        if TrialInfo.TimeStampsDropped(thisTrial,1)
             % find the location where missing samples need to be patched in
            f = find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001);
            samples_missing = int16((Traces.Timestamps{thisTrial}(f+1) - Traces.Timestamps{thisTrial}(f))*SampleRate - 1);
@@ -194,13 +194,13 @@ for thisTrial = 1:numel(TrialOn)
         %thisTrialInZone = TrialInfo.Timestamps(thisTrial,1) + thisTrialInZone/SampleRate; % convert to seconds and offset w.r.t. trace start
         thisTrialInZone = thisTrialInZone/SampleRate; % convert to seconds
         if ~isempty(thisTrialInZone)
-            TrialInfo.InZone(thisTrial) = { thisTrialInZone };
+            TrialInfo.InZone(thisTrial,1) = { thisTrialInZone };
         else
-            TrialInfo.InZone(thisTrial) = { [] };
+            TrialInfo.InZone(thisTrial,1) = { [] };
         end
         
         %% Get the required trigger and target hold times for this Trial.
-        TrialInfo.HoldSettings(thisTrial,:) = MySettings(thisTrial,[12 5 7]+1)/1000; % trigger hold, target hold, summed target hold in seconds
+        TrialInfo.HoldSettings(thisTrial,:) = MySettings(thisTrial,[12 5 7 24]+1)/1000; % trigger hold, target hold, summed target, min ITI hold in seconds
         % which criterion did the mouse get water through?
         AllHolds = diff(TrialInfo.InZone{thisTrial}',1);
         if any(AllHolds>=TrialInfo.HoldSettings(thisTrial,2))
@@ -208,6 +208,22 @@ for thisTrial = 1:numel(TrialOn)
         elseif (sum(AllHolds)>= TrialInfo.HoldSettings(thisTrial,3))
            TrialInfo.Success(thisTrial,2) = 2; 
         end
+        
+%         if TrialInfo.Success(thisTrial,1) && ~TrialInfo.Success(thisTrial,2)
+%             if any(AllHolds < 0.003)
+%                 noisyHold = find(AllHolds<0.003);
+%                 AllHolds(noisyHold-1) = AllHolds(noisyHold-1) + AllHolds(noisyHold);
+%                 AllHolds(:,noisyHold) = [];
+%                 if sum(AllHolds)<TrialInfo.HoldSettings(thisTrial,3)
+%                     TrialInfo.Success(thisTrial,2) = 1; 
+%                 else
+%                     TrialInfo.Success(thisTrial,2) = 2;
+%                 end
+%             else
+%                 %keyboard;
+%             end
+%         end
+            
         
         %% Which Perturbation
         WhichPerturbation = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(1)) );
