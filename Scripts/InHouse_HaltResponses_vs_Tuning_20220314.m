@@ -24,7 +24,7 @@ ChosenUnits = 1:size(SingleUnits,2);
 TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 % Get all spikes, all units aligned to trials
 [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
-    size(TrialInfo.TrialID,2),TrialInfo,MySession);
+    length(TrialInfo.TrialID),TrialInfo,MySession);
 
 whichOdor = 1;
 %%
