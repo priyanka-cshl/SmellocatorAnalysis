@@ -100,6 +100,7 @@ Traces = rmfield(Traces,{'Motor'; 'Trial'});
 extrafields = {'Offset'; 'TraceIndices'; 'TraceDuration'; 'SessionIndices'; 'SessionTimestamps'; ...
     'TimeIndices'; 'Timestamps'; 'Duration'; 'Reward'; 'TransferFunctionLeft'};
 TrialInfo = rmfield(TrialInfo,extrafields);
+TrialInfo.TrialID = TrialInfo.TrialID';
 
 %     {'TrialID'             }
 %     {'TimeStampsDropped'   }
