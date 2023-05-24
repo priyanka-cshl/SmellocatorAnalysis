@@ -57,7 +57,7 @@ OdorOffsets = Trial.Offsets(:,2);
 %% Crunch data trial-by-trial
 for thisTrial = 1:numel(TrialOn)
     % store original trial ID - some trials may get deleted later because of weird target zones
-    TrialInfo.TrialID(thisTrial,1) = thisTrial;
+    TrialInfo.TrialID(thisTrial) = thisTrial;
     thisTrialOffset = TrialOffsets(thisTrial); % this will be zero if there were no digital-analog sample drops
     
     if ~isnan(thisTrialOffset)
