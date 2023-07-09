@@ -1,5 +1,6 @@
 %% for O3
 SessionPath = 'PCX4/PCX4_20210713_r0_processed.mat';
+SessionPath = 'O8/O8_20220704_r0_processed.mat';
 
 %% DataExtraction
 if strcmp(computer, 'MACI64')
@@ -24,7 +25,7 @@ ChosenUnits = 1:size(SingleUnits,2);
 TrialInfo.TargetEntry = NaN*TrialInfo.Odor;
 % Get all spikes, all units aligned to trials
 [AlignedSpikes, Events] = TrialAlignedSpikeTimes(SingleUnits,TTLs,...
-    size(TrialInfo.TrialID,1),TrialInfo,MySession);
+    size(TrialInfo.TrialID,2),TrialInfo,MySession);
 
 whichOdor = 1;
 %%
