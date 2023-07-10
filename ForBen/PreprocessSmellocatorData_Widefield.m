@@ -10,10 +10,10 @@ end
 
 %% Add relevant repositories
 Paths = WhichComputer();
-addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
-addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI: https://github.com/open-ephys/open-ephys-matlab-tools (use commit 10-04-22)
+%addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
+%addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI: https://github.com/open-ephys/open-ephys-matlab-tools (use commit 10-04-22)
 addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
-addpath(genpath(fullfile(Paths.Code,'npy-matlab/'))); % path to npy-matlab scripts
+%addpath(genpath(fullfile(Paths.Code,'npy-matlab/'))); % path to npy-matlab scripts
 
 %% globals
 % global MyFileName;
@@ -54,8 +54,7 @@ FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
 disp(MyFileName);
 
-%% Get Camera Timestamps
-Frame_TS.Behavior = MyData((find(diff(MyData(:,17))~=0) + 1),1);
+[Frame_TS.Behavior] = GetPCOFrameTriggers(MyData);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
@@ -89,8 +88,16 @@ if ~isempty(TuningFile)
     FileLocations.Tuning = TuningFile;
     
     % also get Camera Timestamps during passive replay
-    [MyData] = LoadSessionData(TuningFile, 1, 0);
-    Frame_TS.Passive = MyData((find(diff(MyData(:,17))~=0) + 1),1);
+    [MyData_p] = LoadSessionData(TuningFile, 1, 0);
+    
+    [Frame_TS.Passive] = GetPCOFrameTriggers(MyData_p);
+    
+end
+
+%% get the Widefield timestamps
+[myimagingdir] = WhereWidefieldData(MyFileName,AnimalName);
+if ~isempty(myimagingdir)
+    [frame_timestamps_out] = GetWidefieldTimeStamps(myimagingdir, Frame_TS);
 end
 
 %% Saving stuff in one place
