@@ -22,7 +22,7 @@ function varargout = SessionViewer_Widefield(varargin)
 
 % Edit the above text to modify the response to help SessionViewer_Widefield
 
-% Last Modified by GUIDE v2.5 11-Jul-2023 07:48:39
+% Last Modified by GUIDE v2.5 11-Jul-2023 13:37:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,8 +59,13 @@ handles.output = hObject;
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
 [Paths] = WhichComputer();
-handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat');
+handles.WhereSession.String = '/mnt/data/Behavior/HX3/HX3_20230505_r0_processed.mat';
+handles.ROIPath.String      = '/mnt/data/Widefield/HX3/20230505_r0/selectedROIs.mat';
 handles.TimeWindow.String = '100';
+handles.corrImages = [];
+%handles.WhichROI.String = 1;
+handles.FrameData = [];
+handles.ROIcoordinates = [];
 
 % Update handles structure
 guidata(hObject, handles);
@@ -90,9 +95,7 @@ function Scroller_Callback(hObject, eventdata, handles)
 
 newLims = handles.Scroller.Value * str2double(handles.SessionLength.String) + ...
     [0 str2double(handles.TimeWindow.String)];
-set(handles.SpikesPlot,'XLim',newLims);
 set(handles.PSTHPlot,'XLim',newLims);
-set(handles.popPSTH,'XLim',newLims);
 set(handles.BehaviorPlot,'XLim',newLims); 
 set(handles.MotorPlot,'XLim',handles.SampleRate*newLims); 
 
@@ -126,10 +129,13 @@ end
 
 % Load the relevant variables
 load(handles.WhereSession.String, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
-               'startoffset', 'errorflags', 'SampleRate', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
+               'startoffset', 'errorflags', 'SampleRate', 'TuningTTLs',...
+               'WF_timestamps');
            
 load(handles.ROIPath.String, 'WhichROIs','refPix','C','stackdims');           
+handles.FrameData = refPix;
+handles.corrImages = reshape(C,stackdims(1),stackdims(2),size(WhichROIs,1));
+handles.ROIcoordinates = WhichROIs;
 
 handles.SessionLength.String = TrialInfo.SessionTimestamps(end,2);
 if ~isempty(WhichROIs)
@@ -243,26 +249,49 @@ if ~isempty(WhichROIs)
     %% plot odor boxes on the PSTH plot
     axes(handles.PSTHPlot);
     hold off
-    [handles] = EventsPlotter(handles,'Smell','h2o_plot',TTLs,TuningTTLs);
     
-    % plot all PSTHs
-    [popFR] = RecordingSessionOverview(SingleUnits,'rastermode',0,'sessionlength',str2double(handles.SessionLength.String));
+    for i = 1:4
+        handles.(['PSTHTrial',num2str(i),'Plot']) = fill(NaN,NaN,Plot_Colors(['Odor',num2str(i)]));
+        hold on;
+        handles.(['PSTHTrial',num2str(i),'Plot']).EdgeColor = 'none';
+        ValveTS = TrialInfo.SessionTimestamps((TrialInfo.Odor==i),1:2)' + TimestampAdjuster;
+        if ~isempty(ValveTS)
+            handles.(['PSTHTrial',num2str(i),'Plot']).Vertices = [ ...
+                reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
+                repmat([0 100 100 0]',size(ValveTS,2),1)];
+            handles.(['PSTHTrial',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
+        end
+    end
     
-    set(gca,'YLim', [0 10+str2double(handles.NumUnits.String)+1], 'YTick', [],...
-        'XTick', [],...
-        'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+    hold on
+    % plot all fluorescence traces
+    frame_ts = WF_timestamps.Behavior(:,1);
+    y_offsets = linspace(5,85,size(WhichROIs,1));
+    for i = 1:size(WhichROIs,1)
+        myTrace = refPix(1:numel(frame_ts),i);
+        myTrace = myTrace - mean(myTrace);
+        myTrace = y_offsets(i) + myTrace;
+        plot(frame_ts,myTrace,'color',Plot_Colors('k'));
+    end
     
-    %% population psth
-    axes(handles.popPSTH);
-    hold off;
-    [handles] = EventsPlotter(handles,'Stink','WaterPlot',TTLs,TuningTTLs);
+    set(gca,'YLim', [0 100], 'YTick', [],...
+    'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+
+    % overlay the selected ROI
+    i = str2double(handles.WhichROI.String);
+    myTrace = handles.FrameData(1:numel(frame_ts),i);
+    myTrace = myTrace - mean(myTrace);
+    myTrace = y_offsets(i) + myTrace;
+    handles.SelROI_Plot = plot(frame_ts,myTrace,'color',Plot_Colors('r'),'Linewidth',2);
     
-    % plot population psth
-    taxis = (1:size(popFR,1))/100;
-    plot(taxis,popFR(:,1),'color',Plot_Colors('k'));
-    
-    set(gca, 'YLim', [0 ceil(max(popFR(:,1)))], ...
-        'TickDir','out','XLim', [0 str2double(handles.TimeWindow.String)]);
+    % show pixel corr image
+    axes(handles.CorrImage);
+    hold off
+    imagesc(handles.corrImages(:,:,i));
+    colormap(handles.CorrImage,brewermap([],'*RdBu'));
+    hold on
+    plot(WhichROIs(i,2),WhichROIs(i,1),'sk');
+    set(gca, 'YTick', [], 'XTick', [], 'TickDir','out');
     
 end
 
@@ -292,16 +321,12 @@ end
 alphamask = ~isnan(MotorTrajectory);
 
 handles.MotorTrajectoryPlot = imagesc(MotorTrajectory',[-1 1]);
-colormap(brewermap(100,'RdYlBu'));
+colormap(handles.MotorPlot, brewermap(100,'RdYlBu'));
 set(handles.MotorTrajectoryPlot, 'AlphaData', alphamask');
 
 set(gca, 'YTick', [], 'XTick', [], ...
     'TickDir','out','XLim', [0 SampleRate*str2double(handles.TimeWindow.String)]);
 
-if ~isempty(TTLs)
-    % display PSTH or Rasters as needed
-    PSTHView_Callback(hObject, eventdata, handles);
-end
 % Update handles structure
 guidata(hObject, handles);
 
@@ -316,23 +341,29 @@ handles.ROIPath.String = '';
 
 % --- Executes on button press in PSTHView.
 
-function WhichUnits_Callback(hObject, eventdata, handles)
-% hObject    handle to WhichUnits (see GCBO)
+function WhichROI_Callback(hObject, eventdata, handles)
+% hObject    handle to WhichROI (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of WhichUnits as text
-%        str2double(get(hObject,'String')) returns contents of WhichUnits as a double
+% Hints: get(hObject,'String') returns contents of WhichROI as text
+%        str2double(get(hObject,'String')) returns contents of WhichROI as a double
+% overlay the selected ROI
+i = str2double(handles.WhichROI.String);
+nVals = size(handles.SelROI_Plot.YData,2);
+myTrace = handles.FrameData(1:nVals,i);
+myTrace = myTrace - mean(myTrace);
 
+y_offsets = linspace(5,85,size(handles.ROIcoordinates,1));
+myTrace = y_offsets(i) + myTrace;
+handles.SelROI_Plot.YData = myTrace;
 
-% --- Executes during object creation, after setting all properties.
-function WhichUnits_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to WhichUnits (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
+% show pixel corr image
+axes(handles.CorrImage);
+hold off
+imagesc(handles.corrImages(:,:,i));
+colormap(handles.CorrImage,brewermap([],'*RdBu'));
+hold on
+plot(handles.ROIcoordinates(i,2),handles.ROIcoordinates(i,1),'sk');
+set(gca, 'YTick', [], 'XTick', [], 'TickDir','out');
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end

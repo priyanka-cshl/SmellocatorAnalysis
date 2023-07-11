@@ -39,8 +39,7 @@ else
 end
 
 %% check if the preprocessed version already exists - locally or on the server
-Paths.Grid.Behavior_processed   = '/home/priyanka/Dropbox/Smellocator_Behavior'; %'/mnt/grid-hs/pgupta/Smellocator/Behavior';
-
+Paths.Grid.Behavior_processed   = '/mnt/data/Behavior';
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
 if ~overwriteflag && exist(savepath)
     reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
@@ -101,41 +100,18 @@ if ~isempty(myimagingdir)
     [WF_timestamps] = GetWidefieldTimeStamps(myimagingdir, Frame_TS);
 end
 
+%% extras
+TTLs = []; ReplayTTLs = []; TuningTTLs = []; myephysdir = [];
+SingleUnits = [];
+
+
+
 %% Saving stuff in one place
 if ~exist(fileparts(savepath),'dir')
     mkdir(fileparts(savepath));
 end
-
-%% For Ben and Ryan - remove unnecessary stuff
-TrialInfo.OdorStart(:,2) = [];
-TrialInfo.Success(:,2) = [];
-Traces.OdorLocation = Traces.Motor;
-Traces.TrialState = Traces.Trial;
-Traces = rmfield(Traces,{'Motor'; 'Trial'});
-
-%     {'Lever'       }
-%     {'Sniffs'      }
-%     {'Licks'       }
-%     {'Rewards'     }
-%     {'Timestamps'  }
-%     {'OdorLocation'}
-%     {'TrialState'  }
-
-extrafields = {'Offset'; 'TraceIndices'; 'TraceDuration'; 'SessionIndices'; 'SessionTimestamps'; ...
-    'TimeIndices'; 'Timestamps'; 'Duration'; 'Reward'; 'TransferFunctionLeft'};
-TrialInfo = rmfield(TrialInfo,extrafields);
-TrialInfo.TrialID = TrialInfo.TrialID';
-
-%     {'TrialID'             }
-%     {'TimeStampsDropped'   }
-%     {'Odor'                }
-%     {'OdorStart'           }
-%     {'TargetZoneType'      }
-%     {'Success'             }
-%     {'InZone'              }
-%     {'HoldSettings'        }
-%     {'Perturbation'        }
-
-save(savepath, 'Traces', 'TrialInfo', 'TargetZones', 'startoffset', 'SampleRate');
+save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
+               'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Frame_TS', 'WF_timestamps');
     
 end

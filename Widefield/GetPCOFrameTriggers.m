@@ -10,37 +10,34 @@ Frame_TS = vertcat(C_off,C_on);
 Frame_TS = sortrows(Frame_TS, 1);
 median_fs = median(diff(Frame_TS(:,1)));
 
-if ~any(diff(Frame_TS(:,1))>=1.5*median_fs)
+frame_drops = any(diff(Frame_TS(:,1))>=1.5*median_fs);
+if ~frame_drops
     disp('no frames dropped during behavior');
 else
-    MyFrames = Frame_TS(1,:);
     disp('warning: frames may have been dropped during behavior');
-    i = 2;
-    while i<=size(Frame_TS,1)
-        frame_diff = Frame_TS(i,1) - Frame_TS(i-1,1);
-        if frame_diff >= 1.5*median_fs
-            % just use the next frame to be safe - last transition might be
-            % fake
-            frame_diff = Frame_TS(i+1,1) - Frame_TS(i-1,1);
-            missing_frames = round((frame_diff - median_fs)/median_fs);
-            % sanity check
-            if ~mod(missing_frames,2) && isequal(Frame_TS(i-1,2),Frame_TS(i+1,2)) % even frames
-                disp('unresolved frame drops');
-                keyboard;
-            elseif mod(missing_frames,2) && ~isequal(Frame_TS(i-1,2),Frame_TS(i+1,2)) % odd frames
-                disp('unresolved frame drops');
-                keyboard;
-            else
-                pad = mod(MyFrames(end,2)+(1:missing_frames),2);
-                MyFrames = vertcat(MyFrames,[NaN*pad' pad'],Frame_TS(i+1,:));
-                i = i + 2;
-            end
+    while frame_drops
+        idx = find(diff(abs(Frame_TS(:,1)))>=1.5*median_fs,1,'first') + 1;
+        
+        % just use the next frame to be safe - last transition might be fake
+        frame_diff = Frame_TS(idx+1,1) - Frame_TS(idx-1,1);
+        missing_frames = round((frame_diff - median_fs)/median_fs);
+        % sanity check
+        if ~mod(missing_frames,2) && isequal(Frame_TS(idx-1,2),Frame_TS(idx+1,2)) % even frames
+            disp('unresolved frame drops');
+            keyboard;
+        elseif mod(missing_frames,2) && ~isequal(Frame_TS(idx-1,2),Frame_TS(idx+1,2)) % odd frames
+            disp('unresolved frame drops');
+            keyboard;
         else
-            MyFrames = vertcat(MyFrames,Frame_TS(i,:));
-            i = i + 1;
+            pad = mod(Frame_TS(idx-1,2)+(1:missing_frames),2);
+            ts  = linspace(Frame_TS(idx-1,1),Frame_TS(idx+1,1),(missing_frames + 2));
+            Frame_TS = vertcat(Frame_TS(1:idx-1,:),...
+                               [-ts(2:end-1)' pad'],...
+                                Frame_TS((idx+1):end,:));
         end
+        
+        frame_drops = any(diff(abs(Frame_TS(:,1)))>=1.5*median_fs);
     end
-    Frame_TS = MyFrames;
 end
 
 % another sanity check
