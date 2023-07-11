@@ -7,6 +7,7 @@ traceOverlap = SampleRate*startoffset;
 AllTargets = 1:0.25:3.75; % for assigning target zone values
 
 % rename all trials flagged as Halt-Flip-Templates or Offset-II-templates as OL-Template
+PerturbedTemps = [];
 if any(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
     PerturbedTemps = find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template'));
 elseif any(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template'))
