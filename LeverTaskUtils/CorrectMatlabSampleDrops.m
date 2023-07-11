@@ -104,7 +104,6 @@ for thisTrial = 1:size(Trial.Indices,1)
             Initiations(end) = Initiations(end)+1;
         end
         Initiations_durations = 1000*diff([TS(Initiations(:,1),1) TS(Initiations(:,2),1)],1,2); % in ms
-
         if ~isempty(Initiations)
             % Odor ON timestamp - find the first initiation period > trigger hold
             TriggerHold = MySettings(...
@@ -128,16 +127,42 @@ for thisTrial = 1:size(Trial.Indices,1)
                 % sometimes there's noise and lines toggle 
                 toggles = Initiations(OdorStart:end-1,2) - Initiations(OdorStart+1:end,1);
                 %if OdorStart == size(Initiations,1)-1 && (Initiations(end,1) - Initiations(OdorStart,2) <= 3)
-                if ~any(abs(toggles)>5)
+                if any(abs(toggles)<=5)
                     InitiationsFixed = [InitiationsFixed; thisTrial];
                     Initiations(OdorStart,2) = Initiations(end,2);
                     Initiations(OdorStart+1:end,:) = [];
                 else
-                    % I don't know why we would ever pick anything but the last one 
-                    disp(thisTrial);
-                    keyboard;
-                    OdorStart = size(Initiations,1);
-                    trialflag(thisTrial) = -1;
+                    % special cases
+                    % longest initiation was in the min ITI period
+                    minITI = MySettings(...
+                                find(MySettings(:,1)<=Trial.TimeStamps(thisTrial,1),1,'last') ...
+                                    ,25); % in msec
+                    if Initiations(OdorStart,1) < (minITI*SampleRate)/1000
+                        Initiations(1:OdorStart,:) = [];
+                        Initiations_durations(1:OdorStart,:) = [];
+                        OdorStart = find(Initiations_durations>=TriggerHold, 1, 'last');
+                        if isempty(OdorStart)
+                            % check if Initiation duration just fell short by a few ms
+                            if ~isempty(find(Initiations_durations>=(TriggerHold-4), 1, 'last'))
+                                OdorStart = find(Initiations_durations>=(TriggerHold-4), 1, 'last'); % grace period of 2 bins
+                            else
+                                keyboard;
+                            end
+                        end
+                    end
+                    
+                    % its the first trial - many failed initiations before
+                    % actual session start
+                    if thisTrial == 1
+                        OdorStart = size(Initiations,1);
+                    end
+                    
+                    if OdorStart < size(Initiations,1)
+                        disp(thisTrial);
+                        keyboard;
+                        OdorStart = size(Initiations,1);
+                        trialflag(thisTrial) = -1;
+                    end
                 end
             end
             
@@ -201,8 +226,12 @@ foo(foo>-5) = 0;
 foo(foo<0) = 1;
 % any contiguous stretch of 5 offsets?
 x = [find(diff([0; foo; 0])==1) find(diff([0; foo; 0])==-1)-1];
-Trial.Offsets = [any(abs(diff(x,1,2))>5)*TrialStartOffsets OdorStartOffsets];
 
+% special case
+if (numel(OdorStartOffsets) == 1+numel(TrialStartOffsets)) && isnan(OdorStartOffsets(end))
+    TrialStartOffsets(end+1,1) = NaN;
+end
+Trial.Offsets = [any(abs(diff(x,1,2))>5)*TrialStartOffsets OdorStartOffsets];
 if ~any(abs(diff(x,1,2))>5)
     disp('No Samples dropped between digital and analog');
 else

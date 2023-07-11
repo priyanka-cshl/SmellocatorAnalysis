@@ -104,8 +104,8 @@ for thisTrial = 1:numel(TrialOn)
         end
         
         % handing timestamp drops
-        TrialInfo.TimeStampsDropped(thisTrial) = Trial.TimeStampDrops(thisTrial);
-        if TrialInfo.TimeStampsDropped(thisTrial)
+        TrialInfo.TimeStampsDropped(thisTrial,1) = Trial.TimeStampDrops(thisTrial);
+        if TrialInfo.TimeStampsDropped(thisTrial,1)
             % find the location where missing samples need to be patched in
            f = find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001);
            samples_missing = int16((Traces.Timestamps{thisTrial}(f+1) - Traces.Timestamps{thisTrial}(f))*SampleRate - 1);
@@ -194,10 +194,36 @@ for thisTrial = 1:numel(TrialOn)
         %thisTrialInZone = TrialInfo.Timestamps(thisTrial,1) + thisTrialInZone/SampleRate; % convert to seconds and offset w.r.t. trace start
         thisTrialInZone = thisTrialInZone/SampleRate; % convert to seconds
         if ~isempty(thisTrialInZone)
-            TrialInfo.InZone(thisTrial) = { thisTrialInZone };
+            TrialInfo.InZone(thisTrial,1) = { thisTrialInZone };
         else
-            TrialInfo.InZone(thisTrial) = { [] };
+            TrialInfo.InZone(thisTrial,1) = { [] };
         end
+        
+        %% Get the required trigger and target hold times for this Trial.
+        TrialInfo.HoldSettings(thisTrial,:) = MySettings(thisTrial,[12 5 7 24]+1)/1000; % trigger hold, target hold, summed target, min ITI hold in seconds
+        % which criterion did the mouse get water through?
+        AllHolds = diff(TrialInfo.InZone{thisTrial}',1);
+        if any(AllHolds>=TrialInfo.HoldSettings(thisTrial,2))
+           TrialInfo.Success(thisTrial,2) = 1; 
+        elseif (sum(AllHolds)>= TrialInfo.HoldSettings(thisTrial,3))
+           TrialInfo.Success(thisTrial,2) = 2; 
+        end
+        
+%         if TrialInfo.Success(thisTrial,1) && ~TrialInfo.Success(thisTrial,2)
+%             if any(AllHolds < 0.003)
+%                 noisyHold = find(AllHolds<0.003);
+%                 AllHolds(noisyHold-1) = AllHolds(noisyHold-1) + AllHolds(noisyHold);
+%                 AllHolds(:,noisyHold) = [];
+%                 if sum(AllHolds)<TrialInfo.HoldSettings(thisTrial,3)
+%                     TrialInfo.Success(thisTrial,2) = 1; 
+%                 else
+%                     TrialInfo.Success(thisTrial,2) = 2;
+%                 end
+%             else
+%                 %keyboard;
+%             end
+%         end
+            
         
         %% Which Perturbation
         WhichPerturbation = mode( MyData(TrialOn(thisTrial):TrialOff(thisTrial), PerturbationCol(1)) );
@@ -248,16 +274,19 @@ for thisTrial = 1:numel(TrialOn)
                         if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1))
                             OffsetStart = ...
                                 find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1);
-                            FeedbackStart = ...
+                            CorrectionStart = ...
                                 find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1,1,'last');
-                            % convert to seconds w.r.t. trial start
-%                             OffsetStart = TrialInfo.PerturbationStart(thisTrial)/SampleRate;
-%                             FeedbackStart = TrialInfo.FeedbackStart(thisTrial)/SampleRate;
-                            OffsetStart = OffsetStart/SampleRate;
-                            FeedbackStart = FeedbackStart/SampleRate;
-                            
-                            TrialInfo.Perturbation{thisTrial,2} = ...
-                                [PerturbationValue OffsetStart FeedbackStart]; % offset added, offset start, feedback start w.r.t. trial start
+                            % check if correction start preceeds trial end
+                            % - otherwise animal didn't correct in this trial
+                            if CorrectionStart<(TrialOff(thisTrial)-TrialOn(thisTrial))
+                                if MyData(TrialOn(thisTrial)+CorrectionStart,LeverCol) > TargetZones(TrialInfo.TargetZoneType(thisTrial,1),2)
+                                    CorrectionStart = -CorrectionStart; % upward movement (closer to the body)
+                                end
+                            else
+                                CorrectionStart = NaN;
+                            end
+                            % OffsetLocation = PerturbationValue
+                            TrialInfo.Perturbation{thisTrial,2} = [OffsetStart CorrectionStart PerturbationValue];
                         end
                     case 800 % gain change
                         TrialInfo.Perturbation{thisTrial,1} = 'GainChange';
@@ -277,6 +306,23 @@ for thisTrial = 1:numel(TrialOn)
                             HaltStop = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1);
                             % HaltLocation = PerturbationValue
                             TrialInfo.Perturbation{thisTrial,2} = [HaltStart HaltStop PerturbationValue];
+                        end
+                    case 1506 % offsets II that also were used as open loop templates
+                        TrialInfo.Perturbation{thisTrial,1} = 'Offset-II-Template';
+                        if ~isempty(find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1))
+                            OffsetStart = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==1);
+                            CorrectionStart = find( diff([ MyData(TrialOn(thisTrial):TrialOff(thisTrial), RZoneCol); 0] )==-1);
+                            % check if correction start preceeds trial end
+                            % - otherwise animal didn't correct in this trial
+                            if CorrectionStart<(TrialOff(thisTrial)-TrialOn(thisTrial))
+                                if MyData(TrialOn(thisTrial)+CorrectionStart,LeverCol) > TargetZones(TrialInfo.TargetZoneType(thisTrial,1),2)
+                                    CorrectionStart = -CorrectionStart; % upward movement (closer to the body)
+                                end
+                            else
+                                CorrectionStart = NaN;
+                            end
+                            % OffsetLocation = PerturbationValue
+                            TrialInfo.Perturbation{thisTrial,2} = [OffsetStart CorrectionStart PerturbationValue];
                         end
                     case 1100 % block shift perturbations
                         TrialInfo.Perturbation{thisTrial,1} = 'BlockShift';

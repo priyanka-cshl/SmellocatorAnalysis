@@ -45,6 +45,22 @@ for tz = 1:12
     perturbationTrials(perturbationTrials(:,2)==tz,:) = sortrows(perturbationTrials(perturbationTrials(:,2)==tz,:),3);
 end
 
+% for offsets - sort by offset type
+if any(perturbationTrials)
+    if any(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template')) || ...
+            any(strcmp(TrialInfo.Perturbation(:,1),'Offset-II'))
+        offsetParams = cell2mat(TrialInfo.Perturbation(perturbationTrials(:,1),2));
+        [~,sortidx] = sort(offsetParams(:,3));
+        perturbationTrials = perturbationTrials(sortidx,:);
+        offsetParams = offsetParams(sortidx,:);
+        offsettypes = unique(offsetParams(:,3));
+        for k = 1:numel(offsettypes)
+            f = find(offsetParams(:,3)==offsettypes(k));
+            perturbationTrials(f,2) = perturbationTrials(f,2) + 0.1*k;
+        end
+    end
+end
+
 allTrials = vertcat(whichTrials, perturbationTrials);
 
 % Plot all events

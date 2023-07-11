@@ -1,5 +1,6 @@
 %% for O3
 SessionPath = 'PCX4/PCX4_20210713_r0_processed.mat';
+SessionPath = 'O8/O8_20220704_r0_processed.mat';
 
 %% DataExtraction
 if strcmp(computer, 'MACI64')

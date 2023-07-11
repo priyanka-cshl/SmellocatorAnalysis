@@ -22,18 +22,18 @@ OpenLoop = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
 N = size(SingleUnits,2); % #units
 if nargin < 2 || isempty(MyUnits)
     MyUnits = 1:N;
-    % sort units by tetrodes
-    foo = cell2mat(arrayfun(@(x) [x.tetrode; x.id], SingleUnits, 'UniformOutput', false))';
-    [~, MyUnits] = sortrows(foo,[1 2]);
 end
-
+% 
+% % sort units by tetrodes
+% foo = cell2mat(arrayfun(@(x) [x.tetrode; x.id], SingleUnits, 'UniformOutput', false))';
+% [~, MyUnits] = sortrows(foo,[1 2]);
 
 %% Get the replay traces and spikes
 [MyTraces,timestamps,PSTH,Raster] = ...
 ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
                         'plotfigures', 1, 'plotephys', 1, ...
                         'PlotOpenLoop', 1, ...
-                            'whichunits', MyUnits, 'UnitsPerFig', 8);
+                            'whichunits', MyUnits, 'UnitsPerFig', 5);
 
 end % function end
 

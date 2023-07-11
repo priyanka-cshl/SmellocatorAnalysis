@@ -1,8 +1,14 @@
 function [TracesOut] = ConcatenateTraces(Traces, whichTrials, traceOverlap)
 
+if nargin<2
+    whichTrials = 1:size(Traces.Lever,2); % all trials
+end
 % global SampleRate; % = 500; % samples/second
 % global startoffset; % = 1; % seconds
 % traceOverlap = SampleRate*startoffset;
+if nargin<3
+    traceOverlap = 500;
+end
 
 whichTraces = fieldnames(Traces);
 

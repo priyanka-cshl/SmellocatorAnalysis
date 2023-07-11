@@ -120,6 +120,12 @@ if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
         ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop);
 end
 
+if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
+    [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo] = ...
+        PerturbationReplayAlignedSpikeTimes(SingleUnits,TTLs,...
+        ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop);
+end
+
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 handles.CurrentUnit.Data(1) = 1;
 
@@ -158,7 +164,8 @@ for i = 1:3
         % plot replay trials
         AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
     end
-    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) || ...
+            any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
         % plot passive halt trials
         AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, ...
             handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
@@ -218,7 +225,8 @@ for i = 1:3
         % plot replay trials
         AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotevents', 0);
     end
-    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) || ...
+            any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
         % plot passive halt trials
         AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, ...
             handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotevents', 0);

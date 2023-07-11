@@ -2,11 +2,7 @@
 % into trials, with relevant continuous (lever, motor, respiration, lickpiezo)
 % and event data (licks, target zone flags, odor ON-OFF, etc) for each trial
 
-function [] = PreprocessSmellocatorData(MyFilePath,overwriteflag)
-
-if nargin<2
-    overwriteflag = 0;
-end
+function [] = Timestampdrop_debugger(MyFilePath,overwriteflag)
 
 %% Add relevant repositories
 Paths = WhichComputer();
@@ -38,19 +34,43 @@ else
     [~,AnimalName] = fileparts(FilePaths);
 end
 
-%% check if the preprocessed version already exists - locally or on the server
-savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
-if ~overwriteflag && exist(savepath)
-    reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
-    if strcmp(reply,'N')
-        return;
+[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
+
+% read data into chunks as they came in
+global samplenum; % #samples read in the current session
+global TotalData; % matrix containing data from the current callback (refreshed at 20Hz (or Refresh rate))
+global TotalTime; % matrix containing timestamps from the current callback
+samplenum = 0; TotalData = zeros(6000,1); TotalTime = zeros(6000,1);
+samps2read = 25;
+
+handles.axes1 = axes; % main plot
+handles.trial_on_1 = fill(NaN,NaN,[.8 .8 .8]);
+hold on;
+handles.trial_on_1.EdgeColor = 'none';
+handles.trial_on_2 = fill(NaN,NaN,[0.8941    0.9412    0.9020]);
+handles.trial_on_2.EdgeColor = 'none';
+handles.trial_on_3 = fill(NaN,NaN,[0.8706    0.9216    0.9804]);
+handles.trial_on_3.EdgeColor = 'none';
+handles.trial_on_4 = fill(NaN,NaN,[0.93    0.84    0.84]);
+handles.trial_on_4.EdgeColor = 'none';
+
+while (samplenum + 25) <= size(MyData,1)
+    newsamps = MyData(samplenum+(1:samps2read),:);
+    last_ts = TotalTime(end,1);
+    first_ts = newsamps(1,1);
+    if first_ts - last_ts > 0.003
+        keyboard;
+        newsamps(:,1) = last_ts + (0.002:0.002:0.05);
+        newsamps(:,6) = [zeros(24,1); MyData(samplenum+26,6)];
+    else
+        samplenum = samplenum + 25;
     end
+    TotalTime = [ TotalTime(samps2read+1:end,1); newsamps(:,1) ];
+    TotalData = [ TotalData(samps2read+1:end,1); newsamps(:,6) ];
+    [handles] = PlotToPatch_Trial_GUI(handles, TotalData(:,1), TotalTime, [0 5]);
+
 end
 
-[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
-FileLocations.Behavior = MyFilePath;
-[FilePaths, MyFileName] = fileparts(MyFilePath);
-disp(MyFileName);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
@@ -76,10 +96,10 @@ if ~isempty(InitiationsFixed)
 end
 
 %% Check if passive tuning was done
-MyTuningTrials = []; TuningTrialSequence = []; PassiveReplayTraces = []; TuningParams = [];
+MyTuningTrials = []; TrialSequence = []; PassiveReplayTraces = [];
 [TuningFile] = WhereTuningFile(FilePaths,MyFileName);
 if ~isempty(TuningFile)
-    [MyTuningTrials, TuningTrialSequence, PassiveReplayTraces, TuningParams] = ParseTuningSession(TuningFile);
+    [MyTuningTrials, TrialSequence, PassiveReplayTraces] = ParseTuningSession(TuningFile);
     disp(['Found Tuning File: ',TuningFile]);
     FileLocations.Tuning = TuningFile;
 end
@@ -92,7 +112,7 @@ TTLs = []; ReplayTTLs = []; TuningTTLs = []; myephysdir = [];
 if ~isempty(mySortingdir)
     % process the TTLs
     [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
+            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
 end
 
 if isempty(TTLs)
@@ -100,11 +120,11 @@ if isempty(TTLs)
     if ~isempty(myephysdir)
         if size(myephysdir,1) == 1
             [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence); % send 'ADC', 1 to also get analog aux data
+                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TrialSequence); % send 'ADC', 1 to also get analog aux data
         else
             while isempty(TTLs) && ~isempty(myephysdir)
                 [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TuningTrialSequence);
+                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TrialSequence);
                 if isempty(TTLs)
                     myephysdir(1,:) = [];
                 end
@@ -119,11 +139,6 @@ if isempty(TTLs)
     disp('no matching recording file found');
 else
     FileLocations.OEPS = myephysdir;
-end
-
-if ~isempty(TuningTTLs)
-    Tuningextras.sessionsettings = TuningParams;
-    Tuningextras.sequence = TuningTrialSequence;
 end
 
 %% Get spikes - label spikes by trials
@@ -154,6 +169,6 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits');
     
 end

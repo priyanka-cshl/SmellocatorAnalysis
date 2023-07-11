@@ -6,10 +6,14 @@ global startoffset; % = 1; % seconds
 traceOverlap = SampleRate*startoffset;
 AllTargets = 1:0.25:3.75; % for assigning target zone values
 
-% rename all trials flagged as Halt-Flip-Templates as OL-Template
-flipTemps = find(strcmp(TrialInfo.Perturbation,'Halt-Flip-Template'));
-for i = 1:numel(flipTemps)
-    TrialInfo.Perturbation{flipTemps(i),1} = 'OL-Template';
+% rename all trials flagged as Halt-Flip-Templates or Offset-II-templates as OL-Template
+if any(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+    PerturbedTemps = find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template'));
+elseif any(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template'))
+    PerturbedTemps = find(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template'));
+end
+for i = 1:numel(PerturbedTemps)
+    TrialInfo.Perturbation{PerturbedTemps(i),1} = 'OL-Template';
 end
 
 % sometimes odorstart is computed as NaN - mouse started moving too quickly

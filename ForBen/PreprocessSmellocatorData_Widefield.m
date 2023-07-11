@@ -2,7 +2,7 @@
 % into trials, with relevant continuous (lever, motor, respiration, lickpiezo)
 % and event data (licks, target zone flags, odor ON-OFF, etc) for each trial
 
-function [] = PreprocessSmellocatorData(MyFilePath,overwriteflag)
+function [] = PreprocessSmellocatorData_Widefield(MyFilePath,overwriteflag)
 
 if nargin<2
     overwriteflag = 0;
@@ -10,10 +10,10 @@ end
 
 %% Add relevant repositories
 Paths = WhichComputer();
-addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
-addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI: https://github.com/open-ephys/open-ephys-matlab-tools (use commit 10-04-22)
+%addpath(genpath(fullfile(Paths.Code,'open-ephys-analysis-tools')));
+%addpath(genpath(fullfile(Paths.Code,'open-ephys-matlab-tools'))); % for the new OEPS GUI: https://github.com/open-ephys/open-ephys-matlab-tools (use commit 10-04-22)
 addpath(genpath(fullfile(Paths.Code,'MatlabUtils')));
-addpath(genpath(fullfile(Paths.Code,'npy-matlab/'))); % path to npy-matlab scripts
+%addpath(genpath(fullfile(Paths.Code,'npy-matlab/'))); % path to npy-matlab scripts
 
 %% globals
 % global MyFileName;
@@ -39,6 +39,8 @@ else
 end
 
 %% check if the preprocessed version already exists - locally or on the server
+Paths.Grid.Behavior_processed   = '/home/priyanka/Dropbox/Smellocator_Behavior'; %'/mnt/grid-hs/pgupta/Smellocator/Behavior';
+
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
 if ~overwriteflag && exist(savepath)
     reply = input('This session has already been processed. \nDo you want to overwrite? Y/N [Y]: ','s');
@@ -51,6 +53,8 @@ end
 FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
 disp(MyFileName);
+
+[Frame_TS.Behavior] = GetPCOFrameTriggers(MyData);
 
 %% Parse into trials
 %[Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
@@ -65,12 +69,12 @@ if ~isempty(InitiationsFixed)
         weirdo = find(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01);
         if any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
             disp('something funky with computing odorstart from Lever trace');
-            keyboard;
-            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+            %keyboard;
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),2) = TrialInfo.OdorStart(InitiationsFixed(weirdo),1);
         else
             % Initiation hold was larger than a second - that's couldn't
             % compute it accurately from trial traces
-            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),2) = TrialInfo.OdorStart(InitiationsFixed(weirdo),1);
         end
     end
 end
@@ -82,78 +86,55 @@ if ~isempty(TuningFile)
     [MyTuningTrials, TuningTrialSequence, PassiveReplayTraces, TuningParams] = ParseTuningSession(TuningFile);
     disp(['Found Tuning File: ',TuningFile]);
     FileLocations.Tuning = TuningFile;
-end
-
-%% Get info from the OEPS files if available
-TTLs = []; ReplayTTLs = []; TuningTTLs = []; myephysdir = [];
-
-% for batch Q - first check if event data has been processed during Sorting
-[mySortingdir] = WhereOEPSTTLs(MyFileName,FilePaths); % returns empty if no recording file was found
-if ~isempty(mySortingdir)
-    % process the TTLs
-    [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-            GetOepsAuxChannels(mySortingdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence, 'KiloSorted', 1); % send 'ADC', 1 to also get analog aux data
-end
-
-if isempty(TTLs)
-    [myephysdir] = WhereOEPSFile(MyFileName,FilePaths); % returns empty if no recording file was found
-    if ~isempty(myephysdir)
-        if size(myephysdir,1) == 1
-            [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                GetOepsAuxChannels(myephysdir, Trials.TimeStamps, MyTuningTrials, TuningTrialSequence); % send 'ADC', 1 to also get analog aux data
-        else
-            while isempty(TTLs) && ~isempty(myephysdir)
-                [TTLs,ReplayTTLs,TuningTTLs,~] = ...
-                    GetOepsAuxChannels(myephysdir(1,:), Trials.TimeStamps, MyTuningTrials, TuningTrialSequence);
-                if isempty(TTLs)
-                    myephysdir(1,:) = [];
-                end
-            end
-        end
-    end
-else
-    FileLocations.KiloSorted = mySortingdir;
-end
-
-if isempty(TTLs)
-    disp('no matching recording file found');
-else
-    FileLocations.OEPS = myephysdir;
-end
-
-if ~isempty(TuningTTLs)
-    Tuningextras.sessionsettings = TuningParams;
-    Tuningextras.sequence = TuningTrialSequence;
-end
-
-%% Get spikes - label spikes by trials
-SingleUnits = [];
-if ~isempty(TTLs)
-    if isfield(FileLocations,'KiloSorted')
-        myspikesdir = FileLocations.KiloSorted;
-    else
-        foo = regexp(myephysdir,[filesep,AnimalName,filesep],'split');
-        myspikesdir = fullfile(Paths.Local.Ephys_processed,AnimalName,fileparts(foo{end}));
-    end
-    if exist(myspikesdir)
-        FileLocations.Spikes = myspikesdir;
-        SingleUnits = GetSingleUnits(myspikesdir);
-        [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);    
-    end
-end
-
-%% Photometry
-FTrace = [];
-if ~isempty(TTLs)
     
+    % also get Camera Timestamps during passive replay
+    [MyData_p] = LoadSessionData(TuningFile, 1, 0);
+    
+    [Frame_TS.Passive] = GetPCOFrameTriggers(MyData_p);
+    
+end
+
+%% get the Widefield timestamps
+[myimagingdir] = WhereWidefieldData(MyFileName,AnimalName);
+if ~isempty(myimagingdir)
+    [frame_timestamps_out] = GetWidefieldTimeStamps(myimagingdir, Frame_TS);
 end
 
 %% Saving stuff in one place
 if ~exist(fileparts(savepath),'dir')
     mkdir(fileparts(savepath));
 end
-save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
-               'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras');
+
+%% For Ben and Ryan - remove unnecessary stuff
+TrialInfo.OdorStart(:,2) = [];
+TrialInfo.Success(:,2) = [];
+Traces.OdorLocation = Traces.Motor;
+Traces.TrialState = Traces.Trial;
+Traces = rmfield(Traces,{'Motor'; 'Trial'});
+
+%     {'Lever'       }
+%     {'Sniffs'      }
+%     {'Licks'       }
+%     {'Rewards'     }
+%     {'Timestamps'  }
+%     {'OdorLocation'}
+%     {'TrialState'  }
+
+extrafields = {'Offset'; 'TraceIndices'; 'TraceDuration'; 'SessionIndices'; 'SessionTimestamps'; ...
+    'TimeIndices'; 'Timestamps'; 'Duration'; 'Reward'; 'TransferFunctionLeft'};
+TrialInfo = rmfield(TrialInfo,extrafields);
+TrialInfo.TrialID = TrialInfo.TrialID';
+
+%     {'TrialID'             }
+%     {'TimeStampsDropped'   }
+%     {'Odor'                }
+%     {'OdorStart'           }
+%     {'TargetZoneType'      }
+%     {'Success'             }
+%     {'InZone'              }
+%     {'HoldSettings'        }
+%     {'Perturbation'        }
+
+save(savepath, 'Traces', 'TrialInfo', 'TargetZones', 'startoffset', 'SampleRate');
     
 end

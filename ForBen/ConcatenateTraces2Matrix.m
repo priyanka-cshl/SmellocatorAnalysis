@@ -1,4 +1,4 @@
-function [TracesOut, whichTraces] = ConcatenateTraces2Mat(Traces, whichTrials, traceOverlap)
+function [TracesOut, whichTraces] = ConcatenateTraces2Matrix(Traces, whichTrials, traceOverlap)
 
 if nargin<2
     whichTrials = 1:size(Traces.Lever,2); % all trials
