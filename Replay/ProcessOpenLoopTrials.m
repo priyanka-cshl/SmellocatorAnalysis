@@ -277,9 +277,9 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     if ShadeErrorbars
                         MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('t'),[],0.5); %used to be r
                     else
-                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,Plot_Colors('t'),0.5);
-                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,Plot_Colors('t'),0.25);
-                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,Plot_Colors('t'),0.25);
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,'color',Plot_Colors('t'),'Linewidth',0.5);
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,'color',Plot_Colors('t'),'Linewidth',0.25);
+                        plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,'color',Plot_Colors('t'),'Linewidth',0.25);
                     end
                     %plot((1/SampleRate)*(1:size(PSTH,2)),mean(,1),'r');
                     
@@ -356,9 +356,9 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                         if ShadeErrorbars
                             MyShadedErrorBar((1/SampleRate)*(1:size(PSTH,2)),meanFR,semFR,Plot_Colors('r'),[],0.5); %used to be r
                         else
-                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,Plot_Colors('r'),0.5);
-                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,Plot_Colors('r'),0.25);
-                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,Plot_Colors('r'),0.25);
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR,'color',Plot_Colors('r'),'Linewidth',0.5);
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR+semFR,'color',Plot_Colors('r'),'Linewidth',0.25);
+                            plot((1/SampleRate)*(1:size(PSTH,2)),meanFR-semFR,'color',Plot_Colors('r'),'Linewidth',0.25);
                         end
                         
                         %                     plot((1/SampleRate)*(1:size(PSTH,2)),mean(squeeze(PSTH((trials_per_replay+2):end,:,i)),1),...
