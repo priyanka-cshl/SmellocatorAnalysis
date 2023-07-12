@@ -254,7 +254,7 @@ selROIs = [68 28; 51 17; 47 26; 37 26; 25 11];
 ts = frame_TS;
 ts = ts(valid_frames)-ts(1);
 figure;
-clear C;
+%clear C;
 for roi = 1:length(selROIs)
     pix = stackdims(1)*(selROIs(roi,1)-1) + selROIs(roi,2);
     
@@ -298,15 +298,14 @@ for roi = 1:length(selROIs)
     
     % lets also add here the single pixel correlation 
     
-    refPix = WF_stack(pix,:); % entire timeseries
-    clear C
-    for j = 1:nPixels
-        C(j,roi) = corr(WF_stack(j,:)',refPix');
-    end
+%     refPix = WF_stack(pix,:); % entire timeseries
+%     for j = 1:nPixels
+%         C(j,roi) = corr(WF_stack(j,:)',refPix');
+%     end
     
     subplot(5,7,((roi-1)*7) + 1);
     imagesc(reshape(C(:,roi),stackdims(1),stackdims(2)),[-0.5 1]);
-    colormap(brewermap([50],'*RdBu'));
+    colormap(brewermap([],'Greys'));
     hold on
     plot(selROIs(roi,1),selROIs(roi,2),'.k');
     title([num2str(selROIs(roi,1)),', ',num2str(selROIs(roi,2))]);
@@ -314,3 +313,7 @@ for roi = 1:length(selROIs)
     
 end
 set(gcf,'Position',[2055 101 1447  5*155]);
+
+%% just the mean image
+WF_stack = reshape(WF_stack,stackdims(1),stackdims(2),nFrames);
+
