@@ -316,4 +316,9 @@ set(gcf,'Position',[2055 101 1447  5*155]);
 
 %% just the mean image
 WF_stack = reshape(WF_stack,stackdims(1),stackdims(2),nFrames);
+figure;
+imagesc(mean(WF_stack,3)./std(WF_stack,0,3));
+colormap(brewermap([],'*YlGnBu'))
+set(gca,'CLim',[10 100]);
+set(gca,'XTick',[],'YTick',[]);
 
