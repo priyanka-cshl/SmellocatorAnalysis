@@ -1,7 +1,6 @@
 %% paths
-
 datapath = '/mnt/data/Behavior/';
-imagingpath = '/mnt/data/Widefield/HX3/20230505_r0/selectedROIs.mat';
+imagingpath = '/mnt/data/Widefield/HX3/20230505_r0';
 MySession = fullfile(datapath,'HX3','HX3_20230505_r0_processed.mat');
 
 %% get the processed data loaded and assemble open loop traces
@@ -11,7 +10,7 @@ load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', ...
            
 OpenLoop = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
 
-% just get the equivalent F traces using timestamps
+%% get the corresponding frame ids to use using behavior timestamps
 
 % template
 template_TS = OpenLoop.TemplateTraces.Timestamps{1};
@@ -20,6 +19,7 @@ template_TS = OpenLoop.TemplateTraces.Timestamps{1};
 [~,f2] = min(abs(WF_timestamps.Behavior(:,1)-template_TS(end)));
 frame_TS = WF_timestamps.Behavior(f1:f2,1);
 frame_idx = f1:f2;
+valid_frames = find(frame_idx>0);
 nan_locs(:,1) = find(diff(isnan(template_TS))==1) + 1;
 nan_locs(:,2) = find(diff(isnan(template_TS))==-1);
 for i = 1:size(nan_locs,1)
@@ -51,26 +51,54 @@ for p = 1:size(PassiveReplayTraces.Timestamps,2)
 end
 
 %% load imaging data
-load(imagingpath, 'WhichROIs','refPix','C','stackdims');   
+% only selected ROIs
+load(fullfile(imagingpath,'selectedROIs.mat'), 'WhichROIs','refPix','C','stackdims');   
+% also the whole stack
+[WF_stack] = ViewProcessedBinaryStack(imagingpath);
 
-ROIidx = 1;
-% template
+%% plotting ROIs
+figure;
+imagesc(mean(WF_stack,3));
+colormap(brewermap([50],'RdBu'));
+hold on
+% check locations
+for i = 1:length(WhichROIs)
+    %plot(WhichROIs(i,2),WhichROIs(i,1),'.k');
+    text(WhichROIs(i,2),WhichROIs(i,1),num2str(i));
+end
+
+%% extracting replay responses of any given ROI
 figure; 
+Lims = [30 40];
+ROIidx = 8; %8; %5; % 9
+
+% Lims = [40 50];
+% ROIidx = 4; %4; %7; % 9
+% % % 
+Lims = [20 30];
+ROIidx = 14; %7; % 9
+
+% template
+subplot(3,1,1);
+ProcessOpenLoopBasic(OpenLoop, SampleRate, TargetZones, 'plottrials', 1, 'TrialHeight',Lims);
+hold on
 valid_frames = find(frame_idx>0);
 ts = frame_TS;
 plot(ts(valid_frames)-ts(1),refPix(frame_idx(valid_frames),ROIidx));
 
 % plot all active replay traces
-figure; 
-subplot(2,1,1);
+subplot(3,1,2);
+ProcessOpenLoopBasic(OpenLoop, SampleRate, TargetZones, 'plottrials', 1, 'TrialHeight',Lims);
 hold on
 for i = 1:r
     indices = Frames_idx(i,:);
     ts = WF_timestamps.Behavior(indices(1):indices(2),1);
     plot(ts-ts(1),refPix(indices(1):indices(2),ROIidx));
 end
-% passive
-figure; 
+
+% passive replays
+subplot(3,1,3); 
+ProcessOpenLoopBasic(OpenLoop, SampleRate, TargetZones, 'plottrials', 1, 'TrialHeight',Lims);
 hold on
 for i = 1:p
     indices = Frames_idx(i+r,:);
@@ -78,346 +106,211 @@ for i = 1:p
     indices = WF_timestamps.Passive(Frames_idx(i+r,:),2);
     plot(ts-ts(1),refPix(indices(1):indices(2),ROIidx));
 end
+
+%% convert WhichROIs into linear pix identity
+for x = 1:length(WhichROIs)
+    ROI_idx(x) = stackdims(1)*(WhichROIs(x,2)-1) + WhichROIs(x,1);
+end
+
+figure; 
+%% all pixel correlation for replays
+nPixels = stackdims(1)*stackdims(2);
+nFrames = stackdims(3);
+WF_stack = reshape(WF_stack,nPixels,nFrames); % each col is a frame [cols are stacked on top of each other]
+Cmat = zeros(nPixels,r+p);
+for pix = 1:nPixels
+    clear MyTraces nSamps
+    CL_trace = WF_stack(pix,frame_idx(valid_frames));
+    nSamps(1) = length(CL_trace);
+    MyTraces(:,1) = CL_trace;
+for i = 1:r
+    indices = Frames_idx(i,:);
+    Replay_trace = WF_stack(pix,indices(1):indices(2));
+    nSamps(i+1) = length(Replay_trace);
+    MyTraces(1:length(Replay_trace),i+1) = Replay_trace;
+%     nSamps = min(length(CL_trace),length(Replay_trace));
+%     
+%     Cmat(pix,i) = corr(CL_trace(1:nSamps)',Replay_trace(1:nSamps)');
+end
+for i = 1:p
+    indices = WF_timestamps.Passive(Frames_idx(i+r,:),2);
+    Replay_trace = WF_stack(pix,indices(1):indices(2));
+    nSamps(i+r+1) = length(Replay_trace);
+    MyTraces(1:length(Replay_trace),i+r+1) = Replay_trace;
+%     nSamps = min(length(CL_trace),length(Replay_trace));
+%     Cmat(pix,i+r) = corr(CL_trace(1:nSamps)',Replay_trace(1:nSamps)');
+end
+
+MyTraces(1+min(nSamps):end,:) = [];
+
+% now calculate correlations
+MyCorr = corrcoef(MyTraces);
+m = size(MyCorr,2) - 1; % no. of comparisons, excluding self    
+% correlation of replay to closed loop
+Cmat(pix,1:m) = MyCorr(1,2:end);
+
+% between replays
+MyCorr(1,:) = [];
+MyCorr(:,1) = [];
+
+OL_corrs = MyCorr(1:r,1:r); % only the active replays
+PR_corrs = MyCorr(r+1:end,r+1:end); % only the passives
+
+% correlation between replays
+OL_OL = OL_corrs(triu(true(size(OL_corrs)),1));
+PR_PR = PR_corrs(triu(true(size(PR_corrs)),1));
+
+Cmat(pix,m+1) = mean(Cmat(pix,1:r)); % mean CL to OL
+Cmat(pix,m+2) = mean(Cmat(pix,(r+1):m)); % mean CL to PR
+Cmat(pix,m+3) = mean(OL_OL); % mean OL to OL
+Cmat(pix,m+4) = mean(PR_PR); % mean PR to PR
+
+end
+
+%%
+figure;
+for i = 1:(r+p+4)
+    subplot(4,5,i);
+    imagesc(reshape(Cmat(:,i),stackdims(1),stackdims(2)));
+    colormap(brewermap([50],'*RdBu'));
+    set(gca,'XTick',[],'YTick',[]);
+%     hold on
+%     for x = 1:length(WhichROIs)
+%         plot(WhichROIs(x,2),WhichROIs(x,1),'.k');
+%     end
+end
+
+%% plot traces for selected ROIs across the 3 conditions
+selROIs = [70 28; 70 38; 57 26; 57 45; 51 17; 35 25; 25 11; 31 11]; 
+selROIs = vertcat(selROIs, fliplr(WhichROIs));
+selROIs = sortrows(selROIs,[1 2]);
+ts = frame_TS;
+ts = ts(valid_frames)-ts(1);
+%figure;
+for roi = 1:length(selROIs)
+    pix = stackdims(1)*(selROIs(roi,1)-1) + selROIs(roi,2);
     
-
-%% sort units by tetrodes and get open loop rasters and PSTHs
-foo = cell2mat(arrayfun(@(x) [x.tetrode; x.id], SingleUnits, 'UniformOutput', false))';
-[~, MyUnits] = sortrows(foo,[1 2]);
-
-[OpenLoopTraces,OpenLoopTimestamps,OpenLoopPSTH,OpenLoopRaster] = ...
-        ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
-        'whichunits', MyUnits, 'PSTHsmooth', 100, ...
-        'plotfigures', 0);
-
-num_OL = numel(find(ReplayTTLs.TrialID<=TrialInfo.TrialID(end))); % active replays
-num_PR = numel(ReplayTTLs.TrialID) - num_OL; % passive replays
-reps_per_condition = [1 num_OL num_PR]; % CL, OL, PR
-
-%% using the whole PSTH or just select timepoints eg. specific odor for comparison across conditions
-
-% first get full timeseries values
-[PSTHCorrs{1}, CorrTags] = ReplayCrossCorr(OpenLoopPSTH,reps_per_condition); % pair wise correlation of the single rep PSTHs
-[PSTHResiduals{1}, ResidualTags] = ReplayResiduals(OpenLoopPSTH,reps_per_condition); % pair wise correlation of the single rep PSTHs
-
-% Parse continuous traces into trials
-Trial = OpenLoopTraces(:,6);
-Trial(Trial<0) = 0;
-Odor = abs(OpenLoopTraces(:,6));
-TrialTS =  horzcat( find(diff(Odor)>0), find(diff(Trial)>0), find(diff(Trial)<0)); % Odor ON, Trial ON, Trial OFF
-TrialTS(:,4) = Odor(TrialTS(:,2)); % which odor
-TrialTS(:,5) = OpenLoopTraces(TrialTS(:,2),7); % which Target Zone
-
-OdorSequence = OpenLoop.TTLs.OdorValve{1}(:,4);
-if numel(OdorSequence)>size(TrialTS,1)
-    OdorSequence(1,:) = [];
-end
-
-% Split the long trace into odor-specific stretches 
-% only keep points from this trial's odorstart to next trial's odor start
-for whichodor = 1:3
-    whichones = find(OdorSequence==whichodor);
-    MyIdx = [];
-    for i = 1:numel(whichones)
-        idx(1) = TrialTS(whichones(i),1); % odor start
-        if whichones(i)<size(TrialTS,1)
-            idx(2) = TrialTS(whichones(i)+1,1) - 1; % next trial odor start
-        else
-            idx(2) = TrialTS(whichones(i),3) + SampleRate; % 1 sec post trial off
-        end
-        MyIdx = horzcat(MyIdx,idx(1):idx(2));
+    % get traces
+    clear MyTraces nSamps
+    CL_trace = WF_stack(pix,frame_idx(valid_frames));
+    nSamps(1) = length(CL_trace);
+    MyTraces(:,1) = CL_trace;
+    for i = 1:r
+        indices = Frames_idx(i,:);
+        Replay_trace = WF_stack(pix,indices(1):indices(2));
+        nSamps(i+1) = length(Replay_trace);
+        MyTraces(1:length(Replay_trace),i+1) = Replay_trace;
     end
-
-    [PSTHCorrs{1+whichodor}] = ReplayCrossCorr(OpenLoopPSTH(:,MyIdx,:),reps_per_condition);
-    [PSTHResiduals{1+whichodor}] = ReplayResiduals(OpenLoopPSTH(:,MyIdx,:),reps_per_condition);
-end
-
-%% analyzing behavior traces
-% isolate indices that correspond to 500 ms stretches before and after each
-% trial start
-pairs = [ones(10,1) (2:11)'];
-for i = 1:size(pairs,1)
-    % full trace
-    %thispairCorr = corrcoef(OpenLoopTraces(:,1,pairs(i,1)),OpenLoopTraces(:,1,pairs(i,2)));
-    %pairs(i,3) = thispairCorr(2,1);
-    % lever snipped
-    for j = 1:size(TrialTS,1) % every trial
-%         thistrialcorr = corrcoef(...
-%                         OpenLoopTraces(TrialTS(j,2)+[0:1:100],1,pairs(i,1)),...
-%                         OpenLoopTraces(TrialTS(j,2)+[0:1:100],1,pairs(i,2)) );
-%         pairs(i,2+j) = thistrialcorr(2,1);
-        snip = TrialTS(j,2)+ [-200:1:200];
-        thistrialresidual = OpenLoopTraces(snip,1,pairs(i,1)) - ...
-                            OpenLoopTraces(snip,1,pairs(i,2)) ;
-        pairs(i,2+j) = sqrt(mean(thistrialresidual.^2));
+    for i = 1:p
+        indices = WF_timestamps.Passive(Frames_idx(i+r,:),2);
+        Replay_trace = WF_stack(pix,indices(1):indices(2));
+        nSamps(i+r+1) = length(Replay_trace);
+        MyTraces(1:length(Replay_trace),i+r+1) = Replay_trace;
     end
-    pairs(i,2+j+1) = mean(pairs(i,(3:2+j)));
-end
+    
+    MyTraces(1+min(nSamps):end,:) = [];
 
-%% getting means and errors across pairs of either residuals or corrs
-% correlations
-U = unique(CorrTags); % various types of comparisons - Cl-OL, OL-OL, OL-PR etc
-for i = 1:4
-    for x = 1:length(U)
-        CorrsMedian{i}(:,x) = median(PSTHCorrs{i}(find(CorrTags==U(x)),:),'omitnan')';
-        CorrsMean{i}(:,x)   = mean(PSTHCorrs{i}(find(CorrTags==U(x)),:),'omitnan')';
-        CorrsSTD{i}(:,x)    = std(PSTHCorrs{i}(find(CorrTags==U(x)),:),'omitnan')';
-        %ts = tinv([0.025  0.975],length(x)-1);      % T-Score
-        nsamps              = numel(find(CorrTags==U(x)));
-        ts                  = tinv([0.025  0.975],(nsamps-1));
-        CorrsCI95{i}(:,x)   = ts(2)*std(PSTHCorrs{i}(find(CorrTags==U(x)),:),'omitnan')'/sqrt(nsamps);
+    meanOL  = mean(MyTraces(:,2:(r+1)),2);
+    stdOL   = std(MyTraces(:,2:(r+1))');
+    meanPR  = mean(MyTraces(:,(r+2):end),2);
+    stdPR   = std(MyTraces(:,(r+2):end)');
+    
+    Lims = [10*floor(min(meanOL)/10) 10*ceil(max(meanOL)/10)];
+    
+    figure; 
+    
+    subplot(1,7,[2:7]);
+    ProcessOpenLoopBasic(OpenLoop, SampleRate, TargetZones, 'plottrials', 1, 'TrialHeight',Lims);
+    hold on
+    plot(ts(1:min(nSamps)),MyTraces(:,1),'k');
+    plot(ts(1:min(nSamps)),meanOL,'Color',Plot_Colors('t'));
+    plot(ts(1:min(nSamps)),meanOL+stdOL',':','Color',Plot_Colors('t'));
+    plot(ts(1:min(nSamps)),meanOL-stdOL',':','Color',Plot_Colors('t'));
+    plot(ts(1:min(nSamps)),meanPR,'Color',Plot_Colors('r'));
+    plot(ts(1:min(nSamps)),meanPR+stdPR',':','Color',Plot_Colors('r'));
+    plot(ts(1:min(nSamps)),meanPR-stdPR',':','Color',Plot_Colors('r'));
+    
+    % lets also add here the single pixel correlation 
+    
+    refPix = WF_stack(pix,:); % entire timeseries
+    clear C
+    for j = 1:nPixels
+        C(j,1) = corr(WF_stack(j,:)',refPix');
     end
+    subplot(1,7,1);
+    imagesc(reshape(C,stackdims(1),stackdims(2)));
+    colormap(brewermap([50],'*RdBu'));
+    hold on
+    plot(selROIs(roi,1),selROIs(roi,2),'.k');
+    title([num2str(selROIs(roi,1)),', ',num2str(selROIs(roi,2))]);
+    set(gca,'XTick',[],'YTick',[]);
+    
+    set(gcf,'Position',[2055 331 1447  155]);
 end
 
-% residuals
-U = unique(ResidualTags); % various types of comparisons - Cl-OL, OL-OL, OL-PR etc
-for i = 1:4
-    for x = 1:length(U)
-        ResidualsMedian{i}(:,x)     = median(PSTHResiduals{i}(find(ResidualTags==U(x)),:),'omitnan')';
-        ResidualsMean{i}(:,x)       = mean(PSTHResiduals{i}(find(ResidualTags==U(x)),:),'omitnan')';
-        ResidualsSTD{i}(:,x)        = std(PSTHResiduals{i}(find(ResidualTags==U(x)),:),'omitnan')';
-        nsamps                      = numel(find(ResidualTags==U(x)));
-        ts                          = tinv([0.025  0.975],(nsamps-1));
-        ResidualsCI95{i}(:,x)       = ts(2)*std(PSTHResiduals{i}(find(ResidualTags==U(x)),:),'omitnan')'/sqrt(nsamps);
-    end
-end
-%% Plotting the outcomes
-% Reorder Units by decreasing OL-OL correlation
-[~,SortedbyCorr] = sort(CorrsMedian{1}(:,3),'descend');
-SortedbyCorr = circshift(SortedbyCorr,-1); % first value was NaN'
-
-whichtype = 4;
-MedianCorrs = CorrsMedian{whichtype};
-STDCorrs = CorrsSTD{whichtype};
-MedianResiduals = ResidualsMean{whichtype};
-STDResiduals = ResidualsSTD{whichtype};
-
+%% selected ROIs for the RO1
+%% plot traces for selected ROIs across the 3 conditions
+selROIs = [68 28; 51 17; 47 26; 37 26; 25 11]; 
+ts = frame_TS;
+ts = ts(valid_frames)-ts(1);
 figure;
-subplot(4,1,1);
-xpts = (1:4:4*N);
-% OL-OL
-bar(xpts, MedianCorrs(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,3) + STDCorrs(SortedbyCorr,3))'; (MedianCorrs(SortedbyCorr,3) - STDCorrs(SortedbyCorr,3))'], ...
-    'color', [1 0 0], 'Linewidth', 2);
-%CL-OL
-bar(xpts, MedianCorrs(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,1) + STDCorrs(SortedbyCorr,1))'; (MedianCorrs(SortedbyCorr,1) - STDCorrs(SortedbyCorr,1))'], ...
-    'color', [0 0 0],'Linewidth', 2);
-
-subplot(4,1,2);
-% PR-PR
-xpts = (2:4:4*N);
-bar(xpts, MedianCorrs(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,5) + STDCorrs(SortedbyCorr,5))'; (MedianCorrs(SortedbyCorr,5) - STDCorrs(SortedbyCorr,5))'], ...
-    'color', [0.1 0.4 0.2], 'Linewidth', 2);
-% CL-PR
-bar(xpts, MedianCorrs(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,2) + STDCorrs(SortedbyCorr,2))'; (MedianCorrs(SortedbyCorr,2) - STDCorrs(SortedbyCorr,2))'], ...
-    'color', [0 0 0], 'Linewidth', 2);
-set(gca, 'XTick', xpts);
-xticklabels(num2str(MyUnits(SortedbyCorr)));
-xtickangle(gca,90);
-
-subplot(4,1,3);
-xpts = (1:4:4*N);
-% OL-OL
-bar(xpts, MedianResiduals(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,3) + STDResiduals(SortedbyCorr,3))'; (MedianResiduals(SortedbyCorr,3) - STDResiduals(SortedbyCorr,3))'], ...
-    'color', [1 0 0], 'Linewidth', 2);
-%CL-OL
-bar(xpts, MedianResiduals(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,1) + STDResiduals(SortedbyCorr,1))'; (MedianResiduals(SortedbyCorr,1) - STDResiduals(SortedbyCorr,1))'], ...
-    'color', [0 0 0],'Linewidth', 2);
-
-subplot(4,1,4);
-% PR-PR
-xpts = (2:4:4*N);
-bar(xpts, MedianResiduals(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,5) + STDResiduals(SortedbyCorr,5))'; (MedianResiduals(SortedbyCorr,5) - STDResiduals(SortedbyCorr,5))'], ...
-    'color', [0.1 0.4 0.2], 'Linewidth', 2);
-% CL-PR
-bar(xpts, MedianResiduals(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,2) + STDResiduals(SortedbyCorr,2))'; (MedianResiduals(SortedbyCorr,2) - STDResiduals(SortedbyCorr,2))'], ...
-    'color', [0 0 0], 'Linewidth', 2);
-set(gca, 'XTick', xpts);
-xticklabels(num2str(MyUnits(SortedbyCorr)));
-xtickangle(gca,90);
-
-%% scatter plot of self vs. across condition residuals
-figure, 
-subplot(1,2,1), hold on
-subplot(1,2,2), hold on
-MedianCorrs = []; STDCorrs = []; MedianResiduals =[]; STDResiduals =[];
-for whichtype = 2:4
-    %whichtype = 4;
-    MedianCorrs = [MedianCorrs;  CorrsMedian{whichtype}];
-    STDCorrs = [STDCorrs; CorrsSTD{whichtype}];
-
-    MedianResiduals = [MedianResiduals; ResidualsMean{whichtype}];
-    STDResiduals = [STDResiduals; ResidualsCI95{whichtype}];
-end
-
-    subplot(1,2,1)
-    [~,sortorder] = sort(MedianResiduals(:,5));
-    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5) + STDResiduals(sortorder,5),':k');
-    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5) - STDResiduals(sortorder,5),':k');
-    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,5),'k');
-    plot(MedianResiduals(sortorder,5),MedianResiduals(sortorder,2),'or');
-    axis square;
-    set(gca,'TickDir','out','YLim',[0 20],'XLim',[0 20]);
-    subplot(1,2,2)
-    [~,sortorder] = sort(MedianResiduals(:,3)+STDResiduals(:,3));
-    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3) + STDResiduals(sortorder,3),':k');
-    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3) - STDResiduals(sortorder,3),':k');
-    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,3),'k');
-    plot(MedianResiduals(sortorder,3),MedianResiduals(sortorder,1),'or');
-    axis square;
-    set(gca,'TickDir','out','YLim',[0 20],'XLim',[0 20]);
-
-%%
-figure;
-N = length(MedianCorrs);
-axes('ColorOrder',brewermap(N,'Spectral'),'NextPlot','replacechildren')
-
-%
-% plot within OL corrs on x axis
-x1 = MedianCorrs(:,3) - [STDCorrs(:,3) -STDCorrs(:,3)];
-y1 = [MedianCorrs(:,1) MedianCorrs(:,1)];
-% plot OL-CL corr on Y axis
-x2 = [MedianCorrs(:,3) MedianCorrs(:,3)];
-y2 = MedianCorrs(:,1) - [STDCorrs(:,1) -STDCorrs(:,1)];
-subplot(1,3,1)
-line(x1',y1','Linewidth',1); %,'color',Plot_Colors('r'))
-hold on
-line(x2',y2','Linewidth',1); %,'color',Plot_Colors('r'))
-line([-0.2 1], [-0.2 1], 'color', 'k', 'LineStyle',':');
-set(gca,'XLim',[-0.2 1], 'YLim', [-0.2 1]);
-axis square
-
-
-% plot within PR corrs on x axis
-x1 = MedianCorrs(:,5) - [STDCorrs(:,5) -STDCorrs(:,5)];
-y1 = [MedianCorrs(:,2) MedianCorrs(:,2)];
-% plot OL-CL corr on Y axis
-x2 = [MedianCorrs(:,5) MedianCorrs(:,5)];
-y2 = MedianCorrs(:,2) - [STDCorrs(:,2) -STDCorrs(:,2)];
-subplot(1,3,2)
-line(x1',y1','Linewidth',1); %,'color',Plot_Colors('t'))
-hold on
-line(x2',y2','Linewidth',1); %,'color',Plot_Colors('t'))
-line([-0.2 1], [-0.2 1], 'color', 'k', 'LineStyle',':');
-set(gca,'XLim',[-0.2 1], 'YLim', [-0.2 1]);
-axis square
-
-% plot within OL corrs on x axis
-x1 = MedianCorrs(:,3) - [STDCorrs(:,3) -STDCorrs(:,3)];
-y1 = [MedianCorrs(:,4) MedianCorrs(:,4)];
-% plot OL-CL corr on Y axis
-x2 = [MedianCorrs(:,3) MedianCorrs(:,3)];
-y2 = MedianCorrs(:,4) - [STDCorrs(:,4) -STDCorrs(:,4)];
-subplot(1,3,3)
-line(x1',y1','Linewidth',1); %,'color',Plot_Colors('p'))
-hold on
-line(x2',y2','Linewidth',1); %,'color',Plot_Colors('p'))
-line([-0.2 1], [-0.2 1], 'color', 'k', 'LineStyle',':');
-set(gca,'XLim',[-0.2 1], 'YLim', [-0.2 1]);
-axis square
-
-
-%%
-% Plot specific Units
-%PlotUnits = [58 35 34 55 21];
-PlotUnits = [34 55 27 32 30 51 6 26 57 52 41 46 12 44 28];
-PlotUnits = [55 44 39 28 10];
-ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
-        'plotephys', 1, 'UnitsPerFig', 5, 'whichunits', PlotUnits, 'PlotOpenLoop', 1);
-
-
-%% bar plots for selected units
-PlotUnits = [21 55 34 44 8 39 10 28];
-MedianCorrs = []; STDCorrs = []; MedianResiduals =[]; STDResiduals =[];
-for k = 1:length(PlotUnits)
-    for whichtype = 1:4
-        MedianCorrs = [MedianCorrs; CorrsMedian{whichtype}(PlotUnits(k),:)];
-        STDCorrs = [STDCorrs; CorrsSTD{whichtype}(PlotUnits(k),:)];
-        MedianResiduals = [MedianResiduals; ResidualsMean{whichtype}(PlotUnits(k),:)];
-        STDResiduals = [STDResiduals; ResidualsSTD{whichtype}(PlotUnits(k),:)];
+clear C;
+for roi = 1:length(selROIs)
+    pix = stackdims(1)*(selROIs(roi,1)-1) + selROIs(roi,2);
+    
+    % get traces
+    clear MyTraces nSamps
+    CL_trace = WF_stack(pix,frame_idx(valid_frames));
+    nSamps(1) = length(CL_trace);
+    MyTraces(:,1) = CL_trace;
+    for i = 1:r
+        indices = Frames_idx(i,:);
+        Replay_trace = WF_stack(pix,indices(1):indices(2));
+        nSamps(i+1) = length(Replay_trace);
+        MyTraces(1:length(Replay_trace),i+1) = Replay_trace;
     end
+    for i = 1:p
+        indices = WF_timestamps.Passive(Frames_idx(i+r,:),2);
+        Replay_trace = WF_stack(pix,indices(1):indices(2));
+        nSamps(i+r+1) = length(Replay_trace);
+        MyTraces(1:length(Replay_trace),i+r+1) = Replay_trace;
+    end
+    
+    MyTraces(1+min(nSamps):end,:) = [];
+
+    meanOL  = mean(MyTraces(:,2:(r+1)),2);
+    stdOL   = std(MyTraces(:,2:(r+1))');
+    meanPR  = mean(MyTraces(:,(r+2):end),2);
+    stdPR   = std(MyTraces(:,(r+2):end)');
+    
+    Lims = [10*floor(min(meanOL)/10) 10*ceil(max(meanOL)/10)];
+        
+    subplot(5,7,((roi-1)*7) + [2:7]);
+    ProcessOpenLoopBasic(OpenLoop, SampleRate, TargetZones, 'plottrials', 1, 'TrialHeight',Lims);
+    hold on
+    plot(ts(1:min(nSamps)),MyTraces(:,1),'k');
+    plot(ts(1:min(nSamps)),meanOL,'Color',Plot_Colors('t'));
+%     plot(ts(1:min(nSamps)),meanOL+stdOL',':','Color',Plot_Colors('t'));
+%     plot(ts(1:min(nSamps)),meanOL-stdOL',':','Color',Plot_Colors('t'));
+    plot(ts(1:min(nSamps)),meanPR,'Color',Plot_Colors('r'));
+%     plot(ts(1:min(nSamps)),meanPR+stdPR',':','Color',Plot_Colors('r'));
+%     plot(ts(1:min(nSamps)),meanPR-stdPR',':','Color',Plot_Colors('r'));
+    
+    % lets also add here the single pixel correlation 
+    
+    refPix = WF_stack(pix,:); % entire timeseries
+    clear C
+    for j = 1:nPixels
+        C(j,roi) = corr(WF_stack(j,:)',refPix');
+    end
+    
+    subplot(5,7,((roi-1)*7) + 1);
+    imagesc(reshape(C(:,roi),stackdims(1),stackdims(2)),[-0.5 1]);
+    colormap(brewermap([50],'*RdBu'));
+    hold on
+    plot(selROIs(roi,1),selROIs(roi,2),'.k');
+    title([num2str(selROIs(roi,1)),', ',num2str(selROIs(roi,2))]);
+    set(gca,'XTick',[],'YTick',[]);
+    
 end
-
-N = 1:size(MedianResiduals,1);
-SortedbyCorr = 1:size(MedianResiduals,1);
-
-figure;
-subplot(4,1,1);
-xpts = (1:4:4*N);
-% OL-OL
-bar(xpts, MedianCorrs(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,3) + STDCorrs(SortedbyCorr,3))'; (MedianCorrs(SortedbyCorr,3) - STDCorrs(SortedbyCorr,3))'], ...
-    'color', [1 0 0], 'Linewidth', 2);
-%CL-OL
-bar(xpts, MedianCorrs(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,1) + STDCorrs(SortedbyCorr,1))'; (MedianCorrs(SortedbyCorr,1) - STDCorrs(SortedbyCorr,1))'], ...
-    'color', [0 0 0],'Linewidth', 2);
-
-subplot(4,1,2);
-% PR-PR
-xpts = (2:4:4*N);
-bar(xpts, MedianCorrs(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,5) + STDCorrs(SortedbyCorr,5))'; (MedianCorrs(SortedbyCorr,5) - STDCorrs(SortedbyCorr,5))'], ...
-    'color', [0.1 0.4 0.2], 'Linewidth', 2);
-% CL-PR
-bar(xpts, MedianCorrs(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianCorrs(SortedbyCorr,2) + STDCorrs(SortedbyCorr,2))'; (MedianCorrs(SortedbyCorr,2) - STDCorrs(SortedbyCorr,2))'], ...
-    'color', [0 0 0], 'Linewidth', 2);
-set(gca, 'XTick', xpts);
-%xticklabels(num2str(MyUnits(SortedbyCorr)));
-xtickangle(gca,90);
-
-subplot(4,1,3);
-xpts = (1:4:4*N);
-% OL-OL
-bar(xpts, MedianResiduals(SortedbyCorr,3),'Facecolor',[1 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,3) + STDResiduals(SortedbyCorr,3))'; (MedianResiduals(SortedbyCorr,3) - STDResiduals(SortedbyCorr,3))'], ...
-    'color', [1 0 0], 'Linewidth', 2);
-%CL-OL
-bar(xpts, MedianResiduals(SortedbyCorr,1),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,1) + STDResiduals(SortedbyCorr,1))'; (MedianResiduals(SortedbyCorr,1) - STDResiduals(SortedbyCorr,1))'], ...
-    'color', [0 0 0],'Linewidth', 2);
-
-subplot(4,1,4);
-% PR-PR
-xpts = (2:4:4*N);
-bar(xpts, MedianResiduals(SortedbyCorr,5),'Facecolor',[0.4 0.6 0.6],'BarWidth',0.6,'LineStyle','none');
-hold on
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,5) + STDResiduals(SortedbyCorr,5))'; (MedianResiduals(SortedbyCorr,5) - STDResiduals(SortedbyCorr,5))'], ...
-    'color', [0.1 0.4 0.2], 'Linewidth', 2);
-% CL-PR
-bar(xpts, MedianResiduals(SortedbyCorr,2),'Edgecolor','k','Facecolor','none','BarWidth',0.75,'Linewidth', 2);
-line(repmat(xpts,2,1), ...
-    [(MedianResiduals(SortedbyCorr,2) + STDResiduals(SortedbyCorr,2))'; (MedianResiduals(SortedbyCorr,2) - STDResiduals(SortedbyCorr,2))'], ...
-    'color', [0 0 0], 'Linewidth', 2);
-set(gca, 'XTick', xpts);
-%xticklabels(num2str(MyUnits(SortedbyCorr)));
-xtickangle(gca,90);
+set(gcf,'Position',[2055 101 1447  5*155]);
