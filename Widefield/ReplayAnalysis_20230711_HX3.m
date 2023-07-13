@@ -112,7 +112,6 @@ for x = 1:length(WhichROIs)
     ROI_idx(x) = stackdims(1)*(WhichROIs(x,2)-1) + WhichROIs(x,1);
 end
 
-figure; 
 %% all pixel correlation for replays
 nPixels = stackdims(1)*stackdims(2);
 nFrames = stackdims(3);
@@ -248,13 +247,27 @@ for roi = 1:length(selROIs)
     set(gcf,'Position',[2055 331 1447  155]);
 end
 
+%% just the mean image
+% load the mask
+load(fullfile(imagingpath,'maskImage.mat')); % loads BW
+MaskImage = BW;
+RatioImage = mean(reshape(WF_stack,stackdims(1),stackdims(2),nFrames),3) ...
+    ./std(reshape(WF_stack,stackdims(1),stackdims(2),nFrames),0,3);
+
+%%
+figure('color','w');
+h = imagesc(RatioImage);
+colormap(brewermap([],'*YlGnBu'))
+set(gca,'CLim',[20 90],'XTick',[],'YTick',[],'Box','off');
+set(h, 'AlphaData', MaskImage);
+
 %% selected ROIs for the RO1
-%% plot traces for selected ROIs across the 3 conditions
+% plot traces for selected ROIs across the 3 conditions
 selROIs = [68 28; 51 17; 47 26; 37 26; 25 11]; 
 ts = frame_TS;
 ts = ts(valid_frames)-ts(1);
-figure;
-%clear C;
+figure('color','w');
+% clear C;
 for roi = 1:length(selROIs)
     pix = stackdims(1)*(selROIs(roi,1)-1) + selROIs(roi,2);
     
@@ -290,13 +303,14 @@ for roi = 1:length(selROIs)
     hold on
     plot(ts(1:min(nSamps)),MyTraces(:,1),'k');
     plot(ts(1:min(nSamps)),meanOL,'Color',Plot_Colors('t'));
-%     plot(ts(1:min(nSamps)),meanOL+stdOL',':','Color',Plot_Colors('t'));
-%     plot(ts(1:min(nSamps)),meanOL-stdOL',':','Color',Plot_Colors('t'));
+
     plot(ts(1:min(nSamps)),meanPR,'Color',Plot_Colors('r'));
-%     plot(ts(1:min(nSamps)),meanPR+stdPR',':','Color',Plot_Colors('r'));
-%     plot(ts(1:min(nSamps)),meanPR-stdPR',':','Color',Plot_Colors('r'));
     
-    % lets also add here the single pixel correlation 
+    if roi == 2
+        set(gca,'YLim',[28 38]);
+    end
+    set(gca,'Box','off');
+    %lets also add here the single pixel correlation 
     
 %     refPix = WF_stack(pix,:); % entire timeseries
 %     for j = 1:nPixels
@@ -304,8 +318,13 @@ for roi = 1:length(selROIs)
 %     end
     
     subplot(5,7,((roi-1)*7) + 1);
-    imagesc(reshape(C(:,roi),stackdims(1),stackdims(2)),[-0.5 1]);
-    colormap(brewermap([],'Greys'));
+%     tempImage = C(:,roi);
+%     tempImage(mask_indices) = NaN;
+    h = imagesc(reshape(C(:,roi),stackdims(1),stackdims(2)),[-0.5 1]);
+    set(h, 'AlphaData', MaskImage);
+    
+    %imagesc(reshape(tempImage,stackdims(1),stackdims(2)),[-0.5 1]);
+    colormap(brewermap([],'YlGnBu'))
     hold on
     plot(selROIs(roi,1),selROIs(roi,2),'.k');
     title([num2str(selROIs(roi,1)),', ',num2str(selROIs(roi,2))]);
@@ -314,11 +333,5 @@ for roi = 1:length(selROIs)
 end
 set(gcf,'Position',[2055 101 1447  5*155]);
 
-%% just the mean image
-WF_stack = reshape(WF_stack,stackdims(1),stackdims(2),nFrames);
-figure;
-imagesc(mean(WF_stack,3)./std(WF_stack,0,3));
-colormap(brewermap([],'*YlGnBu'))
-set(gca,'CLim',[10 100]);
-set(gca,'XTick',[],'YTick',[]);
+
 
