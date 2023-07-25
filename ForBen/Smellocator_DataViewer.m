@@ -53,7 +53,11 @@ handles.SampleRate = 500;
 handles.SessionLength.String = '100';
 handles.TimeWindow.String = '20';
 handles.RespirationScaling.Data = [6 0.5];
-handles.WhereSession.String = '';
+if ~isempty(varargin)
+    handles.WhereSession.String = varargin{1};
+else
+    handles.WhereSession.String = '';
+end
 handles.Scroller.Value = 0.2;
 
 % define plot colors
@@ -270,7 +274,8 @@ set(gca,'YLim', [0 7], 'YTick', [],...
 
 % plot respiration
 handles.SniffData = TracesOut(:,find(strcmp(whichTraces,'Sniffs')));
-handles.SniffData = handles.SniffData - mean(handles.SniffData);
+handles.SniffData(handles.SniffData==Inf) = NaN;
+handles.SniffData = handles.SniffData - mean(handles.SniffData,'omitnan');
 
 handles.respiration_plot = plot(Timestamps, ...
     handles.RespirationScaling.Data(1) + handles.RespirationScaling.Data(2)*handles.SniffData, ...

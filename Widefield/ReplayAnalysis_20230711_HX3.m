@@ -70,13 +70,13 @@ end
 %% extracting replay responses of any given ROI
 figure; 
 Lims = [30 40];
-ROIidx = 8; %8; %5; % 9
+ROIidx = 5; %8; %5; % 9
 
 % Lims = [40 50];
 % ROIidx = 4; %4; %7; % 9
 % % % 
-Lims = [20 30];
-ROIidx = 14; %7; % 9
+% Lims = [20 30];
+% ROIidx = 14; %7; % 9
 
 % template
 subplot(3,1,1);
@@ -321,10 +321,10 @@ for roi = 1:length(selROIs)
 %     tempImage = C(:,roi);
 %     tempImage(mask_indices) = NaN;
     h = imagesc(reshape(C(:,roi),stackdims(1),stackdims(2)),[-0.5 1]);
-    set(h, 'AlphaData', MaskImage);
+    %set(h, 'AlphaData', MaskImage);
     
     %imagesc(reshape(tempImage,stackdims(1),stackdims(2)),[-0.5 1]);
-    colormap(brewermap([],'YlGnBu'))
+    colormap(brewermap([],'*YlGnBu'))
     hold on
     plot(selROIs(roi,1),selROIs(roi,2),'.k');
     title([num2str(selROIs(roi,1)),', ',num2str(selROIs(roi,2))]);

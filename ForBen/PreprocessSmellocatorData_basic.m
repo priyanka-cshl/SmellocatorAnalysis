@@ -39,7 +39,8 @@ else
 end
 
 %% check if the preprocessed version already exists - locally or on the server
-Paths.Grid.Behavior_processed   = '/home/priyanka/Dropbox/Smellocator_Behavior'; %'/mnt/grid-hs/pgupta/Smellocator/Behavior';
+Paths.Grid.Behavior_processed   = '/home/priyanka/Dropbox/Smellocator_Behavior';
+%Paths.Grid.Behavior_processed   = '/mnt/data/Processed/Behavior'; %'/home/priyanka/Dropbox/Smellocator_Behavior'; %'/mnt/grid-hs/pgupta/Smellocator/Behavior';
 
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_processed.mat']);
 if ~overwriteflag && exist(savepath)
