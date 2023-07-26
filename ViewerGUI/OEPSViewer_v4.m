@@ -22,7 +22,7 @@ function varargout = OEPSViewer_v4(varargin)
 
 % Edit the above text to modify the response to help OEPSViewer_v4
 
-% Last Modified by GUIDE v2.5 25-Jul-2023 07:26:17
+% Last Modified by GUIDE v2.5 26-Jul-2023 17:13:23
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -91,45 +91,67 @@ function LoadSession_Callback(hObject, eventdata, handles)
 % hObject    handle to LoadSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-if isempty(handles.SessionPath.String)
+if isempty(handles.BinaryPath.String)
         [RecordingFile, WhichSession] = uigetfile('/mnt/data/Sorted/Q8/2022-12-09_14-37-11/mybinaryfile.dat',...
                                 'Select a processed binary file');
-    handles.SessionPath.String = WhichSession;
+    handles.BinaryPath.String = WhichSession;
     
-    load(fullfile(handles.SessionPath.String,'chanMap.mat'),'chanMap');
+    load(fullfile(handles.BinaryPath.String,'chanMap.mat'),'chanMap');
     handles.NumChans.String = num2str(size(chanMap,2));
     
     % load units if available
     if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
-        [handles.Units.List, handles.units.spikes] = GetSortingSummary(WhichSession);
-        handles.UnitList.Data = handles.Units.List(:,[1 2 6]);
+        handles.UnitsPath.String = WhichSession;
+        handles = LoadUnits_Callback(hObject, eventdata, handles);
     end
 end
 
-if isempty(handles.NumChans.String)
-    load(fullfile(handles.SessionPath.String,'chanMap.mat'),'chanMap');
-    handles.NumChans.String = num2str(size(chanMap,2));
-    
-end
-
 % get length of the file
-X = dir(fullfile(handles.SessionPath.String,'mybinaryfile.dat'));
+X = dir(fullfile(handles.BinaryPath.String,'mybinaryfile.dat'));
 Nchan       = str2double(handles.NumChans.String);
 handles.RecordingLength.String = num2str(floor(X.bytes/2/Nchan/30000/60));
-
-% To overlay OdorTTLs
-[TTLFile,TTLPath] = uigetfile('*.mat','Select a processed behavior-ephys file');
-if ~isequal(TTLFile,0)
-    % Load the relevant variables
-    load(fullfile(TTLPath,TTLFile), 'TTLs', 'SingleUnits');
-    handles.TTLs = TTLs;
-    handles.SingleUnits = SingleUnits;
-end
 
 guidata(hObject, handles);
 
 UpdatePlot(hObject, eventdata, handles);
 
+% --- Executes on button press in LoadUnits.
+function handles = LoadUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to LoadUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if isempty(handles.UnitsPath.String)
+    [UnitFile,UnitPath] = uigetfile(fullfile(fileparts(handles.BinaryPath.String),'*.tsv'),'Select a cluster-group.tsv file');
+    if ~isequal(UnitFile,0)
+        handles.UnitsPath.String = fullfile(UnitPath,UnitFile);
+    end
+end
+if ~isempty(handles.UnitsPath.String)
+    [handles.Units.List, handles.Units.spikes] = GetSortingSummary(handles.UnitsPath.String);
+    handles.UnitList.Data = handles.Units.List(:,[1 2 6]);
+end
+guidata(hObject, handles);
+
+
+% --- Executes on button press in LoadTTLs.
+function LoadTTLs_Callback(hObject, eventdata, handles)
+% hObject    handle to LoadTTLs (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% To overlay OdorTTLs
+if isempty(handles.TTLPath.String)
+    [TTLFile,TTLPath] = uigetfile('*.mat','Select a processed behavior-ephys file');
+    if ~isequal(TTLFile,0)
+        handles.TTLPath.String = fullfile(TTLPath,TTLFile);
+    end
+end
+if ~isempty(handles.TTLPath.String)
+    % Load the relevant variables
+    load(handles.TTLPath.String, 'TTLs', 'SingleUnits');
+    handles.TTLs = TTLs;
+    handles.SingleUnits = SingleUnits;
+end
+guidata(hObject, handles);
 
 % --- Executes on button press in ClearSession.
 function UpdatePlot(hObject, eventdata, handles)
@@ -147,7 +169,7 @@ TStart      = handles.TimeScroll.Value * 60 * ...
 TStart = floor(TStart);
 offset = uint64(max(0,2*Nchan * TStart * OEPSSamplingRate)); % 2 bytes per sample
 
-fid = fopen(fullfile(handles.SessionPath.String,'mybinaryfile.dat'),'r');
+fid = fopen(fullfile(handles.BinaryPath.String,'mybinaryfile.dat'),'r');
 fseek(fid, offset, 'bof');
 MyData = fread(fid, [Nchan Nsamples], '*int16');
 %MyData = fread(fid, [Nchan 33000], '*int16');
@@ -166,18 +188,19 @@ end
 MyData = MyData';
 MyData = fliplr(MyData);
 axes(handles.axes1);
-cla
+%cla
 hold off
 MyColorOrder = brewermap(ceil(Nchan/8),'Set3')';
 MyColorOrder = reshape(repmat(MyColorOrder,8,1),3,8*ceil(Nchan/8))';
 set(0,'DefaultAxesColorOrder',MyColorOrder);
+axis manual
 plot(int32(MyData) + int32(repmat(channelSpacing*(0:1:Nchan-1),size(MyData,1),1)),'LineWidth',0.11);
 %set(gca,'ColorMap',brewermap(Nchan,'Accent'))
-axis tight
-set(gca,'Color','k','XTick',[], 'YTick',[],'YLim', [-channelSpacing Nchan*channelSpacing] );
+set(gca,'Color','k','XTick',[], 'YTick',[]); %,'YLim', [-channelSpacing Nchan*channelSpacing] );
 set(0,'DefaultAxesColorOrder','remove')
 myXLims = get(gca,'XLim');
 myYLims = get(gca,'YLim');
+%myYLims = [-channelSpacing Nchan*channelSpacing];
 
 myTimeAxis = max(TStart,0) + [0 str2double(handles.WindowSize.String)];
 handles.myTimeAxis = myTimeAxis;
@@ -222,6 +245,10 @@ if isfield(handles,'TTLs')
         end
     end
 end
+hz = zoom(gca);
+if isequal(hz.Enable, 'on')
+    keyboard;
+end
 set(gca,'XLim',myXLims);
 handles.fullZoom = myYLims;
 if isfield (handles, 'currentZoom')
@@ -230,7 +257,7 @@ end
 guidata(hObject, handles);
 
 % mylims = get(gca,'XLim');
-% [cluster] = GetSingleUnits(handles.SessionPath.String);
+% [cluster] = GetSingleUnits(handles.BinaryPath.String);
 % ST = 30000*cluster(5).spikes;
 % hold on
 % plot(ST(:),1400,'ow');
@@ -241,8 +268,7 @@ function ClearSession_Callback(hObject, eventdata, handles)
 % hObject    handle to ClearSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.SessionPath.String = '';
-
+handles.BinaryPath.String = '';
 
 % --- Executes on slider movement.
 function TimeScroll_Callback(hObject, eventdata, handles)
@@ -254,55 +280,6 @@ function TimeScroll_Callback(hObject, eventdata, handles)
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 UpdatePlot(hObject, eventdata, handles);
 
-% --- Executes during object creation, after setting all properties.
-function TimeScroll_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to TimeScroll (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function WindowSize_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to WindowSize (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function RecordingLength_Callback(hObject, eventdata, handles)
-% hObject    handle to RecordingLength (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of RecordingLength as text
-%        str2double(get(hObject,'String')) returns contents of RecordingLength as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function RecordingLength_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to RecordingLength (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
 function Spacing_Callback(hObject, eventdata, handles)
 % hObject    handle to Spacing (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -311,19 +288,6 @@ function Spacing_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of Spacing as text
 %        str2double(get(hObject,'String')) returns contents of Spacing as a double
 UpdatePlot(hObject, eventdata, handles);
-
-% --- Executes during object creation, after setting all properties.
-function Spacing_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Spacing (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 
 % --- Executes when selected cell(s) is changed in UnitList.
 function UnitList_CellSelectionCallback(hObject, eventdata, handles)
@@ -337,9 +301,6 @@ function UnitList_CellSelectionCallback(hObject, eventdata, handles)
 handles.whichUnit.String = num2str(eventdata.Indices(1));
 guidata(hObject, handles);
 PlotUnits_Callback(hObject, eventdata, handles)
-
-
-% end
 
 % --- Executes on button press in PlotUnits.
 function PlotUnits_Callback(hObject, eventdata, handles)
@@ -360,7 +321,7 @@ channelSpacing = str2double(handles.Spacing.String);
 if handles.PlotUnits.Value
     if ~isnan(str2double(handles.whichUnit.String))
         whichUnit = str2double(handles.whichUnit.String);
-        spikes = handles.units.spikes{whichUnit};
+        spikes = handles.Units.spikes{whichUnit};
         myspikes = OEPSSamplingRate*(spikes(intersect(find(spikes>=myTimeAxis(1)),find(spikes<=myTimeAxis(2)))) - myTimeAxis(1));
         
         whichTT = floor(handles.UnitList.Data(whichUnit,2));
@@ -390,7 +351,6 @@ if handles.PlotUnits.Value
         end
     end
 end
-
 
 % --- Executes when entered data in editable cell(s) in whichChan.
 function whichChan_CellEditCallback(hObject, eventdata, handles)
@@ -428,3 +388,40 @@ selChans            = eval(handles.ChanZoom.String);
 handles.currentZoom = fliplr(chLocs(selChans) + int32([channelSpacing -channelSpacing]));
 set(handles.axes1,'YLim',handles.currentZoom);
 guidata(hObject, handles);
+
+
+% --- Executes on button press in ZoomOn.
+function ZoomOn_Callback(hObject, eventdata, handles)
+% hObject    handle to ZoomOn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+axes(handles.axes1);
+zoom reset
+zoom on
+
+
+% --- Executes on button press in ZoomOFF.
+function ZoomOFF_Callback(hObject, eventdata, handles)
+% hObject    handle to ZoomOFF (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+axes(handles.axes1);
+zoom off
+
+% --- Executes on button press in ZoomOut.
+function ZoomOut_Callback(hObject, eventdata, handles)
+% hObject    handle to ZoomOut (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+axes(handles.axes1);
+zoom out
+
+
+% --- Executes on selection change in ZoomMode.
+function ZoomMode_Callback(hObject, eventdata, handles)
+% hObject    handle to ZoomMode (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns ZoomMode contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from ZoomMode
