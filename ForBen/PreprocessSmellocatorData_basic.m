@@ -50,7 +50,7 @@ if ~overwriteflag && exist(savepath)
     end
 end
 
-[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
+[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath,2); % 2 for populating lick column with lick piezo instead of binary licks
 FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
 disp(MyFileName);

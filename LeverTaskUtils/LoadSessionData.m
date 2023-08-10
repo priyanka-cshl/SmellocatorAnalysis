@@ -30,7 +30,7 @@ DataTags = {'Lever'; ...
             'Rewards'; ...
             'Licks'};
 
-if PIDflag
+if PIDflag == 1
     DataTags{1} = 'PID';
     MyData = MyTraces(:,[6 3 7:11]);
 else
@@ -73,6 +73,15 @@ else
         whichcol = whichcol + 1;
         MyData(:,17) = MyTraces(:,whichcol);
         DataTags = cat(1, DataTags(:), {'Pgrey2'});
+    end
+    
+    if PIDflag == 2
+        % replace column 10 - licks - with lick piezo
+        if find(ismember(Temp.session_data.trace_legend,'lickpiezo'))
+            whichcol = find(ismember(Temp.session_data.trace_legend,'lickpiezo'));
+            MyData(:,10) = MyTraces(:,whichcol);
+            %DataTags = cat(1, DataTags(:), {'Piezo'});
+        end
     end
     
 end
