@@ -1,35 +1,35 @@
-function varargout = OEPSViewer_v4(varargin)
-% OEPSVIEWER_V4 MATLAB code for OEPSViewer_v4.fig
-%      OEPSVIEWER_V4, by itself, creates a new OEPSVIEWER_V4 or raises the existing
+function varargout = OEPSViewer_v5(varargin)
+% OEPSVIEWER_V5 MATLAB code for OEPSViewer_v5.fig
+%      OEPSVIEWER_V5, by itself, creates a new OEPSVIEWER_V5 or raises the existing
 %      singleton*.
 %
-%      H = OEPSVIEWER_V4 returns the handle to a new OEPSVIEWER_V4 or the handle to
+%      H = OEPSVIEWER_V5 returns the handle to a new OEPSVIEWER_V5 or the handle to
 %      the existing singleton*.
 %
-%      OEPSVIEWER_V4('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in OEPSVIEWER_V4.M with the given input arguments.
+%      OEPSVIEWER_V5('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in OEPSVIEWER_V5.M with the given input arguments.
 %
-%      OEPSVIEWER_V4('Property','Value',...) creates a new OEPSVIEWER_V4 or raises the
+%      OEPSVIEWER_V5('Property','Value',...) creates a new OEPSVIEWER_V5 or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before OEPSViewer_v4_OpeningFcn gets called.  An
+%      applied to the GUI before OEPSViewer_v5_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to OEPSViewer_v4_OpeningFcn via varargin.
+%      stop.  All inputs are passed to OEPSViewer_v5_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help OEPSViewer_v4
+% Edit the above text to modify the response to help OEPSViewer_v5
 
-% Last Modified by GUIDE v2.5 26-Jul-2023 17:13:23
+% Last Modified by GUIDE v2.5 07-Aug-2023 15:44:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @OEPSViewer_v4_OpeningFcn, ...
-                   'gui_OutputFcn',  @OEPSViewer_v4_OutputFcn, ...
+                   'gui_OpeningFcn', @OEPSViewer_v5_OpeningFcn, ...
+                   'gui_OutputFcn',  @OEPSViewer_v5_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -44,15 +44,15 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before OEPSViewer_v4 is made visible.
-function OEPSViewer_v4_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before OEPSViewer_v5 is made visible.
+function OEPSViewer_v5_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to OEPSViewer_v4 (see VARARGIN)
+% varargin   command line arguments to OEPSViewer_v5 (see VARARGIN)
 
-% Choose default command line output for OEPSViewer_v4
+% Choose default command line output for OEPSViewer_v5
 handles.output = hObject;
 
 % spike data 
@@ -65,12 +65,12 @@ handles.fullZoom = [];
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes OEPSViewer_v4 wait for user response (see UIRESUME)
+% UIWAIT makes OEPSViewer_v5 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = OEPSViewer_v4_OutputFcn(hObject, eventdata, handles) 
+function varargout = OEPSViewer_v5_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -113,6 +113,9 @@ end
 X = dir(fullfile(handles.BinaryPath.String,'mybinaryfile.dat'));
 Nchan       = str2double(handles.NumChans.String);
 handles.RecordingLength.String = num2str(floor(X.bytes/2/Nchan/30000/60));
+
+% set up the SD table
+handles.SDTable.Data = [(1:Nchan)' handles.commonSD.Data(1,1)*ones(Nchan,1)];
 
 guidata(hObject, handles);
 
@@ -217,10 +220,13 @@ handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.2);
 PlotUnits_Callback(hObject, eventdata, handles);
 
 % show SD level for selected channel
-if ~isnan(handles.whichChan.Data(1,2)) && handles.chanSD.Value
-    mychannel = handles.whichChan.Data(1,1);
-    sd = double(channelSpacing*(size(MyData,2)-mychannel)) + (mean(MyData(:,mychannel))) - (handles.whichChan.Data(1,2)*std(double(MyData(:,mychannel))));    
-    line(myXLims, [sd sd], 'LineStyle', ':', 'Color', 'w');
+if handles.chanSD.Value
+    mu = mean(MyData,1)';
+    sd = std(double(MyData),[],1)';
+    sd = sd.*handles.SDTable.Data(:,2);
+    cs = double(channelSpacing*(size(MyData,2)-(1:size(MyData,2))))';
+    sd = cs + mu - sd;
+    line(repmat(myXLims,size(MyData,2),1)', [sd sd]', 'LineStyle', ':', 'Color', 'w');
 end
 
 % find Trial TTLs that span this stretch
@@ -433,3 +439,18 @@ set(gca, 'XLim', handles.fullZoom(1,:), 'YLim', handles.fullZoom(2,:));
 zoom on
 zoom reset
 guidata(hObject, handles);
+
+
+% --- Executes when entered data in editable cell(s) in commonSD.
+function commonSD_CellEditCallback(hObject, eventdata, handles)
+% hObject    handle to commonSD (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
+%	Indices: row and column indices of the cell(s) edited
+%	PreviousData: previous data for the cell(s) edited
+%	EditData: string(s) entered by the user
+%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
+%	Error: error string when failed to convert EditData to appropriate value for Data
+% handles    structure with handles and user data (see GUIDATA)
+handles.SDTable.Data(:,2) = handles.commonSD.Data(1,1);
+guidata(hObject, handles);
+UpdatePlot(hObject, eventdata, handles);
