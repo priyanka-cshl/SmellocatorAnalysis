@@ -72,6 +72,15 @@ for i = 1:size(MyTrials,1)
 end
 
 if any(LocationSequence(:))
+    if (size(LocationSequence,1) < size(TrialSequence,1))
+        nL = size(LocationSequence,1) + 1;
+        if ~any(TrialSequence(nL:end,1)<900)
+            % all replays
+            LocationSequence(nL:size(TrialSequence,1),:) = 0;
+            TrialSequence(nL:size(TrialSequence,1),2) = NaN;
+        end
+    end
+        
     TrialSequence = [TrialSequence LocationSequence];
 end
 %TrialSequence = vertcat([NaN NaN], TrialSequence(1:end-1,:));

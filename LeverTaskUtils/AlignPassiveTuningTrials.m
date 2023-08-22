@@ -88,7 +88,7 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     % make sure there are extra trials in the ephys list that
                     % need to be deleted
                     if size(EphysTuningTrials,1)<size(TrialSequence,1)
-                        disp('sequence mismatch in ephys and behavior tunig files');
+                        disp('sequence mismatch in ephys and behavior tuning files');
                         keyboard;
                     end
                     % find the first problematic replay

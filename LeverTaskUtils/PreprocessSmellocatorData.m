@@ -148,12 +148,16 @@ if ~isempty(TTLs)
     
 end
 
+%% Sniffs
+[SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
+[SniffTS_passive] = ReadThermistorData(TuningFile); % in behavior timestamps
+
 %% Saving stuff in one place
 if ~exist(fileparts(savepath),'dir')
     mkdir(fileparts(savepath));
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive');
     
 end
