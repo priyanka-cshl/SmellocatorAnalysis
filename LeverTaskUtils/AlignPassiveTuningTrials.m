@@ -138,6 +138,9 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
         end
     end
     EphysTuningTrials(:,5) = EphysTuningTrials(:,5) - 1; % make odor identities as 0-3 instead of 1-4
+    % append three more columns, Trial start, Trial Stop, Trial duration -
+    % from the behavior files - useful for sniff alignment etc. later
+    EphysTuningTrials(:,9:11) = TuningTrials(:,5:7);
 else
     EphysTuningTrials = [];
 end

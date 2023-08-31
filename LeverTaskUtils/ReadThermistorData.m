@@ -24,6 +24,17 @@ if find(ismember(Temp.session_data.trace_legend,'thermistor'))
     % inhalation end
     [pks_in,locs_in] = findpeaks(-TH_filt,'MinPeakProminence',peakprom);
     
+%     % detect exhalation start?
+%     fband = [0.1 20];
+%     [b,a] = butter(Np,fband/(SampleRate/2)); % band pass Butterworth filter coefficients
+%     d_TH_filt = filtfilt(b,a,diff(TH_filt));
+%     dd_TH_filt = diff(d_TH_filt);
+%     dd_TH_filt = [dd_TH_filt; dd_TH_filt(end-1:end)];
+%     % peaks in the first - derivative - possibly exhalation start and
+%     % inhalation ends
+%     [~ , locs_d] = findpeaks(d_TH_filt,'MinPeakProminence',std(d_TH_filt(d_TH_filt>0))/2);
+%     [~ , locs_dd] = findpeaks(dd_TH_filt,'MinPeakProminence',std(dd_TH_filt)/4);
+    
 %     figure;
 %     plot(RespirationData(:,1),TH_filt);
 %     hold on
@@ -57,6 +68,28 @@ if find(ismember(Temp.session_data.trace_legend,'thermistor'))
             % [inhalation-start inhalation-end next-inhalation]
         end
     end
+    
+%     % also try to detect exhalation start
+%     for s = 1:size(SniffTS,1)
+%         % find the first derivative inflexion just before inhalation start
+%         % < 200 ms
+%         f = intersect(find(RespirationData(locs_d,1)>= (SniffTS(s,3) - 0.1)), ...
+%                 find(RespirationData(locs_d,1)< SniffTS(s,3)) );
+%         if numel(f) == 1
+%             q = find(RespirationData(locs_dd,1) < RespirationData(locs_d(f),1) , 1, 'last');
+%             if ~isempty(q)
+%                 if RespirationData(locs_dd(q),1) > SniffTS(s,2)
+%                     SniffTS(s,4) = RespirationData(locs_dd(q),1);
+%                     SniffTS(s,5) = TH_filt(locs_dd(q),1);
+%                 end
+%             else
+%                 %keyboard;
+%             end
+%         else
+%             %keyboard;
+%         end
+%     end
+    
     
 %     % some pretty plots
 %     figure;

@@ -1,4 +1,5 @@
-function [AlignedSpikes, Events, TetrodeOrder, SniffAlignedSpikes, Events_phase, TrialInfo] = TrialAlignedSpikeTimes_v2(SingleUnits,TTLs,nTrials,TrialInfo,MySession,varargin)
+function [AlignedSpikes, Events, TetrodeOrder, SniffAlignedSpikes, Events_phase, TrialInfo] = ...
+    TrialAlignedSpikeTimes_v2(SingleUnits,TTLs,nTrials,TrialInfo,MySession,varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -13,13 +14,13 @@ N = size(SingleUnits,2); % total units
 
 PerturbationEvents = [];
 if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
-    x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1)));
+    x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1))); % find perturbation trials
     
     if any(strcmp(TrialInfo.Perturbation(x,1),'Halt-Flip')) || ...
-            any(strcmp(TrialInfo.Perturbation(x,1),'Halt-Flip-Template'))
+            any(strcmp(TrialInfo.Perturbation(x,1),'Halt-Flip-Template')) 
         
         HaltTrials = [find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip')); ...
-            find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) ];
+            find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) ]; % halt flip trials
         
         load(MySession,'Traces','SampleRate');
         PerturbationParams = TrialInfo.Perturbation{HaltTrials(1),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location

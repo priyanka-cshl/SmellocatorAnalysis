@@ -151,6 +151,15 @@ end
 %% Sniffs
 [SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
 [SniffTS_passive] = ReadThermistorData(TuningFile); % in behavior timestamps
+% for the passive case, convert sniff timestamps to OEPS base
+% check first for clock drifts - compare trial starts between OEPS and
+% matlab
+if ~any(abs((TuningTTLs(:,1) - TuningTTLs(1,1)) - (TuningTTLs(:,9) - TuningTTLs(1,9)))>0.04)
+    Passive_Timestamp_adjust = TuningTTLs(1,1) - TuningTTLs(1,9);
+else
+    disp('trial start mismatch in ephys and behavior tuning files');
+    keyboard;
+end
 
 %% Saving stuff in one place
 if ~exist(fileparts(savepath),'dir')
@@ -158,6 +167,6 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'Passive_Timestamp_adjust');
     
 end
