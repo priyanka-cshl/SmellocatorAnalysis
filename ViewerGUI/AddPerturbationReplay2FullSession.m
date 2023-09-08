@@ -138,7 +138,7 @@ for x = 1:size(allTrials,1)
     if plotevents
         % Plot Target Zone periods - adjust times if needed
         %ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
-        ZoneTimes = ZoneTimesIn{whichTrials(x)} - Offset(x);
+        ZoneTimes = ZoneTimesIn{allTrials(x)} - Offset(x);
         InZonePlotter(ZoneTimes', x+trialsdone);
     end
     

@@ -22,7 +22,7 @@ function varargout = SniffViewer(varargin)
 
 % Edit the above text to modify the response to help SniffViewer
 
-% Last Modified by GUIDE v2.5 29-Aug-2023 11:16:56
+% Last Modified by GUIDE v2.5 31-Aug-2023 14:42:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -58,8 +58,12 @@ handles.output = hObject;
 [Paths] = WhichComputer();
 
 if ~isempty(varargin)
-    MouseName = regexprep(varargin{1},'_(\w+)_processed.mat','');
-    handles.WhereSession.String = fullfile(Paths.ProcessedSessions,MouseName,varargin{1});
+    if exist(varargin{1}) == 2
+        handles.WhereSession.String = varargin{1};
+    else
+        MouseName = regexprep(varargin{1},'_(\w+)_processed.mat','');
+        handles.WhereSession.String = fullfile(Paths.ProcessedSessions,MouseName,varargin{1});
+    end
 else
     handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20211005_r0_processed.mat');
 end
@@ -140,7 +144,8 @@ for i = 1:3
     
     % plot baseline trials
     [nSniffs] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
-                                                            handles.TrialInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1));
+                                 handles.TrialInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+                                 'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
             
     set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'YTick', []);
 end
@@ -148,35 +153,59 @@ UpdateUnits(handles);
 
 function UpdateUnits(handles)
 whichUnit = handles.CurrentUnit.Data(1);
-MyColors1 = brewermap(15,'*PuBu');
+MyColors1 = brewermap(8,'YlOrRd');
 MyColors2 = brewermap(15,'*OrRd');
 handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
 handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
+myYlims = [];
 for i = 1:3
     axes(handles.(['axes',num2str(i+9)])); 
     cla reset; 
     set(gca,'color','none');
     hold on
     % plot baseline trials
-    PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
-                                                            handles.TrialInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1));
+    [~,FR,BinOffset] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
+                     handles.TrialInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+                     'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1, ...
+                     'psth', handles.plotPSTH.Value);
     
     set(gca, 'XLim', myXlim, 'YTick', []);
     set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
-    
+   
+    % plot PSTHs
+    if handles.plotPSTH.Value
+        axes(handles.(['axes',num2str(i+3)]));
+        cla reset;
+        hold on
+        
+        for t = 1:size(FR,2)
+            %set(groot,'defaultAxesColorOrder',MyColors2);
+            plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color',MyColors1(t+3,:));
+        end
+        set(gca, 'XLim', myXlim);
+        myYlims(i,:) = get(gca, 'YLim');
+    end
+end
+
+if handles.plotPSTH.Value
+    for i = 1:3
+        set(handles.(['axes',num2str(i+3)]),'YLim', [min(myYlims(:,1)) max(myYlims(:,2))]);
+    end
 end
 
 % plot spike amplitudes
-thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
-axes(handles.amplitudeaxes);
-plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
-hold on
-session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
-line([session_end session_end],get(gca,'YLim'),'Color','k');
-hold off
+if handles.spike_amplitudes.Value
+    hold off
+    thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
+    axes(handles.amplitudeaxes);
+    plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
+    hold on
+    session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
+    line([session_end session_end],get(gca,'YLim'),'Color','k');
+end
 
 % --- Executes on button press in NewSession.
 function NewSession_Callback(hObject, eventdata, handles)
@@ -233,3 +262,35 @@ function plotPSTH_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of plotPSTH
+
+
+% --- Executes on button press in ShadeExhalation.
+function ShadeExhalation_Callback(hObject, eventdata, handles)
+% hObject    handle to ShadeExhalation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+for i = 1:3
+    if handles.ShadeExhalation.Value
+        set(handles.(['axes',num2str(i)]).Children, 'Visible', 'on')
+    else
+        set(handles.(['axes',num2str(i)]).Children, 'Visible', 'off')
+    end
+end
+guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of ShadeExhalation
+
+
+
+function xlims_Callback(hObject, eventdata, handles)
+% hObject    handle to xlims (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+myXlim = eval(handles.xlims.String); %[-0.1 1.1];
+
+for i = 1:3
+    set(handles.(['axes',num2str(i+0)]),'XLim', myXlim);
+    set(handles.(['axes',num2str(i+9)]),'XLim', myXlim);
+end
+% Hints: get(hObject,'String') returns contents of xlims as text
+%        str2double(get(hObject,'String')) returns contents of xlims as a double

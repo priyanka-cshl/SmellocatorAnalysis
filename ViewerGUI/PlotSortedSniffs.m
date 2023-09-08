@@ -1,17 +1,24 @@
-function [x] = PlotSortedSniffs(whichUnit, whichOdor, TrialAlignedSpikes, TrialAlignedSniffs, TrialInfo, varargin)
+function [x,FR,BinOffset] = PlotSortedSniffs(whichUnit, whichOdor, TrialAlignedSpikes, TrialAlignedSniffs, TrialInfo, varargin)
 
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('psth', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('sortorder', 0, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
+params.addParameter('alignto', 1, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
+params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
 
 % extract values from the inputParser
 params.parse(varargin{:});
 plotspikes = params.Results.plotspikes;
 plotevents = params.Results.plotevents;
+psth = params.Results.psth;
 sortby = params.Results.sortorder;
+alignto = params.Results.alignto;
+warptype = params.Results.warptype;
+
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
 
@@ -51,20 +58,19 @@ switch sortby
     case 1
         AllSniffs = sortrows(AllSniffs,[5 13 12 14]);
 end
-    
+
+SpikesPlot = [];
 if plotting
-    
-    if plotevents
-        % Plot SniffType
-        SniffTypePlotter(AllSniffs(:,5),whichodor,Xlims,0);
-    end
     
     % Plot Spikes
     for x = 1:size(AllSniffs,1)
         if plotevents
             % Plot Target Zone periods - adjust times if needed
-            ExhalationTimes = AllSniffs(x,[7 8 2 3 10 11]) - AllSniffs(x,1);
+            ExhalationTimes = AllSniffs(x,[7 8 2 3 10 11]) - AllSniffs(x,alignto);
             ExhalationTimes = reshape(ExhalationTimes,2,3)';
+            if warptype
+                ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,11+warptype))/AllSniffs(x,11+warptype));
+            end
             SniffPlotter(ExhalationTimes', x);
         end
         
@@ -73,16 +79,33 @@ if plotting
               whichtrial = AllSniffs(x,end);
               %whichsniff = AllSniffs(x,4);
               
-              thisTrialSpikes = thisUnitSpikes{whichtrial}{1} - AllSniffs(x,1);
-%               thisTrialSpikes(thisTrialSpikes<-0.5) = [];
-%               thisTrialSpikes(thisTrialSpikes>(AllSniffs(x,12) + 0.1)) = [];
-              PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
+              thisTrialSpikes = thisUnitSpikes{whichtrial}{1} - AllSniffs(x,alignto);
+              if warptype
+                  thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,11+warptype))/AllSniffs(x,11+warptype));
+              end
+              %PlotRaster_v2(thisTrialSpikes,x,Plot_Colors('k'),'tickwidth',2);
+              
+              % for plotting PSTH
+              %SpikesOut{x}{1} = thisTrialSpikes;
+              SpikesPlot = vertcat(SpikesPlot, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
         end
     end
 end
 
-x = size(AllSniffs,1);
+BinOffset = -1000;
+if plotspikes
+    plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
+end
 
+x = size(AllSniffs,1);
+if psth
+    for i = -1:1:2
+        whichsniffs = find(AllSniffs(:,5)==i);
+        FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
+    end
+else
+    FR = [];
+end
 %%
     function EventPlotter(myEvents)
         ticklength = 0.8;
