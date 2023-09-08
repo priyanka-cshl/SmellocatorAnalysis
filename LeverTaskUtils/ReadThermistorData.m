@@ -1,4 +1,8 @@
-function [SniffTS] = ReadThermistorData(FileName)
+function [SniffTS] = ReadThermistorData(FileName,plotting)
+
+if nargin<2
+    plotting = 0;
+end
 
 %% load the file
 Temp = load(FileName,'session_data');
@@ -34,13 +38,15 @@ if find(ismember(Temp.session_data.trace_legend,'thermistor'))
 %     % inhalation ends
 %     [~ , locs_d] = findpeaks(d_TH_filt,'MinPeakProminence',std(d_TH_filt(d_TH_filt>0))/2);
 %     [~ , locs_dd] = findpeaks(dd_TH_filt,'MinPeakProminence',std(dd_TH_filt)/4);
-    
-%     figure;
-%     plot(RespirationData(:,1),TH_filt);
-%     hold on
-%     plot(RespirationData(locs_ex,1),pks_ex,'vk');
-%     plot(RespirationData(locs_in,1),-pks_in,'.r');
-    
+
+if plotting
+    figure;
+    plot(RespirationData(:,1),TH_filt);
+    hold on
+    plot(RespirationData(locs_ex,1),pks_ex,'vk');
+    plot(RespirationData(locs_in,1),-pks_in,'.r');
+end
+
     SniffTS = [];
     % sanity checks - missed peaks or double peaks
     for i = 1:numel(locs_in)-2
@@ -89,25 +95,26 @@ if find(ismember(Temp.session_data.trace_legend,'thermistor'))
 %             %keyboard;
 %         end
 %     end
+
+if plotting    
+    % some pretty plots
+    figure;
+    [~,sortorder] = sort(SniffTS(:,3)-SniffTS(:,1));
+    SniffTS_ = SniffTS(sortorder,:);
+    line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,3) - SniffTS_(:,1))'], 'color' ,'k');
+    hold on
+    line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,2) - SniffTS_(:,1))'], 'color' ,'r');
     
+    figure;
+    SniffTS_ = SniffTS;
+    line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,3) - SniffTS_(:,1))'], 'color' ,'k');
+    hold on
+    line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,2) - SniffTS_(:,1))'], 'color' ,'r');
     
-%     % some pretty plots
-%     figure;
-%     [~,sortorder] = sort(SniffTS(:,3)-SniffTS(:,1));
-%     SniffTS_ = SniffTS(sortorder,:);
-%     line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,3) - SniffTS_(:,1))'], 'color' ,'k');
-%     hold on
-%     line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,2) - SniffTS_(:,1))'], 'color' ,'r');
-%     
-%     figure;
-%     SniffTS_ = SniffTS;
-%     line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,3) - SniffTS_(:,1))'], 'color' ,'k');
-%     hold on
-%     line(repmat(1:size(SniffTS_,1),2,1), [(SniffTS_(:,1) - SniffTS_(:,1))'; (SniffTS_(:,2) - SniffTS_(:,1))'], 'color' ,'r');
-%     
-%     figure; 
-%     figure, scatter(SniffTS(:,3) - SniffTS(:,1),SniffTS(:,2) - SniffTS(:,1), 'ok');
-%     set(gca,'YLim', [0 max(get(gca,'XLim'))]);
+    figure; 
+    figure, scatter(SniffTS(:,3) - SniffTS(:,1),SniffTS(:,2) - SniffTS(:,1), 'ok');
+    set(gca,'YLim', [0 max(get(gca,'XLim'))]);
+end
 
 else
     SniffTS = [];
