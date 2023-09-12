@@ -183,7 +183,11 @@ for i = 1:3
         
         for t = 1:size(FR,2)
             %set(groot,'defaultAxesColorOrder',MyColors2);
-            plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color',MyColors1(t+3,:));
+            if t < 5
+                plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color',MyColors1(t+3,:));
+            else
+                plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color','k');
+            end
         end
         set(gca, 'XLim', myXlim);
         myYlims(i,:) = get(gca, 'YLim');
