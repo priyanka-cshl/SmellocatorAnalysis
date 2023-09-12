@@ -7,8 +7,9 @@ params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('psth', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('sortorder', 0, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
-params.addParameter('alignto', 1, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
+params.addParameter('alignto', 1, @(x) isnumeric(x)); % 1 - inhalation start, 2 - inhalation end
 params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
+params.addParameter('BehaviorSampleRate', 500, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -18,6 +19,7 @@ psth = params.Results.psth;
 sortby = params.Results.sortorder;
 alignto = params.Results.alignto;
 warptype = params.Results.warptype;
+BehaviorSampRate = params.Results.BehaviorSampleRate;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
@@ -38,6 +40,11 @@ whichodor = whichOdor;
 allTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
     find(TrialInfo.Odor==whichodor));
 
+% get halt trials if any
+% also collect perturbation trials
+perturbationTrials = intersect(find(strncmpi(TrialInfo.Perturbation(:,1),'Halt-Flip',9)), ...
+    find(TrialInfo.Odor==whichodor));
+
 % assemble a list of sniffs 
 % [inh-start inh-end next-inh sniffID snifftype sniff-duration inh-duration Trial ID]
 
@@ -50,6 +57,22 @@ for s = 1:numel(allTrials) % every trial
     AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
 end
 
+% add perturbation sniffs if any
+if ~isempty(perturbationTrials)
+    for s = 1:numel(perturbationTrials)
+        thisTrialSniffs = TrialAlignedSniffs{perturbationTrials(s)}; 
+        haltperiod = TrialInfo.Perturbation{perturbationTrials(s),2}(1:2)./BehaviorSampRate;
+        haltsniffs = intersect(find(thisTrialSniffs(:,1)>=haltperiod(1)),find(thisTrialSniffs(:,1)<=haltperiod(2)));
+        thisTrialSniffs = thisTrialSniffs(haltsniffs,:);
+        thisTrialSniffs(:,12) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1);
+        thisTrialSniffs(:,13) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
+        thisTrialSniffs(:,14) = perturbationTrials(s);
+        % change snifftype 
+        thisTrialSniffs(:,5) = 3;
+        AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
+    end
+end
+
 % sort sniff List by Sniff Type, then sniff duration, then inh duration,
 % then trial ID
 switch sortby
@@ -59,7 +82,7 @@ switch sortby
         AllSniffs = sortrows(AllSniffs,[5 13 12 14]);
 end
 
-SpikesPlot = [];
+SpikesPlot = []; SpikesPSTH = [];
 if plotting
     
     % Plot Spikes
@@ -83,11 +106,18 @@ if plotting
               if warptype
                   thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,11+warptype))/AllSniffs(x,11+warptype));
               end
-              %PlotRaster_v2(thisTrialSpikes,x,Plot_Colors('k'),'tickwidth',2);
               
-              % for plotting PSTH
-              %SpikesOut{x}{1} = thisTrialSpikes;
               SpikesPlot = vertcat(SpikesPlot, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
+
+              % for plotting PSTH
+              switch alignto
+                  case 1 % inhalation start
+                      thisTrialSpikes(:,thisTrialSpikes>AllSniffs(x,12)) = [];
+                  case 2 % inhalation end
+                      thisTrialSpikes(:,thisTrialSpikes>(AllSniffs(x,12)-AllSniffs(x,13))) = [];
+              end
+              SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
+
         end
     end
 end
@@ -99,9 +129,14 @@ end
 
 x = size(AllSniffs,1);
 if psth
-    for i = -1:1:2
+    for i = -1:1:3
         whichsniffs = find(AllSniffs(:,5)==i);
-        FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
+        if ~isempty(whichsniffs)
+            %FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
+            FR{i+2} = MakeSniffTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichsniffs)),1),...
+                AllSniffs(whichsniffs,12),...
+                BinOffset,'downsample',500,'kernelsize',20);
+        end
     end
 else
     FR = [];
