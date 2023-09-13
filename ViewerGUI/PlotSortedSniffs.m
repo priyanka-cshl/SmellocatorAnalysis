@@ -51,9 +51,9 @@ perturbationTrials = intersect(find(strncmpi(TrialInfo.Perturbation(:,1),'Halt-F
 AllSniffs = [];
 for s = 1:numel(allTrials) % every trial
     thisTrialSniffs = TrialAlignedSniffs{allTrials(s)}; 
-    thisTrialSniffs(:,12) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1);
-    thisTrialSniffs(:,13) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
-    thisTrialSniffs(:,14) = allTrials(s);
+    thisTrialSniffs(:,15) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1); % col 15 = sniff duration
+    thisTrialSniffs(:,16) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1); % col 16 = inhalation duration
+    thisTrialSniffs(:,17) = allTrials(s); % col 17 = trial ID
     AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
 end
 
@@ -64,22 +64,28 @@ if ~isempty(perturbationTrials)
         haltperiod = TrialInfo.Perturbation{perturbationTrials(s),2}(1:2)./BehaviorSampRate;
         haltsniffs = intersect(find(thisTrialSniffs(:,1)>=haltperiod(1)),find(thisTrialSniffs(:,1)<=haltperiod(2)));
         thisTrialSniffs = thisTrialSniffs(haltsniffs,:);
-        thisTrialSniffs(:,12) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1);
-        thisTrialSniffs(:,13) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
-        thisTrialSniffs(:,14) = perturbationTrials(s);
+        thisTrialSniffs(:,15) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1);
+        thisTrialSniffs(:,16) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
+        thisTrialSniffs(:,17) = perturbationTrials(s);
         % change snifftype 
         thisTrialSniffs(:,5) = 3;
         AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
     end
 end
 
-% sort sniff List by Sniff Type, then sniff duration, then inh duration,
-% then trial ID
 switch sortby
     case 0
-        AllSniffs = sortrows(AllSniffs,[5 12 13 14]);
+        % sort sniff List by Sniff Type, then sniff duration, then inh duration, then trial ID
+        AllSniffs = sortrows(AllSniffs,[5 15 16 17]);
     case 1
-        AllSniffs = sortrows(AllSniffs,[5 13 12 14]);
+        % sort sniff List by Sniff Type, then inh duration, then sniff duration, then trial ID
+        AllSniffs = sortrows(AllSniffs,[5 16 15 17]);
+    case 2
+        AllSniffs(find(AllSniffs(:,5)==0),5) = 1; 
+        AllSniffs(find(AllSniffs(:,5)==1),5) = 1;
+        AllSniffs(find(AllSniffs(:,5)==2),5) = 1; 
+        % sort by sniff type, then odor location (col 6), then sniff duration, then inh duration, then trial ID
+        AllSniffs = sortrows(AllSniffs,[5 6 16 15 17]);
 end
 
 SpikesPlot = []; SpikesPSTH = [];
@@ -89,10 +95,10 @@ if plotting
     for x = 1:size(AllSniffs,1)
         if plotevents
             % Plot Target Zone periods - adjust times if needed
-            ExhalationTimes = AllSniffs(x,[7 8 2 3 10 11]) - AllSniffs(x,alignto);
+            ExhalationTimes = AllSniffs(x,[8 9 2 3 12 13]) - AllSniffs(x,alignto);
             ExhalationTimes = reshape(ExhalationTimes,2,3)';
             if warptype
-                ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,11+warptype))/AllSniffs(x,11+warptype));
+                ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
             end
             SniffPlotter(ExhalationTimes', x);
         end
@@ -104,7 +110,7 @@ if plotting
               
               thisTrialSpikes = thisUnitSpikes{whichtrial}{1} - AllSniffs(x,alignto);
               if warptype
-                  thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,11+warptype))/AllSniffs(x,11+warptype));
+                  thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
               end
               
               SpikesPlot = vertcat(SpikesPlot, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
@@ -112,9 +118,9 @@ if plotting
               % for plotting PSTH
               switch alignto
                   case 1 % inhalation start
-                      thisTrialSpikes(:,thisTrialSpikes>AllSniffs(x,12)) = [];
+                      thisTrialSpikes(:,thisTrialSpikes>AllSniffs(x,15)) = [];
                   case 2 % inhalation end
-                      thisTrialSpikes(:,thisTrialSpikes>(AllSniffs(x,12)-AllSniffs(x,13))) = [];
+                      thisTrialSpikes(:,thisTrialSpikes>(AllSniffs(x,15)-AllSniffs(x,16))) = [];
               end
               SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
 
@@ -134,7 +140,7 @@ if psth
         if ~isempty(whichsniffs)
             %FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
             FR{i+2} = MakeSniffTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichsniffs)),1),...
-                AllSniffs(whichsniffs,12),...
+                AllSniffs(whichsniffs,15),...
                 BinOffset,'downsample',500,'kernelsize',20);
         end
     end

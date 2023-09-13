@@ -33,8 +33,9 @@ if ~isempty(SniffTS)
             last_inhalation  = find(SniffTS(:,2)<=trialtimes(whichtrial,2),1,'last'); % before trial end
         end
         
-        mysniffs = SniffTS(first_inhalation:last_inhalation,:) - trialtimes(whichtrial,1); % -ve timestamps are in ITI
+        mysniffs = SniffTS(first_inhalation:last_inhalation,1:3) - trialtimes(whichtrial,1); % -ve timestamps are in ITI
         mysniffs(:,4) = (1:size(mysniffs,1))' - numel(find(mysniffs(:,1)<=0));
+        mysniffs(:,6) = SniffTS(first_inhalation:last_inhalation,4); % odor location 
         
         % flag sniffs where entire inhalation period was in the target
         % zone?
@@ -53,8 +54,10 @@ if ~isempty(SniffTS)
         
         % also note the sniff before and sniff after
         mysniffs = horzcat(mysniffs, ...
-            SniffTS(first_inhalation-1:last_inhalation-1,:) - trialtimes(whichtrial,1), ...
-            SniffTS(first_inhalation+1:last_inhalation+1,:) - trialtimes(whichtrial,1) );
+            SniffTS(first_inhalation-1:last_inhalation-1,1:3) - trialtimes(whichtrial,1), ...
+            SniffTS(first_inhalation-1:last_inhalation-1,4), ...
+            SniffTS(first_inhalation+1:last_inhalation+1,1:3) - trialtimes(whichtrial,1), ...
+            SniffTS(first_inhalation+1:last_inhalation+1,4) );
         
         TrialAlignedSniffs{whichtrial} = mysniffs;
         
