@@ -99,12 +99,14 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     temp(x+1,:) = [];
                     if numel(TuningListMismatches(TrialSequence(:,3),temp))<numel(Mismatches)
                         EphysTuningTrials(x+1,:) = [];
+                        TuningTrials(x+1,:) = []; % added PG 2023/09/28
                         Mismatches = TuningListMismatches(TrialSequence(:,3),EphysTuningTrials(:,5));
                     end
                 end
                 disp('odor sequences match in ephys and behavior tuning files');
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TrialSequence,1)+1:end,:) = [];
+                TuningTrials(size(TrialSequence,1)+1:end,:) = []; % added PG 2023/09/28
                 % delete any extra trials in the Behavior side
                 TrialSequence(size(EphysTuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TrialSequence
