@@ -138,7 +138,14 @@ if ~isempty(TTLs)
     if exist(myspikesdir)
         FileLocations.Spikes = myspikesdir;
         SingleUnits = GetSingleUnits(myspikesdir);
-        [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);    
+        [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);  
+    else
+        % try the sorting directory instead
+        if exist(mySortingdir)
+            FileLocations.Spikes = mySortingdir;
+            SingleUnits = GetSingleUnits(mySortingdir);
+            [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);
+        end
     end
 end
 
