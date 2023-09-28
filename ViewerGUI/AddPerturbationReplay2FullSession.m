@@ -1,4 +1,4 @@
-function [] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, ZoneTimesIn, AlignTo, SortTrials, varargin)
+function [x] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, ZoneTimesIn, AlignTo, SortTrials, varargin)
 
 narginchk(1,inf)
 params = inputParser;

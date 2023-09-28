@@ -181,7 +181,9 @@ for i = 1:3
     end
     if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
         % plot replay trials
-        AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
+        [replaysadded] = AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
+    else
+        replaysadded = 0;
     end
     
     % plot halt/offset replays
@@ -189,16 +191,18 @@ for i = 1:3
             any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
         % plot passive halt trials
         if handles.AlignToSniffs.Value
-            AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.SniffAlignedReplaySpikes, ...
+            [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.SniffAlignedReplaySpikes, ...
                 handles.SniffAlignedReplayEvents, handles.ReplayInfo, handles.ReplayInfo.InZonePhase, AlignType, handles.SortReplay.Value,...
                 'plotspikes', 0, 'sniffaligned', 1, 'sniffscalar', str2num(handles.sniffscalar.String));
         else
-            AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, ...
+            [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, ...
                 handles.ReplayEvents, handles.ReplayInfo, handles.ReplayInfo.InZone, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
         end
+    else
+        perturbationreplaysadded = 0;
     end
     
-    set(gca, 'XLim', myXlim);
+    set(gca, 'XLim', myXlim, 'YLim', [0 (trialsdone + replaysadded + perturbationreplaysadded)]);
     
 %     axes(handles.(['axes',num2str(i+3)])); 
 %     cla reset; 

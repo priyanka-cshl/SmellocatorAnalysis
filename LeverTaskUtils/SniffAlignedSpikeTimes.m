@@ -1,4 +1,4 @@
-function [TrialAlignedSniffs, SniffAlignedSpikes, TrialAlignedSpikes, TetrodeOrder] = SniffAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession,varargin)
+ function [TrialAlignedSniffs, SniffAlignedSpikes, TrialAlignedSpikes, TetrodeOrder] = SniffAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession,varargin)
 
 narginchk(1,inf)
 params = inputParser;

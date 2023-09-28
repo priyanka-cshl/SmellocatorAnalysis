@@ -1,4 +1,4 @@
-function [] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials, varargin)
+function [x] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials, varargin)
 
 narginchk(1,inf)
 params = inputParser;

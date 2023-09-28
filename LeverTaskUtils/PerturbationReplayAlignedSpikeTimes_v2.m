@@ -33,9 +33,8 @@ end
 nsubtrials = mode(subtrials);
 
 if sniffwarpmethod
-    
     load(MySession,'SniffTS_passive', 'Passive_Timestamp_adjust'); % sniff timestamps in behavior timebase
-    SniffTS_passive = SniffTS_passive + Passive_Timestamp_adjust; % Sniff Times in OEPS timebase
+    SniffTS_passive(:,1:3) = SniffTS_passive(:,1:3) + Passive_Timestamp_adjust; % Sniff Times in OEPS timebase
 end
 
 N = size(SingleUnits,2); % total units
