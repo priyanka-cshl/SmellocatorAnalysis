@@ -28,14 +28,14 @@ errorflags = [0 0 0 0];
 global TargetZones; %#ok<*NUSED>
 
 %% core data extraction (and settings)
-if ~exist(MyFilePath)
+if exist(MyFilePath) & ~isempty(fileparts(MyFilePath))
+    [FilePaths, MyFileName] = fileparts(MyFilePath);
+    [~,AnimalName] = fileparts(FilePaths);
+else
     foo = regexp(MyFilePath,'_','split');
     AnimalName = foo{1};
     MyFilePath = fullfile(Paths.Grid.Behavior,AnimalName,MyFilePath);
     [FilePaths, MyFileName] = fileparts(MyFilePath); %#ok<*ASGLU>
-else
-    [FilePaths, MyFileName] = fileparts(MyFilePath);
-    [~,AnimalName] = fileparts(FilePaths);
 end
 
 %% check if the preprocessed version already exists - locally or on the server
