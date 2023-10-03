@@ -108,7 +108,7 @@ end
 %% get the data loaded
 MySession = handles.WhereSession.String;
 [TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, ...
-    ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, OpenLoop] = ...
+    ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, OpenLoop, handles.Tuning] = ...
     LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
 
 handles.SingleUnits = SingleUnits;
@@ -117,6 +117,17 @@ handles.TimestampAdjuster = TimestampAdjuster;
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSniffs, handles.sniffAlignedSpikes, handles.trialAlignedSpikes, handles.whichtetrode] = ...
     SniffAlignedSpikeTimes(SingleUnits,TTLs,size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
+
+%% same for replays
+if ~isempty(OpenLoop)
+    [handles.ReplayAlignedSniffs, handles.SniffAlignedReplaySpikes, handles.ReplayInfo] = ...
+        SniffAlignedSpikeTimes_Replays(SingleUnits,TTLs,ReplayTTLs,handles.TrialInfo,OpenLoop,MySession);
+else
+    handles.ReplayAlignedSniffs = [];
+end
+
+%% also for passive tuning
+handles.TuningSniffs = PassiveTuningSniffs(handles.Tuning,MySession);
 
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 if isnan(handles.CurrentUnit.Data(1)) || handles.CurrentUnit.Data(1)>size(SingleUnits,2)
@@ -146,6 +157,19 @@ for i = 1:3
     [nSniffs] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
                                  handles.TrialInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
                                  'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+                             
+    
+    % plot passive replay trials                         
+    if ~isempty(handles.ReplayAlignedSniffs)
+        [nSniffs] = PlotPassiveReplaySniffs(whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
+            handles.ReplayInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+            'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+    end
+    
+    % add tuning sniffs
+    [nSniffs] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
+        'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+        'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
             
     set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'YTick', []);
 end
@@ -161,16 +185,21 @@ handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
 myYlims = [];
-for i = 1:3
+for i = 1%:3
     axes(handles.(['axes',num2str(i+9)])); 
     cla reset; 
     set(gca,'color','none');
     hold on
     % plot baseline trials
-    [~,FR,BinOffset] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
+    [nSniffs,FR,BinOffset] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
                      handles.TrialInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
                      'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1, ...
                      'psth', handles.plotPSTH.Value);
+                 
+    % add tuning sniffs
+    [~] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
+        'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+        'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
     
     set(gca, 'XLim', myXlim, 'YTick', []);
     set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
