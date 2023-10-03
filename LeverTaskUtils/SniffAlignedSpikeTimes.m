@@ -27,11 +27,10 @@ if ~isempty(SniffTS)
     for whichtrial = 1: nTrials % every trial
         if whichtrial==1
             first_inhalation = 2;
-            last_inhalation  = find(SniffTS(:,2)<=trialtimes(whichtrial,2),1,'last');
         else
             first_inhalation = find(SniffTS(:,1)>=trialtimes(whichtrial-1,2),1,'first'); % after prev trial OFF
-            last_inhalation  = find(SniffTS(:,2)<=trialtimes(whichtrial,2),1,'last'); % before trial end
         end
+        last_inhalation  = find(SniffTS(:,2)<=trialtimes(whichtrial,2),1,'last'); % before trial end
         
         mysniffs = SniffTS(first_inhalation:last_inhalation,1:3) - trialtimes(whichtrial,1); % -ve timestamps are in ITI
         mysniffs(:,4) = (1:size(mysniffs,1))' - numel(find(mysniffs(:,1)<=0));
@@ -40,7 +39,6 @@ if ~isempty(SniffTS)
         % flag sniffs where entire inhalation period was in the target
         % zone?
         if ~isempty(TrialInfo.InZone{whichtrial})
-            
             whichsniffs = find(mysniffs(:,1)>=TrialInfo.TargetEntry(whichtrial,1));
             mysniffs(whichsniffs,5) = 1;
             for entries = 1:size(TrialInfo.InZone{whichtrial},1)
@@ -50,6 +48,10 @@ if ~isempty(SniffTS)
                 mysniffs(whichsniffs,5) = 2;
             end
         end
+        
+%         % better way - use the location
+%         whichsniffs = intersect(find(mysniffs(:,3)>0), find(abs(mysniffs(:,6))<=9));
+        
         mysniffs(mysniffs(:,3)<=0,5) = -1;
         
         % also note the sniff before and sniff after
