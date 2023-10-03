@@ -68,9 +68,15 @@ if ~isempty(perturbationTrials)
         thisTrialSniffs(:,16) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
         thisTrialSniffs(:,17) = perturbationTrials(s);
         % change snifftype 
-        thisTrialSniffs(:,5) = 3;
+        thisTrialSniffs(:,5) = 4;
         AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
     end
+    
+    % also pull out control sniffs that share the same location
+    ctrl_sniffs = intersect(find((AllSniffs(:,5)>-1)&(AllSniffs(:,5)<4)), ...
+                    find(round(AllSniffs(:,6)/10)==TrialInfo.Perturbation{perturbationTrials(2),2}(3)/10));
+    AllSniffs(ctrl_sniffs,5) = 3;
+                
 end
 
 switch sortby
@@ -88,6 +94,9 @@ switch sortby
         AllSniffs = sortrows(AllSniffs,[5 6 16 15 17]);
 end
 
+% plotting sniff color
+SniffColors = colormap(brewermap(220,'Spectral'));
+
 SpikesPlot = []; SpikesPSTH = [];
 if plotting
     
@@ -100,7 +109,8 @@ if plotting
             if warptype
                 ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
             end
-            SniffPlotter(ExhalationTimes', x);
+            thissnifflocation = floor(AllSniffs(x,6)+110);
+            SniffPlotter(ExhalationTimes', x, SniffColors(thissnifflocation,:));
         end
         
         if plotspikes
@@ -165,8 +175,9 @@ end
         plot(X(:),Y(:),'Color',Plot_Colors('b'),'Linewidth',2);
     end
 
-    function SniffPlotter(TS, rowidx)
-        foo = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.4);
+    function SniffPlotter(TS, rowidx, boxcolor)
+        %foo = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.8);
+        foo = fill(NaN,NaN,boxcolor,'FaceAlpha',0.8);
         foo.EdgeColor = 'none';
         if ~isempty(TS)
             foo.Vertices = [ ...
