@@ -212,6 +212,9 @@ if ~isempty(handles.RespSegmentsPath.String)
             f = intersect(find(y>x(phases)),find(y<x(phases+1)));
             if ~isempty(f)
                 ts(phases,2) = y(f(1));
+                if numel(f)>1
+                    disp(trial-1);
+                end
             else
                 ts(phases,2) = x(phases);
             end

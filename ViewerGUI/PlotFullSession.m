@@ -1,15 +1,20 @@
-function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, varargin)
+function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, ZoneTimesIn, AlignTo, varargin)
 
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('sniffaligned', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('sniffscalar', 3, @(x) isnumeric(x));
+
 
 % extract values from the inputParser
 params.parse(varargin{:});
 plotspikes = params.Results.plotspikes;
 plotevents = params.Results.plotevents;
+sniffaligned = params.Results.sniffaligned;
+sniffscalar = params.Results.sniffscalar;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
@@ -70,36 +75,59 @@ switch AlignTo
         Xlims = [-1.2 -1];
         Offset = 0*myEvents(:,1);
     case 2 % odor ON
-        odorON = myEvents(:,1);
+        if ~sniffaligned
+            odorON = myEvents(:,1);
+        else
+            odorON = floor(myEvents(:,1));
+        end
         myEvents(:,1) = 0; % replace odorON with TrialON
         % offset all events with ON timestamp
         myEvents = myEvents - odorON;
         Xlims = [-1.2 -1];
         Offset = odorON;
     case 3 % trial OFF
-        TrialOFF = myEvents(:,3);
+        if ~sniffaligned
+            TrialOFF = myEvents(:,3);
+        else
+            TrialOFF = floor(myEvents(:,3));
+        end
         myEvents(:,3) = 0; % replace TrialOFF with TrialON
         % offset all events with ON timestamp
         myEvents = myEvents - TrialOFF;
         Xlims = [-1.2 -1] - 4;
         Offset = TrialOFF;
     case 4 % reward
-        Reward = myEvents(:,3);
+        if ~sniffaligned
+            Reward = myEvents(:,3);
+        else
+            Reward = myEvents(:,3);
+        end
         myEvents(:,2) = 0; % replace Reward with TrialON
         % offset all events with ON timestamp
         myEvents = myEvents - Reward;
         Xlims = [-1.2 -1] - 4;
         Offset = Reward;
     case 5 % first TZ entry with stay > 100ms
-        Offset = myEvents(:,4);
+        if ~sniffaligned
+            Offset = myEvents(:,4);
+        else
+            Offset = floor(myEvents(:,4));
+        end
         % offset all events with ON timestamp
         myEvents = myEvents - Offset;
         Xlims = [-1.2 -1] - 1;
     case 6 % perturbation start
-        Offset = myEvents(:,5);
+        if ~sniffaligned
+            Offset = myEvents(:,5);
+        else
+            Offset = floor(myEvents(:,5));
+        end
         % offset all events with ON timestamp
         myEvents = myEvents - Offset;
         Xlims = [-1.2 -1];
+end
+if sniffaligned
+    Xlims = sniffscalar*Xlims;
 end
 
 if plotting
@@ -115,7 +143,7 @@ if plotting
     for x = 1:size(whichTrials,1)
         if plotevents
             % Plot Target Zone periods - adjust times if needed
-            ZoneTimes = TrialInfo.InZone{whichTrials(x)} - Offset(x);
+            ZoneTimes = ZoneTimesIn{whichTrials(x)} - Offset(x);
             InZonePlotter(ZoneTimes', x);
         end
         if plotspikes
@@ -132,7 +160,7 @@ end
 x = size(whichTrials,1);
 % calculate PSTH
 AlignedFRs = []; RawSpikeCounts = [];
-BinOffset = Xlims(1)*1000;
+BinOffset = round(Xlims(1)*1000);
 
 for TZ = 1:12
     thisTZspikes = thisUnitSpikes(whichTrials(find(whichTrials(:,2)==TZ),1));
@@ -154,7 +182,7 @@ if ~isempty(perturbationTrials)
         for y = 1:size(perturbationTrials,1)
             if plotevents
                 % Plot Target Zone periods - adjust times if needed
-                ZoneTimes = TrialInfo.InZone{perturbationTrials(y)} - Offset(x+y);
+                ZoneTimes = ZoneTimesIn{perturbationTrials(y)} - Offset(x+y);
                 InZonePlotter(ZoneTimes', y+x);
             end
             if plotspikes

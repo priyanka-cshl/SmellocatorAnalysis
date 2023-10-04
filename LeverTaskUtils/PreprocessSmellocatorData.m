@@ -28,14 +28,14 @@ errorflags = [0 0 0 0];
 global TargetZones; %#ok<*NUSED>
 
 %% core data extraction (and settings)
-if ~exist(MyFilePath)
+if exist(MyFilePath) & ~isempty(fileparts(MyFilePath))
+    [FilePaths, MyFileName] = fileparts(MyFilePath);
+    [~,AnimalName] = fileparts(FilePaths);
+else
     foo = regexp(MyFilePath,'_','split');
     AnimalName = foo{1};
     MyFilePath = fullfile(Paths.Grid.Behavior,AnimalName,MyFilePath);
     [FilePaths, MyFileName] = fileparts(MyFilePath); %#ok<*ASGLU>
-else
-    [FilePaths, MyFileName] = fileparts(MyFilePath);
-    [~,AnimalName] = fileparts(FilePaths);
 end
 
 %% check if the preprocessed version already exists - locally or on the server
@@ -138,7 +138,14 @@ if ~isempty(TTLs)
     if exist(myspikesdir)
         FileLocations.Spikes = myspikesdir;
         SingleUnits = GetSingleUnits(myspikesdir);
-        [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);    
+        [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);  
+    else
+        % try the sorting directory instead
+        if exist(mySortingdir)
+            FileLocations.Spikes = mySortingdir;
+            SingleUnits = GetSingleUnits(mySortingdir);
+            [SingleUnits] = Spikes2Trials(SingleUnits, TTLs.Trial(1:size(TrialInfo.TrialID,2),:), TuningTTLs);
+        end
     end
 end
 
@@ -148,12 +155,25 @@ if ~isempty(TTLs)
     
 end
 
+%% Sniffs
+[SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
+[SniffTS_passive] = ReadThermistorData(TuningFile); % in behavior timestamps
+% for the passive case, convert sniff timestamps to OEPS base
+% check first for clock drifts - compare trial starts between OEPS and
+% matlab
+if ~any(abs((TuningTTLs(:,1) - TuningTTLs(1,1)) - (TuningTTLs(:,9) - TuningTTLs(1,9)))>0.04)
+    Passive_Timestamp_adjust = TuningTTLs(1,1) - TuningTTLs(1,9);
+else
+    disp('trial start mismatch in ephys and behavior tuning files');
+    keyboard;
+end
+
 %% Saving stuff in one place
 if ~exist(fileparts(savepath),'dir')
     mkdir(fileparts(savepath));
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'Passive_Timestamp_adjust');
     
 end

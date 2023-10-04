@@ -57,7 +57,9 @@ handles.output = hObject;
 
 % spike data 
 handles.selectedUnit = plot(NaN,NaN,'w.');
+handles.comparedUnit = plot(NaN,NaN,'y.');
 handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.8);
+handles.MyComparedUnit = patch(NaN,NaN,'y','EdgeColor','none','FaceAlpha',.8);
 handles.SDline = plot(NaN,NaN,':w');
 handles.firstcall = 1;
 handles.fullZoom = [];
@@ -217,6 +219,8 @@ handles.myTimeAxis = myTimeAxis;
 hold on
 handles.selectedUnit = plot(NaN,NaN,'w.');
 handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.2);
+handles.comparedUnit = plot(NaN,NaN,'y.');
+handles.MyComparedUnit = patch(NaN,NaN,'y','EdgeColor','none','FaceAlpha',.2);
 PlotUnits_Callback(hObject, eventdata, handles);
 
 % show SD level for selected channel
@@ -317,7 +321,9 @@ function UnitList_CellSelectionCallback(hObject, eventdata, handles)
 % if handles.PlotUnits.Value
 %     UpdatePlot(hObject, eventdata, handles);
 %     % plot units if desired
-handles.whichUnit.String = num2str(eventdata.Indices(1));
+if ~isempty(eventdata.Indices)
+    handles.whichUnit.String = mat2str(eventdata.Indices(:,1)); %num2str(eventdata.Indices(1));
+end 
 guidata(hObject, handles);
 PlotUnits_Callback(hObject, eventdata, handles)
 
@@ -337,38 +343,73 @@ OEPSSamplingRate = 30000;
 Nchan       = str2double(handles.NumChans.String);
 channelSpacing = str2double(handles.Spacing.String);
 
-if handles.PlotUnits.Value
-    if ~isnan(str2double(handles.whichUnit.String))
-        whichUnit = str2double(handles.whichUnit.String);
-        spikes = handles.Units.spikes{whichUnit};
-        myspikes = OEPSSamplingRate*(spikes(intersect(find(spikes>=myTimeAxis(1)),find(spikes<=myTimeAxis(2)))) - myTimeAxis(1));
-        
-        whichTT = floor(handles.UnitList.Data(whichUnit,2));
-        whichChan = (whichTT-1)*4 + 10*(handles.UnitList.Data(whichUnit,2) - whichTT);
-        offset = channelSpacing*(Nchan-whichChan-1) - channelSpacing/2;
-        
-        % for plotting as dots
-        handles.selectedUnit.XData = myspikes;
-        handles.selectedUnit.YData = 0*myspikes + offset;
-
-        % plot as a shaded box
-        myspikes(:,2:3) = myspikes + OEPSSamplingRate*[-0.001 0.001]; % 1 ms window around the spike
-        myspikes(:,1) = [];
-%         Vx = [myspikes(:,1) myspikes(:,1) myspikes(:,2) myspikes(:,2)];
-%         Vy = repmat([-channelSpacing  channelSpacing*(Nchan-1) channelSpacing*(Nchan-1) -channelSpacing],size(myspikes,1),1);
-        
-        offsets =  [-channelSpacing  channelSpacing*Nchan];
-        TS = myspikes';
-        if ~isempty(TS)
-            handles.MySelectedUnit.Vertices = [ ...
-                reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
-                repmat([offsets(1) offsets(2) offsets(2) offsets(1)]',size(TS,2),1)];
-            handles.MySelectedUnit.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
-        else
-            handles.MySelectedUnit.Vertices = [];
-            handles.MySelectedUnit.Faces = [];
+if handles.PlotUnits.Value && ~isempty(handles.whichUnit.String)
+    units_selected = eval(handles.whichUnit.String);
+    
+        if ~isnan(units_selected(1))
+            whichUnit = units_selected(1);
+            spikes = handles.Units.spikes{whichUnit};
+            myspikes = OEPSSamplingRate*(spikes(intersect(find(spikes>=myTimeAxis(1)),find(spikes<=myTimeAxis(2)))) - myTimeAxis(1));
+            
+            whichTT = floor(handles.UnitList.Data(whichUnit,2));
+            whichChan = (whichTT-1)*4 + 10*(handles.UnitList.Data(whichUnit,2) - whichTT);
+            offset = channelSpacing*(Nchan-whichChan-1) - channelSpacing/2;
+            
+            % for plotting as dots
+            handles.selectedUnit.XData = myspikes;
+            handles.selectedUnit.YData = 0*myspikes + offset;
+            
+            % plot as a shaded box
+            myspikes(:,2:3) = myspikes + OEPSSamplingRate*[-0.001 0.001]; % 1 ms window around the spike
+            myspikes(:,1) = [];
+            
+            offsets =  [-channelSpacing  channelSpacing*Nchan];
+            TS = myspikes';
+            if ~isempty(TS)
+                handles.MySelectedUnit.Vertices = [ ...
+                    reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
+                    repmat([offsets(1) offsets(2) offsets(2) offsets(1)]',size(TS,2),1)];
+                handles.MySelectedUnit.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+            else
+                handles.MySelectedUnit.Vertices = [];
+                handles.MySelectedUnit.Faces = [];
+            end
         end
-    end
+        
+       if numel(units_selected) == 2
+            whichUnit = units_selected(2);
+            spikes = handles.Units.spikes{whichUnit};
+            myspikes = OEPSSamplingRate*(spikes(intersect(find(spikes>=myTimeAxis(1)),find(spikes<=myTimeAxis(2)))) - myTimeAxis(1));
+            
+            whichTT = floor(handles.UnitList.Data(whichUnit,2));
+            whichChan = (whichTT-1)*4 + 10*(handles.UnitList.Data(whichUnit,2) - whichTT);
+            offset = channelSpacing*(Nchan-whichChan-1) - channelSpacing/2;
+            
+            % for plotting as dots
+            handles.comparedUnit.XData = myspikes;
+            handles.comparedUnit.YData = 0*myspikes + offset;
+            
+            % plot as a shaded box
+            myspikes(:,2:3) = myspikes + OEPSSamplingRate*[-0.001 0.001]; % 1 ms window around the spike
+            myspikes(:,1) = [];
+            
+            offsets =  [-channelSpacing  channelSpacing*Nchan];
+            TS = myspikes';
+            if ~isempty(TS)
+                handles.MyComparedUnit.Vertices = [ ...
+                    reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
+                    repmat([offsets(1) offsets(2) offsets(2) offsets(1)]',size(TS,2),1)];
+                handles.MyComparedUnit.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+            else
+                handles.MyComparedUnit.Vertices = [];
+                handles.MyComparedUnit.Faces = [];
+            end
+       else
+           handles.comparedUnit.XData = NaN;
+           handles.comparedUnit.YData = NaN;
+           handles.MyComparedUnit.Vertices = [];
+           handles.MyComparedUnit.Faces = [];
+       end
 end
 
 % --- Executes when entered data in editable cell(s) in whichChan.

@@ -88,7 +88,7 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     % make sure there are extra trials in the ephys list that
                     % need to be deleted
                     if size(EphysTuningTrials,1)<size(TrialSequence,1)
-                        disp('sequence mismatch in ephys and behavior tunig files');
+                        disp('sequence mismatch in ephys and behavior tuning files');
                         keyboard;
                     end
                     % find the first problematic replay
@@ -99,12 +99,14 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     temp(x+1,:) = [];
                     if numel(TuningListMismatches(TrialSequence(:,3),temp))<numel(Mismatches)
                         EphysTuningTrials(x+1,:) = [];
+                        TuningTrials(x+1,:) = []; % added PG 2023/09/28
                         Mismatches = TuningListMismatches(TrialSequence(:,3),EphysTuningTrials(:,5));
                     end
                 end
                 disp('odor sequences match in ephys and behavior tuning files');
                 % delete any extra trials in the Ephys side
                 EphysTuningTrials(size(TrialSequence,1)+1:end,:) = [];
+                TuningTrials(size(TrialSequence,1)+1:end,:) = []; % added PG 2023/09/28
                 % delete any extra trials in the Behavior side
                 TrialSequence(size(EphysTuningTrials,1)+1:end,:) = [];
                 % copy over the motor locations from TrialSequence
@@ -138,6 +140,9 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
         end
     end
     EphysTuningTrials(:,5) = EphysTuningTrials(:,5) - 1; % make odor identities as 0-3 instead of 1-4
+    % append three more columns, Trial start, Trial Stop, Trial duration -
+    % from the behavior files - useful for sniff alignment etc. later
+    EphysTuningTrials(:,9:11) = TuningTrials(:,5:7);
 else
     EphysTuningTrials = [];
 end
