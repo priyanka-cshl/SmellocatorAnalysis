@@ -27,11 +27,11 @@ function varargout = Smellocator_DataViewer_PG(varargin)
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @Smellocator_DataViewer_PG_OpeningFcn, ...
-                   'gui_OutputFcn',  @Smellocator_DataViewer_PG_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
+    'gui_Singleton',  gui_Singleton, ...
+    'gui_OpeningFcn', @Smellocator_DataViewer_PG_OpeningFcn, ...
+    'gui_OutputFcn',  @Smellocator_DataViewer_PG_OutputFcn, ...
+    'gui_LayoutFcn',  [] , ...
+    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
     gui_State.gui_Callback = str2func(varargin{1});
 end
@@ -176,14 +176,14 @@ guidata(hObject, handles);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = Smellocator_DataViewer_PG_OutputFcn(hObject, eventdata, handles) 
+function varargout = Smellocator_DataViewer_PG_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 
 % --- Executes on button press in LoadSession.
 function LoadSession_Callback(hObject, eventdata, handles)
 
 global TargetZones;
-global SampleRate; 
+global SampleRate;
 global startoffset;
 
 if isempty(handles.WhereSession.String)
@@ -193,7 +193,7 @@ end
 
 % Load the relevant variables
 load(handles.WhereSession.String, 'Traces', 'TrialInfo', 'TargetZones', ...
-               'startoffset', 'SampleRate');
+    'startoffset', 'SampleRate');
 
 handles.SampleRate = SampleRate;
 
@@ -247,7 +247,7 @@ while TrialOn(1)>TrialOff(1)
 end
 while TrialOn(end)>TrialOff(end)
     TrialOn(end,:) = [];
-end 
+end
 
 TrialIndices = [TrialOn TrialOff];
 TrialTimeStamps = [Timestamps(TrialOn,1) Timestamps(TrialOff,1)];
@@ -277,10 +277,10 @@ handles.TargetZonePlot.EdgeColor = 'none';
 TrialTS = TrialTimeStamps(:,1:2)';
 TZList =  TargetZones(TrialInfo.TargetZoneType,[3 1 1 3])';
 handles.TargetZonePlot.Vertices = [ ...
-        reshape([TrialTS(:) TrialTS(:)]', 2*numel(TrialTS), []) , ...
-        TZList(:)];
+    reshape([TrialTS(:) TrialTS(:)]', 2*numel(TrialTS), []) , ...
+    TZList(:)];
 handles.TargetZonePlot.Faces = reshape(1:2*numel(TrialTS),4,size(TrialTS,2))';
-    
+
 % plot the lever trace on top
 plot(Timestamps, TracesOut(:,find(strcmp(whichTraces,'Lever'))),'k','Linewidth',2);
 
@@ -317,20 +317,22 @@ handles.respiration_plot = plot(Timestamps, ...
     'color',handles.plotcolors.resp,'Linewidth',2);
 
 %%
-% gated respiration plot
-handles.gatedsniffs = handles.SniffData;
-handles.gatedsniffs(find(TracesOut(:,9)~=1)) = NaN;
-handles.respiration_plot_gated = plot(Timestamps, ...
-    handles.RespirationScaling.Data(1) + handles.RespirationScaling.Data(2)*handles.gatedsniffs, ...
-    'color',handles.plotcolors.licks,'Linewidth',2);
 
-% gated Lever plot
-gatedLever = TracesOut(:,find(strcmp(whichTraces,'Lever')));
-gatedLever(find(TracesOut(:,10)~=1)) = NaN;
-handles.lever_plot_gated = plot(Timestamps, ...
-    gatedLever, ...
-    'color',handles.plotcolors.licks,'Linewidth',2);
-
+if ~isempty(handles.RespSegmentsPath.String)
+    % gated respiration plot
+    handles.gatedsniffs = handles.SniffData;
+    handles.gatedsniffs(find(TracesOut(:,9)~=1)) = NaN;
+    handles.respiration_plot_gated = plot(Timestamps, ...
+        handles.RespirationScaling.Data(1) + handles.RespirationScaling.Data(2)*handles.gatedsniffs, ...
+        'color',handles.plotcolors.licks,'Linewidth',2);
+    
+    % gated Lever plot
+    gatedLever = TracesOut(:,find(strcmp(whichTraces,'Lever')));
+    gatedLever(find(TracesOut(:,10)~=1)) = NaN;
+    handles.lever_plot_gated = plot(Timestamps, ...
+        gatedLever, ...
+        'color',handles.plotcolors.licks,'Linewidth',2);
+end
 
 %% update the motor plot
 axes(handles.MotorPlot);
@@ -365,8 +367,8 @@ handles.WhereSession.String = '';
 function Scroller_Callback(hObject, eventdata, handles)
 newLims = handles.Scroller.Value * str2double(handles.SessionLength.String) + ...
     [0 str2double(handles.TimeWindow.String)];
-set(handles.BehaviorPlot,'XLim',newLims); 
-set(handles.MotorPlot,'XLim',handles.SampleRate*newLims); 
+set(handles.BehaviorPlot,'XLim',newLims);
+set(handles.MotorPlot,'XLim',handles.SampleRate*newLims);
 
 % Update handles structure
 guidata(hObject, handles);
