@@ -79,6 +79,8 @@ if ~isempty(perturbationTrials)
                 
 end
 
+AllSniffs(find(AllSniffs(:,5)<3),:) = [];
+
 switch sortby
     case 0
         % sort sniff List by Sniff Type, then sniff duration, then inh duration, then trial ID

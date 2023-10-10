@@ -148,7 +148,7 @@ handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
-for i = 1:3
+for i = 1%:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on
@@ -166,10 +166,10 @@ for i = 1:3
             'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
     end
     
-    % add tuning sniffs
-    [nSniffs] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
-        'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-        'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+%     % add tuning sniffs
+%     [nSniffs] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
+%         'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+%         'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
             
     set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'YTick', []);
 end
@@ -196,10 +196,10 @@ for i = 1%:3
                      'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1, ...
                      'psth', handles.plotPSTH.Value);
                  
-    % add tuning sniffs
-    [~] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
-        'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-        'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+%     % add tuning sniffs
+%     [~] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
+%         'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+%         'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
     
     set(gca, 'XLim', myXlim, 'YTick', []);
     set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
