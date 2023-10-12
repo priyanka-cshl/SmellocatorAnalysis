@@ -121,7 +121,17 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     if ~any(round((TuningTrials(weirdo,7) - EphysTuningTrials(weirdo,3)),2,'decimal')~=0.05)
                         TuningTrials(weirdo,7) = EphysTuningTrials(weirdo,3);
                     else
-                        if any(find(TrialSequence(:,1)==800))
+                        if numel(weirdo)>10 && weirdo(1) == 1 && size(EphysTuningTrials,1) > size(TuningTrials,1)
+                            % sometimes there seem to be excess trials in
+                            % the beginning
+                            n = size(EphysTuningTrials,1) - size(TuningTrials,1);
+                            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(n:end-1,3))>0.01)
+                                disp('warning: using a recent hack that was written for S6_20230710');
+                                keyboard;
+                                EphysTuningTrials(1:n-1,:) = [];
+                                EphysTuningTrials(end,:) = [];
+                            end
+                        elseif any(find(TrialSequence(:,1)==800))
                             U1 = unique(round(TuningTrials(:,7),0,'decimal'));
                             U2 = unique(round(EphysTuningTrials(:,3),0,'decimal'));
                             culprit = U2(find(~ismember(U2,U1,'rows')));
