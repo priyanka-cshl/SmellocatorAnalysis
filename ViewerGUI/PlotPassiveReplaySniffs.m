@@ -1,4 +1,4 @@
-function [x,FR,BinOffset] = PlotPassiveReplaySniffs(whichUnit, whichOdor, ReplayAlignedSpikes, ReplayAlignedSniffs, ReplayInfo, varargin)
+function [x,FR,BinOffset] = PlotPassiveReplaySniffs(sniffsdone, whichUnit, whichOdor, ReplayAlignedSpikes, ReplayAlignedSniffs, ReplayInfo, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -10,6 +10,7 @@ params.addParameter('sortorder', 0, @(x) isnumeric(x)); % 0 - sniff duration, 1 
 params.addParameter('alignto', 1, @(x) isnumeric(x)); % 1 - inhalation start, 2 - inhalation end
 params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
 params.addParameter('BehaviorSampleRate', 500, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
+params.addParameter('haltmode', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -20,6 +21,7 @@ sortby = params.Results.sortorder;
 alignto = params.Results.alignto;
 warptype = params.Results.warptype;
 BehaviorSampRate = params.Results.BehaviorSampleRate;
+haltmode = params.Results.haltmode;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
@@ -42,15 +44,19 @@ allTrials = intersect(find(cellfun(@isempty, ReplayInfo.Perturbation(:,1))), ...
 
 % get halt trials if any
 % also collect perturbation trials
-perturbationTrials = intersect(find(strncmpi(ReplayInfo.Perturbation(:,1),'Halt-Flip',9)), ...
+perturbationTrials = intersect(find(strncmpi(ReplayInfo.Perturbation(:,1),'Halt-Flip-Template',9)), ...
     find(ReplayInfo.Odor==whichodor));
 
-% assemble a list of sniffs 
+if numel(perturbationTrials) < 2
+    perturbationTrials = [];
+end
+
+% assemble a list of sniffs
 % [inh-start inh-end next-inh sniffID snifftype sniff-duration inh-duration Trial ID]
 
 AllSniffs = [];
 for s = 1:numel(allTrials) % every trial
-    thisTrialSniffs = ReplayAlignedSniffs{allTrials(s)}; 
+    thisTrialSniffs = ReplayAlignedSniffs{allTrials(s)};
     thisTrialSniffs(:,15) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1); % col 15 = sniff duration
     thisTrialSniffs(:,16) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1); % col 16 = inhalation duration
     thisTrialSniffs(:,17) = allTrials(s); % col 17 = trial ID
@@ -60,17 +66,26 @@ end
 % add perturbation sniffs if any
 if ~isempty(perturbationTrials)
     for s = 1:numel(perturbationTrials)
-        thisTrialSniffs = ReplayAlignedSniffs{perturbationTrials(s)}; 
+        thisTrialSniffs = ReplayAlignedSniffs{perturbationTrials(s)};
         haltperiod = ReplayInfo.Perturbation{perturbationTrials(s),2}(1:2)./BehaviorSampRate;
         haltsniffs = intersect(find(thisTrialSniffs(:,1)>=haltperiod(1)),find(thisTrialSniffs(:,1)<=haltperiod(2)));
         thisTrialSniffs = thisTrialSniffs(haltsniffs,:);
         thisTrialSniffs(:,15) = thisTrialSniffs(:,3) - thisTrialSniffs(:,1);
         thisTrialSniffs(:,16) = thisTrialSniffs(:,2) - thisTrialSniffs(:,1);
         thisTrialSniffs(:,17) = perturbationTrials(s);
-        % change snifftype 
-        thisTrialSniffs(:,5) = 3;
+        % change snifftype
+        thisTrialSniffs(:,5) = 4;
         AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
     end
+    
+    % also pull out control sniffs that share the same location
+    ctrl_sniffs = intersect(find((AllSniffs(:,5)>-1)&(AllSniffs(:,5)<4)), ...
+        find(round(AllSniffs(:,6)/10)==ReplayInfo.Perturbation{perturbationTrials(2),2}(3)/10));
+    AllSniffs(ctrl_sniffs,5) = 3;
+end
+
+if haltmode
+    AllSniffs(find(AllSniffs(:,5)<3),:) = []; % only keep closeloop sniffs that share the halt location
 end
 
 switch sortby
@@ -81,9 +96,9 @@ switch sortby
         % sort sniff List by Sniff Type, then inh duration, then sniff duration, then trial ID
         AllSniffs = sortrows(AllSniffs,[5 16 15 17]);
     case 2
-        AllSniffs(find(AllSniffs(:,5)==0),5) = 1; 
+        AllSniffs(find(AllSniffs(:,5)==0),5) = 1;
         AllSniffs(find(AllSniffs(:,5)==1),5) = 1;
-        AllSniffs(find(AllSniffs(:,5)==2),5) = 1; 
+        AllSniffs(find(AllSniffs(:,5)==2),5) = 1;
         % sort by sniff type, then odor location (col 6), then sniff duration, then inh duration, then trial ID
         AllSniffs = sortrows(AllSniffs,[5 6 16 15 17]);
 end
@@ -104,53 +119,61 @@ if plotting
                 ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
             end
             thissnifflocation = floor(AllSniffs(x,6)+110);
-            SniffPlotter(ExhalationTimes', x, SniffColors(thissnifflocation,:));
+            SniffPlotter(ExhalationTimes', x + sniffsdone, SniffColors(thissnifflocation,:));
+            
+            if x == size(AllSniffs,1)
+                line([-0.5 1], sniffsdone + [x x], 'Color', 'k');
+            end
         end
         
         if plotspikes
-              
-              whichtrial = AllSniffs(x,end);
-              %whichsniff = AllSniffs(x,4);
-              
-              thisTrialSpikes = thisUnitSpikes{whichtrial}{1} - AllSniffs(x,alignto);
-              if warptype
-                  thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
-              end
-              
-              SpikesPlot = vertcat(SpikesPlot, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
-
-              % for plotting PSTH
-              switch alignto
-                  case 1 % inhalation start
-                      thisTrialSpikes(:,thisTrialSpikes>AllSniffs(x,15)) = [];
-                  case 2 % inhalation end
-                      thisTrialSpikes(:,thisTrialSpikes>(AllSniffs(x,15)-AllSniffs(x,16))) = [];
-              end
-              SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
-
+            
+            whichtrial = AllSniffs(x,end);
+            %whichsniff = AllSniffs(x,4);
+            
+            thisTrialSpikes = thisUnitSpikes{whichtrial}{1} - AllSniffs(x,alignto);
+            if warptype
+                thisTrialSpikes = thisTrialSpikes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
+            end
+            
+            SpikesPlot = vertcat(SpikesPlot, [thisTrialSpikes' (x + sniffsdone)*ones(numel(thisTrialSpikes),1)]);
+            
+            % for plotting PSTH
+            switch alignto
+                case 1 % inhalation start
+                    thisTrialSpikes(:,thisTrialSpikes>AllSniffs(x,15)) = [];
+                case 2 % inhalation end
+                    thisTrialSpikes(:,thisTrialSpikes>(AllSniffs(x,15)-AllSniffs(x,16))) = [];
+            end
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' x*ones(numel(thisTrialSpikes),1)]);
+            
         end
     end
 end
 
 BinOffset = -1000;
-if plotspikes
+if plotspikes & ~isempty(SpikesPlot)
     plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
 end
 
 x = size(AllSniffs,1);
 if psth
-    for i = -1:1:3
+    for i = -1:1:4
         whichsniffs = find(AllSniffs(:,5)==i);
         if ~isempty(whichsniffs)
             %FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
             FR{i+2} = MakeSniffTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichsniffs)),1),...
                 AllSniffs(whichsniffs,15),...
                 BinOffset,'downsample',500,'kernelsize',20);
+        else
+            FR{i+2} = [];
         end
     end
 else
     FR = [];
 end
+
+x = x + sniffsdone;
 %%
     function EventPlotter(myEvents)
         ticklength = 0.8;

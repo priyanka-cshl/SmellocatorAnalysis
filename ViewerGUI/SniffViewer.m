@@ -148,7 +148,7 @@ handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
-for i = 1%:3
+for i = 1:3
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
     hold on
@@ -159,12 +159,12 @@ for i = 1%:3
                                  'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
                              
     
-    % plot passive replay trials                         
-    if ~isempty(handles.ReplayAlignedSniffs)
-        [nSniffs] = PlotPassiveReplaySniffs(whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
-            handles.ReplayInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-            'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
-    end
+%     % plot passive replay trials                         
+%     if ~isempty(handles.ReplayAlignedSniffs)
+%         [nSniffs] = PlotPassiveReplaySniffs(nSniffs, whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
+%             handles.ReplayInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+%             'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+%     end
     
 %     % add tuning sniffs
 %     [nSniffs] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
@@ -195,7 +195,13 @@ for i = 1%:3
                      handles.TrialInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
                      'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1, ...
                      'psth', handles.plotPSTH.Value);
-                 
+    
+%     % plot passive replay trials                         
+%     if ~isempty(handles.ReplayAlignedSniffs)
+%         [nSniffs] = PlotPassiveReplaySniffs(nSniffs, whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
+%             handles.ReplayInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
+%             'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+%     end
 %     % add tuning sniffs
 %     [~] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
 %         'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...

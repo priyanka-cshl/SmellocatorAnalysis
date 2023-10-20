@@ -3,7 +3,7 @@ function [PhasesOut] = WhichSniffPhase(EventsIn,SniffsIn,varargin)
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
-params.addParameter('warpmethod', 2, @(x) isnumeric(x)); % 0 - don't align, 1 - simple warp, 2 - complex warp, 3 - fixed latency
+params.addParameter('warpmethod', 3, @(x) isnumeric(x)); % 0 - don't align, 1 - simple warp, 2 - complex warp, 3 - fixed latency
 
 params.parse(varargin{:});
 warpmethod = params.Results.warpmethod;

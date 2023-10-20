@@ -1,4 +1,4 @@
-function [x,FR,BinOffset] = PlotSortedSniffs(whichUnit, whichOdor, TrialAlignedSpikes, TrialAlignedSniffs, TrialInfo, varargin)
+function [x,FR,BinOffset,haltlocation] = PlotSortedSniffs(whichUnit, whichOdor, TrialAlignedSpikes, TrialAlignedSniffs, TrialInfo, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -10,6 +10,7 @@ params.addParameter('sortorder', 0, @(x) isnumeric(x)); % 0 - sniff duration, 1 
 params.addParameter('alignto', 1, @(x) isnumeric(x)); % 1 - inhalation start, 2 - inhalation end
 params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
 params.addParameter('BehaviorSampleRate', 500, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
+params.addParameter('haltmode', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -20,6 +21,7 @@ sortby = params.Results.sortorder;
 alignto = params.Results.alignto;
 warptype = params.Results.warptype;
 BehaviorSampRate = params.Results.BehaviorSampleRate;
+haltmode = params.Results.haltmode;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
@@ -44,6 +46,10 @@ allTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
 % also collect perturbation trials
 perturbationTrials = intersect(find(strncmpi(TrialInfo.Perturbation(:,1),'Halt-Flip',9)), ...
     find(TrialInfo.Odor==whichodor));
+
+if numel(perturbationTrials) < 2
+    perturbationTrials = [];
+end
 
 % assemble a list of sniffs 
 % [inh-start inh-end next-inh sniffID snifftype sniff-duration inh-duration Trial ID]
@@ -72,14 +78,20 @@ if ~isempty(perturbationTrials)
         AllSniffs = vertcat(AllSniffs, thisTrialSniffs);
     end
     
+    haltlocation = TrialInfo.Perturbation{perturbationTrials(2),2}(3);
+    
     % also pull out control sniffs that share the same location
     ctrl_sniffs = intersect(find((AllSniffs(:,5)>-1)&(AllSniffs(:,5)<4)), ...
-                    find(round(AllSniffs(:,6)/10)==TrialInfo.Perturbation{perturbationTrials(2),2}(3)/10));
+                    find(round(AllSniffs(:,6)/10)==haltlocation/10));
     AllSniffs(ctrl_sniffs,5) = 3;
-                
+    
+else
+    haltlocation = NaN;            
 end
 
-AllSniffs(find(AllSniffs(:,5)<3),:) = [];
+if haltmode
+    AllSniffs(find(AllSniffs(:,5)<3),:) = []; % only keep closeloop sniffs that share the halt location
+end
 
 switch sortby
     case 0
@@ -113,6 +125,10 @@ if plotting
             end
             thissnifflocation = floor(AllSniffs(x,6)+110);
             SniffPlotter(ExhalationTimes', x, SniffColors(thissnifflocation,:));
+            
+            if x == size(AllSniffs,1)
+                line([-0.5 1], [x x], 'Color', 'k');
+            end
         end
         
         if plotspikes
@@ -141,19 +157,21 @@ if plotting
 end
 
 BinOffset = -1000;
-if plotspikes
+if plotspikes & ~isempty(SpikesPlot)
     plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
 end
 
 x = size(AllSniffs,1);
 if psth
-    for i = -1:1:3
+    for i = -1:1:4
         whichsniffs = find(AllSniffs(:,5)==i);
         if ~isempty(whichsniffs)
             %FR{i+2} = MakePSTH_v4(SpikesPlot(find(ismember(SpikesPlot(:,2),whichsniffs)),1),numel(whichsniffs),BinOffset,'downsample',500,'kernelsize',20);
             FR{i+2} = MakeSniffTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichsniffs)),1),...
                 AllSniffs(whichsniffs,15),...
                 BinOffset,'downsample',500,'kernelsize',20);
+        else
+            FR{i+2} = [];
         end
     end
 else

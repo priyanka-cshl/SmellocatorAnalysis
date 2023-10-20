@@ -9,6 +9,7 @@ params.addParameter('psth', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('sortorder', 0, @(x) isnumeric(x)); % 0 - sniff duration, 1 - inhalation duration
 params.addParameter('alignto', 1, @(x) isnumeric(x)); % 1 - inhalation start, 2 - inhalation end
 params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
+params.addParameter('selectlocation', [], @(x) isnumeric(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -18,6 +19,7 @@ psth = params.Results.psth;
 sortby = params.Results.sortorder;
 alignto = params.Results.alignto;
 warptype = params.Results.warptype;
+whichlocations = params.Results.selectlocation;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
@@ -36,6 +38,15 @@ whichsniffs = find(ismember(TuningSniffs(:,17),whichtrials));
 % [inh-start inh-end next-inh sniffID snifftype sniff-duration inh-duration Trial ID]
 
 AllSniffs = TuningSniffs(whichsniffs,:);
+
+if ~isempty(whichlocations)
+    % also pull out tuning sniffs that share the same location as halts
+    halt_sniffs = intersect(find((AllSniffs(:,5)>0)&(AllSniffs(:,5)<4)), ...
+                    find(round(AllSniffs(:,6)/10)==whichlocations/10));
+                
+    AllSniffs = AllSniffs(halt_sniffs,:);
+    
+end
 
 switch sortby
     case 0
@@ -98,14 +109,14 @@ if plotting
                   case 2 % inhalation end
                       thissniffspikes(:,thissniffspikes>(AllSniffs(x,15)-AllSniffs(x,16))) = [];
               end
-              SpikesPSTH = vertcat(SpikesPSTH, [thissniffspikes' (x + Sniffsdone)*ones(numel(thissniffspikes),1)]);
+              SpikesPSTH = vertcat(SpikesPSTH, [thissniffspikes' (x)*ones(numel(thissniffspikes),1)]);
 
         end
     end
 end
 
 BinOffset = -1000;
-if plotspikes
+if plotspikes & ~isempty(SpikesPlot)
     plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
 end
 
@@ -118,6 +129,8 @@ if psth
             FR{i+2} = MakeSniffTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichsniffs)),1),...
                 AllSniffs(whichsniffs,15),...
                 BinOffset,'downsample',500,'kernelsize',20);
+        else
+            FR{i+2} = [];
         end
     end
 else
