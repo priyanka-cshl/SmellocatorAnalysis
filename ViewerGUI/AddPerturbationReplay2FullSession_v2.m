@@ -1,4 +1,5 @@
-function [x, AlignedFRs, BinOffset, AlignedPerturbationFRs, RawSpikeCounts] = PlotFullSession(whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, ZoneTimesIn, AlignTo, varargin)
+function [x, PassiveReplayFRs, PerturbationReplayFRs, BinOffset] = ...
+    AddPerturbationReplay2FullSession_v2(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, ZoneTimesIn, AlignTo, SortTrials, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -26,44 +27,20 @@ whichUnit = abs(whichUnit);
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
 
-if trialfilter == 3 % only use template trials
-    whichTrials = intersect(find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template')), ...
-        find(TrialInfo.Odor==whichodor));
-    
-    % hack to prevent OL-Template trials to be considered as perturbed trials
-    f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
-    if ~isempty(f)
-        for i = 1:numel(f)
-            TrialInfo.Perturbation{f(i),1} = [];
-        end
-    end
-    
-else
-    % hack to prevent OL-Template trials to be considered as perturbed trials
-    f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
-    if ~isempty(f)
-        for i = 1:numel(f)
-            TrialInfo.Perturbation{f(i),1} = [];
-        end
-    end
-    
-    % get the trial sorting order
-    whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
-        find(TrialInfo.Odor==whichodor));
-    
-end
-whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) TrialInfo.Duration(whichTrials)]; %#ok<AGROW>
-whichTrials = sortrows(whichTrials,2);
+% get the trial sorting order
+whichTrials = intersect(find(TrialInfo.Odor==whichodor), find(~TrialInfo.Perturbed));
+whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) ...
+    TrialInfo.Duration(whichTrials)]; %#ok<AGROW>
 
-for tz = 1:12
-    whichTrials(whichTrials(:,2)==tz,:) = sortrows(whichTrials(whichTrials(:,2)==tz,:),3);
+% Sort trials by target zone type
+if SortTrials
+    for tz = 1:12
+        whichTrials(whichTrials(:,2)==tz,:) = sortrows(whichTrials(whichTrials(:,2)==tz,:),3);
+    end
 end
 
 % also collect perturbation trials
-perturbationTrials = intersect(find(~cellfun(@isempty, TrialInfo.Perturbation)), ...
-    find(TrialInfo.Odor==whichodor));
-perturbationTrials = intersect(find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Replay')), ...
-    perturbationTrials);
+perturbationTrials = intersect(find(TrialInfo.Odor==whichodor), find(TrialInfo.Perturbed));
 perturbationTrials = [perturbationTrials TrialInfo.TargetZoneType(perturbationTrials) TrialInfo.Duration(perturbationTrials)]; %#ok<AGROW>
 perturbationTrials = sortrows(perturbationTrials,2);
 for tz = 1:12
@@ -94,15 +71,16 @@ if trialfilter == 2 % only keep close loop trials that match the halted TZs
     whichTrials(f,:) = [];
 end
 
-allTrials = vertcat(whichTrials, perturbationTrials);
+allTrials = vertcat(perturbationTrials, whichTrials);
 
 % Plot all events
 myEvents = Events(allTrials(:,1),:);
 switch AlignTo
     case 1 % to trial ON
         Xlims = [-1.2 -1];
-        Offset = 0*myEvents(:,1);
+        Offset = 0*myEvents(:,4);
     case 2 % odor ON
+        odorON = myEvents(:,1);
         if ~sniffaligned
             odorON = myEvents(:,1);
         else
@@ -114,6 +92,7 @@ switch AlignTo
         Xlims = [-1.2 -1];
         Offset = odorON;
     case 3 % trial OFF
+        TrialOFF = myEvents(:,3);
         if ~sniffaligned
             TrialOFF = myEvents(:,3);
         else
@@ -125,6 +104,7 @@ switch AlignTo
         Xlims = [-1.2 -1] - 4;
         Offset = TrialOFF;
     case 4 % reward
+        Reward = myEvents(:,3);
         if ~sniffaligned
             Reward = myEvents(:,3);
         else
@@ -136,6 +116,7 @@ switch AlignTo
         Xlims = [-1.2 -1] - 4;
         Offset = Reward;
     case 5 % first TZ entry with stay > 100ms
+        Offset = myEvents(:,4);
         if ~sniffaligned
             Offset = myEvents(:,4);
         else
@@ -145,6 +126,7 @@ switch AlignTo
         myEvents = myEvents - Offset;
         Xlims = [-1.2 -1] - 1;
     case 6 % perturbation start
+        Offset = myEvents(:,5);
         if ~sniffaligned
             Offset = myEvents(:,5);
         else
@@ -154,120 +136,103 @@ switch AlignTo
         myEvents = myEvents - Offset;
         Xlims = [-1.2 -1];
 end
-if sniffaligned
-    Xlims = sniffscalar*Xlims;
-end
 
 if plotting
-    
     if plotevents
-        % Plot Events
-        EventPlotter(myEvents);
+        line([-1 6], trialsdone + [0 0], 'Color', 'k');
+        
+        EventPlotter(myEvents,trialsdone);
+        
         % Plot TrialType
-        TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,0);
+        TrialTypePlotter(perturbationTrials(:,2),-whichodor,Xlims,trialsdone);
+        
+        TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone+size(perturbationTrials,1));
     end
+    
+    if sniffaligned
+        Xlims = sniffscalar*Xlims;
+    end
+    
+    SpikesPSTH = [];
     
     % Plot Spikes
-    for x = 1:size(whichTrials,1)
+    for x = 1:size(allTrials,1)
+        
         if plotevents
             % Plot Target Zone periods - adjust times if needed
-            ZoneTimes = ZoneTimesIn{whichTrials(x)} - Offset(x);
-            InZonePlotter(ZoneTimes', x);
+            %ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
+            ZoneTimes = ZoneTimesIn{allTrials(x)} - Offset(x);
+            InZonePlotter(ZoneTimes', x+trialsdone);
         end
+        
         if plotspikes
             % Plot Spikes
-            thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
-            
+            thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
             % adjust spiketimes if needed
             thisTrialSpikes = thisTrialSpikes - Offset(x);
-            PlotRaster(thisTrialSpikes,x,Plot_Colors('k'));
+            
+            if x>size(perturbationTrials,1) % passive replays
+                PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('b'));
+            else % replayed perturbations
+                PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('r'));
+            end
+            
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes x*ones(numel(thisTrialSpikes),1)]);
+            
         end
     end
 end
 
-x = size(whichTrials,1);
-% calculate PSTH
-AlignedFRs = []; RawSpikeCounts = [];
+PassiveReplayFRs = [];
+PerturbationReplayFRs = [];
 BinOffset = round(Xlims(1)*1000);
-if psth
-    if ~poolTZs
-        for TZ = 1:12
-            thisTZspikes = thisUnitSpikes(whichTrials(find(whichTrials(:,2)==TZ),1));
-            Events2Align = Offset(find(whichTrials(:,2)==TZ),1);
-            [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
-            AlignedFRs(TZ,1:numel(myFR)) = myFR;
-            RawSpikeCounts(TZ,1:numel(myPSTH)) = myPSTH;
-        end
+
+if psth && ~isempty(SpikesPSTH)
+    % passive replays
+    if poolTZs
+        % passive replays
+        PassiveReplayFRs{1} = MakeTrialTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichTrials(:,1))),1),...
+            whichTrials(:,3),...
+            BinOffset,'downsample',500);
+        % perturbation replays
+        PerturbationReplayFRs{1} = MakeTrialTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),perturbationTrials(:,1))),1),...
+            perturbationTrials(:,3),...
+            BinOffset,'downsample',500);
     else
-        TZ = 1;
-        thisTZspikes = thisUnitSpikes(whichTrials(:,1));
-        Events2Align = Offset(find(whichTrials(:,2)),1);
-        [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
-        AlignedFRs(TZ,1:numel(myFR)) = myFR;
-        RawSpikeCounts(TZ,1:numel(myPSTH)) = myPSTH; 
-    end
-    entries_done = TZ;
-end
-
-if ~isempty(perturbationTrials)
-    if plotting
-        if plotevents
-            TrialTypePlotter(perturbationTrials(:,2),whichodor,Xlims,x);
-        end
-        
-        
-        for y = 1:size(perturbationTrials,1)
-            if plotevents
-                % Plot Target Zone periods - adjust times if needed
-                ZoneTimes = ZoneTimesIn{perturbationTrials(y)} - Offset(x+y);
-                InZonePlotter(ZoneTimes', y+x);
+        % TZ specific FRs
+        for tz = 1:12
+            % passive replays
+            thisTZreplays = find(whichTrials(:,2)==tz);
+            if ~isempty(find(ismember(SpikesPSTH(:,2),whichTrials(thisTZreplays,1))))
+                PassiveReplayFRs{tz} = MakeTrialTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),whichTrials(thisTZreplays,1))),1),...
+                    whichTrials(thisTZreplays,3),...
+                    BinOffset,'downsample',500);
             end
-            if plotspikes
-                % Plot Spikes
-                thisTrialSpikes = thisUnitSpikes{perturbationTrials(y,1)}{1};
-                % adjust spiketimes if needed
-                thisTrialSpikes = thisTrialSpikes - Offset(x+y);
-                PlotRaster(thisTrialSpikes,x+y,Plot_Colors('Paletton',[1 2]));
+            
+            % perturbation replays
+            thisPTreplays = find(perturbationTrials(:,2)==tz);
+            if ~isempty(find(ismember(SpikesPSTH(:,2),perturbationTrials(thisPTreplays,1))))
+                PerturbationReplayFRs{tz} = MakeTrialTriggeredPSTH(SpikesPSTH(find(ismember(SpikesPSTH(:,2),perturbationTrials(thisPTreplays,1))),1),...
+                    perturbationTrials(thisPTreplays,3),...
+                    BinOffset,'downsample',500);
             end
+            
         end
     end
 end
-
-% calculate PSTH
-AlignedPerturbationFRs = [];
-if psth
-    if ~poolTZs
-        for TZ = 1:12
-            thisTZspikes = thisUnitSpikes(perturbationTrials(find(perturbationTrials(:,2)==TZ),1));
-            Events2Align = Offset(x+find(perturbationTrials(:,2)==TZ),1);
-            [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
-            AlignedPerturbationFRs(TZ,1:numel(myFR)) = myFR;
-            RawSpikeCounts(TZ+entries_done,1:numel(myPSTH)) = myPSTH;
-        end
-    else
-        TZ = 1;
-        thisTZspikes = thisUnitSpikes(perturbationTrials(:,1));
-        Events2Align = Offset(x+find(perturbationTrials(:,2)),1);
-        [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
-        AlignedPerturbationFRs(TZ,1:numel(myFR)) = myFR;
-        RawSpikeCounts(TZ+entries_done,1:numel(myPSTH)) = myPSTH;
-    end
-end
-
-x = size(allTrials,1);
 
 %%
-    function EventPlotter(myEvents)
+    function EventPlotter(myEvents,trialsdone)
         ticklength = 0.8;
-        Y = ((1:size(myEvents,1))' + repmat([-ticklength 0 0],size(myEvents,1),1) )';
+        Y = (trialsdone+(1:size(myEvents,1))' + repmat([-ticklength 0 0],size(myEvents,1),1) )';
         
         % Odor ON
         X = [repmat(myEvents(:,1),1,2) NaN*ones(size(myEvents,1),1)]';
-        plot(X(:),Y(:),'Color',Plot_Colors('r'),'Linewidth',2);
+        plot(X(:),Y(:),'Color',Plot_Colors('pl'),'Linewidth',2);
         
         % Trial OFF
         X = [repmat(myEvents(:,3),1,2) NaN*ones(size(myEvents,1),1)]';
-        plot(X(:),Y(:),'Color',Plot_Colors('r'),'Linewidth',2);
+        plot(X(:),Y(:),'Color',Plot_Colors('pl'),'Linewidth',2);
         
         % Rewards
         X = [repmat(myEvents(:,2),1,2) NaN*ones(size(myEvents,1),1)]';
@@ -288,16 +253,16 @@ x = size(allTrials,1);
     function TrialTypePlotter(TrialList,OdorType,Xlims,trialsdone)
         X = [Xlims(1) Xlims(2) Xlims(2) Xlims(1)];
         U = unique(TrialList);
-        y1 = trialsdone;
-        boxcolor(1,:) = Plot_Colors(['Odor',num2str(OdorType)]);
+        y1 = 0;
+        boxcolor(1,:) = Plot_Colors(['Odor',num2str(abs(OdorType))]);
         boxcolor(2,:) = boxcolor-0.2;
         for j = 1:numel(U)
             y2 = y1 + numel(find(TrialList==U(j)));
-            Y = [y1 y1 y2 y2];
-            if trialsdone
-                fill(X,Y,boxcolor(1,:),'EdgeColor','k');
-            else
+            Y = [y1 y1 y2 y2] + trialsdone;
+            if OdorType<0
                 fill(X,Y,boxcolor(1,:),'EdgeColor','none');
+            else
+                fill(X,Y,boxcolor(1,:),'EdgeColor','k');
             end
             y1 = y2;
             boxcolor = flipud(boxcolor);

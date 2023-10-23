@@ -22,7 +22,7 @@ function varargout = HaltSniffViewer(varargin)
 
 % Edit the above text to modify the response to help HaltSniffViewer
 
-% Last Modified by GUIDE v2.5 22-Oct-2023 22:39:56
+% Last Modified by GUIDE v2.5 23-Oct-2023 19:03:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -245,8 +245,9 @@ if handles.OnlyHaltRelated.Value
     
     % passive halts
     if ~isempty(handles.ReplayAlignedSniffs)
-        [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
-            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
+        [perturbationreplaysadded] = AddPerturbationReplay2FullSession_v2(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
+            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, ...
+            'trialfilter', handles.PlotSelectTrials.Value, 'plotspikes', 0);
         
         trialsdone = trialsdone + perturbationreplaysadded;
     end
@@ -323,12 +324,12 @@ for i = 1:numel(handles.OdorList)
             plot((1:size(FR{6},1))*0.002+BinOffset/1000,FR{6},'Linewidth',2,'Color',Plot_Colors('t'));
             if ~isempty(handles.ReplayAlignedSniffs)
                 % plot the passive replay control sniffs
-                plot((1:size(PR_FR{5},1))*0.002+BinOffset/1000,PR_FR{5},'Linewidth',2,'Color',Plot_Colors('g'));
+                plot((1:size(PR_FR{5},1))*0.002+BinOffset/1000,PR_FR{5},'Linewidth',2,'Color',Plot_Colors('b'));
                 % plot the passive halt sniffs
-                plot((1:size(PR_FR{6},1))*0.002+BinOffset/1000,PR_FR{6},'Linewidth',2,'Color',Plot_Colors('b'));
+                plot((1:size(PR_FR{6},1))*0.002+BinOffset/1000,PR_FR{6},'Linewidth',2,'Color',Plot_Colors('r'));
             end
             % plot tuning sniffs
-            plot((1:size(T_FR{whichodor+2},1))*0.002+BinOffset/1000,T_FR{whichodor+2},'Linewidth',2,'Color',Plot_Colors('r'));
+            plot((1:size(T_FR{whichodor+2},1))*0.002+BinOffset/1000,T_FR{whichodor+2},'Linewidth',2,'Color',Plot_Colors('o'));
         else
             
             for t = 1:size(FR,2)
@@ -364,16 +365,17 @@ if handles.OnlyHaltRelated.Value
     % plot baseline trials
     [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, whichodor, handles.trialAlignedSpikes, handles.Events, ...
         handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotevents', 0, ...
-        'trialfilter', handles.PlotSelectTrials.Value);
-    
+        'trialfilter', handles.PlotSelectTrials.Value, 'psth', handles.plotPSTH.Value, 'poolTZs', handles.poolTZs.Value);
     
     % passive halts
     if ~isempty(handles.ReplayAlignedSniffs)
-        [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
-            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, 'plotevents', 0);
-        
-        trialsdone = trialsdone + perturbationreplaysadded;
+        [perturbationreplaysadded, replayFRs, perturbreplayFRs, replayOffset] = AddPerturbationReplay2FullSession_v2(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
+            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, ...
+            'trialfilter', handles.PlotSelectTrials.Value, 'plotevents', 0, 'psth', handles.plotPSTH.Value, 'poolTZs', handles.poolTZs.Value);
+    else
+        perturbationreplaysadded = 0;
     end
+    trialsdone = trialsdone + perturbationreplaysadded;
     
     %haltlocation = 0;
     % add tuning trials
@@ -403,14 +405,29 @@ if handles.plotPSTH.Value
         end
         
         if ~isempty(P_FRs)
-            for t = 1:size(FRs,1)
+            for t = 1:size(P_FRs,1)
                 set(groot,'defaultAxesColorOrder',MyColors2);
                 plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',Plot_Colors('t'),'Linewidth',2);
             end
         end
         
+        % passivereplays and passive halts
+        if perturbationreplaysadded
+            if ~isempty(replayFRs)
+                for t = 1:size(replayFRs,2)
+                    plot((1:numel(replayFRs{t}))*0.002+replayOffset/1000,replayFRs{t},'Color',Plot_Colors('b'),'Linewidth',2);
+                end
+            end
+            
+            if ~isempty(perturbreplayFRs)
+                for t = 1:size(perturbreplayFRs,2)
+                    plot((1:numel(perturbreplayFRs{t}))*0.002+replayOffset/1000,perturbreplayFRs{t},'Color',Plot_Colors('r'),'Linewidth',2);
+                end
+            end
+        end
+    
         if ~isempty(TuningFR)
-            plot((1:size(TuningFR,2))*0.002+TuningOffset/1000,TuningFR(1,:),'Color','r','Linewidth',2);
+            plot((1:size(TuningFR,2))*0.002+TuningOffset/1000,TuningFR(1,:),'Color',Plot_Colors('o'),'Linewidth',2);
         end
         
     end
@@ -524,3 +541,4 @@ function SortReplay_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of SortReplay
+

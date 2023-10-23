@@ -57,7 +57,7 @@ if plotting
                 find( (thisUnitSpikes.spikes>(OdorStart+Xlims(1))) & ...
                 (thisUnitSpikes.spikes<(OdorStart+Xlims(2))) ) );
             thisTrialSpikes = thisTrialSpikes - OdorStart;
-            PlotRaster(thisTrialSpikes,(x + trialsdone),Plot_Colors('r'));
+            PlotRaster(thisTrialSpikes,(x + trialsdone),Plot_Colors('o'));
             
             SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (x)*ones(numel(thisTrialSpikes),1)]);
         end

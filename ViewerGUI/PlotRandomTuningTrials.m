@@ -68,7 +68,7 @@ if plotting
             
             % adjust spiketimes if needed
             thisTrialSpikes = thisTrialSpikes - Offset(x);
-            PlotRaster(thisTrialSpikes,x + trialsdone,Plot_Colors('r'));
+            PlotRaster(thisTrialSpikes,x + trialsdone,Plot_Colors('o'));
             
             SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (x)*ones(numel(thisTrialSpikes),1)]);
 
