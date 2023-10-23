@@ -36,10 +36,11 @@ SpikesPSTH = [];
 if plotting
     
     if plotevents
+        line([-1 6], trialsdone + [0 0], 'Color', 'k');
         % Plot Events
         %EventPlotter(myEvents);
         % Plot TrialType
-        TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,0);
+        TrialTypePlotter(whichTrials(:,2),whichodor,[-1.2 -1],trialsdone);
     end
     
     % Plot Spikes
@@ -143,7 +144,7 @@ x = x + trialsdone;
             y2 = y1 + numel(find(TrialList==U(j)));
             Y = [y1 y1 y2 y2];
             if trialsdone
-                fill(X,Y,boxcolor(1,:),'EdgeColor','k');
+                fill(X,Y,boxcolor(1,:),'EdgeColor','k','Linewidth',2);
             else
                 fill(X,Y,boxcolor(1,:),'EdgeColor','none');
             end

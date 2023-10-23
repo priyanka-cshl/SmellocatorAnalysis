@@ -22,7 +22,7 @@ function varargout = HaltSniffViewer(varargin)
 
 % Edit the above text to modify the response to help HaltSniffViewer
 
-% Last Modified by GUIDE v2.5 11-Oct-2023 09:13:47
+% Last Modified by GUIDE v2.5 22-Oct-2023 22:39:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -136,14 +136,47 @@ end
 
 %% same for replays
 if ~isempty(OpenLoop)
+    
+    % sniffs
     [handles.ReplayAlignedSniffs, handles.SniffAlignedReplaySpikes, handles.ReplayInfo] = ...
         SniffAlignedSpikeTimes_Replays(SingleUnits,TTLs,ReplayTTLs,handles.TrialInfo,OpenLoop,MySession);
+    
+    % regular trials
+    if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template'))
+        [handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayTrialInfo] = ...
+            PerturbationReplayAlignedSpikeTimes_v2(SingleUnits,TTLs,...
+            ReplayTTLs,handles.TrialInfo,handles.Events,OpenLoop,MySession,'sniffwarpmethod',0);
+    end
 else
     handles.ReplayAlignedSniffs = [];
 end
 
 %% also for passive tuning
 handles.TuningSniffs = PassiveTuningSniffs(handles.Tuning,MySession);
+
+%% pseudorandomtuning trials
+if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
+    [handles.PseudoRandomTuningSpikes] = ...
+        TrialAlignedSpikeTimes_Tuning(handles.SingleUnits,handles.Tuning.TTLs);
+    
+    % transition markers
+    odorTS(1,1) = sum(handles.Tuning.extras.sessionsettings(1,4)); % w.r.t. trial start (motor-settle, pre-odor)
+    nLocations = size(handles.Tuning.extras.sequence,2) - 2;
+    LocationShifts = 0; 
+    for i = 1:nLocations
+        if i == 1
+            LocationShifts(i,1) = -handles.Tuning.extras.sessionsettings(1,3);
+            LocationShifts(i,2) = sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+        else
+            LocationShifts(i,1) = LocationShifts(i-1,2);
+            LocationShifts(i,2) = LocationShifts(i,1) + sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+        end
+    end
+    odorTS(1,2) = LocationShifts(end,2);
+    handles.TuningTiming.LocationShifts = LocationShifts/1000; % in s
+    handles.TuningTiming.Odor = odorTS/1000; % in s
+
+end
 
 handles.NumUnits.String = num2str(size(SingleUnits,2));
 if isnan(handles.CurrentUnit.Data(1)) || handles.CurrentUnit.Data(1)>size(SingleUnits,2)
@@ -207,11 +240,27 @@ if handles.OnlyHaltRelated.Value
     hold on
     % plot baseline trials
     [trialsdone] = PlotFullSession(whichUnit, whichodor, handles.trialAlignedSpikes, handles.Events, ...
-        handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotspikes', 0);
+        handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotspikes', 0, ...
+        'trialfilter', handles.PlotSelectTrials.Value);
+    
+    % passive halts
+    if ~isempty(handles.ReplayAlignedSniffs)
+        [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
+            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, 'plotspikes', 0);
+        
+        trialsdone = trialsdone + perturbationreplaysadded;
+    end
     
     % add tuning trials
-    [trialsdone] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
-        'plotspikes', 0, 'selectlocation', haltlocation);
+    if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
+        AlignType = 1000 + haltlocation;
+        LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+        [trialsdone] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
+            handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotspikes', 0);
+    else
+        [trialsdone] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
+            'plotspikes', 0, 'selectlocation', haltlocation);
+    end
     
     set(gca, 'XLim', myXlim, 'YLim', [0 (trialsdone)]);
     %set(gca, 'XLim', myXlim, 'YLim', [0 (trialsdone + replaysadded + perturbationreplaysadded)]);
@@ -271,7 +320,7 @@ for i = 1:numel(handles.OdorList)
             % plot the close loop sniffs
             plot((1:size(FR{5},1))*0.002+BinOffset/1000,FR{5},'Linewidth',2,'Color','k');
             % plot active halt sniffs
-            plot((1:size(FR{6},1))*0.002+BinOffset/1000,FR{6},'Linewidth',2,'Color',Plot_Colors('r'));
+            plot((1:size(FR{6},1))*0.002+BinOffset/1000,FR{6},'Linewidth',2,'Color',Plot_Colors('t'));
             if ~isempty(handles.ReplayAlignedSniffs)
                 % plot the passive replay control sniffs
                 plot((1:size(PR_FR{5},1))*0.002+BinOffset/1000,PR_FR{5},'Linewidth',2,'Color',Plot_Colors('g'));
@@ -279,7 +328,7 @@ for i = 1:numel(handles.OdorList)
                 plot((1:size(PR_FR{6},1))*0.002+BinOffset/1000,PR_FR{6},'Linewidth',2,'Color',Plot_Colors('b'));
             end
             % plot tuning sniffs
-            plot((1:size(T_FR{whichodor+2},1))*0.002+BinOffset/1000,T_FR{whichodor+2},'Linewidth',2,'Color',Plot_Colors('o'));
+            plot((1:size(T_FR{whichodor+2},1))*0.002+BinOffset/1000,T_FR{whichodor+2},'Linewidth',2,'Color',Plot_Colors('r'));
         else
             
             for t = 1:size(FR,2)
@@ -314,18 +363,35 @@ if handles.OnlyHaltRelated.Value
     
     % plot baseline trials
     [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, whichodor, handles.trialAlignedSpikes, handles.Events, ...
-        handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotevents', 0);
+        handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotevents', 0, ...
+        'trialfilter', handles.PlotSelectTrials.Value);
     
-    [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
+    
+    % passive halts
+    if ~isempty(handles.ReplayAlignedSniffs)
+        [perturbationreplaysadded] = AddPerturbationReplay2FullSession(trialsdone, whichUnit, whichodor, handles.ReplayAlignedSpikes, ...
+            handles.ReplayEvents, handles.ReplayTrialInfo, handles.ReplayTrialInfo.InZone, AlignType, handles.SortReplay.Value, 'plotevents', 0);
+        
+        trialsdone = trialsdone + perturbationreplaysadded;
+    end
+    
+    %haltlocation = 0;
+    % add tuning trials
+    if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
+        AlignType = 1000 + haltlocation;
+        LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+        [trialsdone, TuningFR, TuningOffset] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
+            handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotevents', 0, 'psth', handles.plotPSTH.Value);
+    else
+        [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
         'plotevents', 0, 'selectlocation', haltlocation, 'psth', handles.plotPSTH.Value);
+    end
     
     set(gca, 'XLim', myXlim);
     set(gca, 'YLim', handles.(['axes',num2str(i+1)]).YLim);
 end
 
 if handles.plotPSTH.Value
-    MyColors1 = brewermap(15,'*PuBu');
-    MyColors2 = brewermap(15,'*OrRd');
 
     axes(handles.(['axes',num2str(i+3+1)]));
     cla reset;
@@ -333,18 +399,18 @@ if handles.plotPSTH.Value
     
     if ~any(strcmp(handles.TrialInfo.Perturbation(:,1),'RuleReversal'))
         for t = 1:size(FRs,1)
-            plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color',MyColors1(t,:),'Linewidth',1);
+            plot((1:size(FRs,2))*0.002+BinOffset/1000,FRs(t,:),'Color','k','Linewidth',2);
         end
         
         if ~isempty(P_FRs)
             for t = 1:size(FRs,1)
                 set(groot,'defaultAxesColorOrder',MyColors2);
-                plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+                plot((1:size(P_FRs,2))*0.002+BinOffset/1000,P_FRs(t,:),'Color',Plot_Colors('t'),'Linewidth',2);
             end
         end
         
         if ~isempty(TuningFR)
-            plot((1:size(TuningFR,2))*0.002+TuningOffset/1000,TuningFR(1,:),'Color','r','Linewidth',1);
+            plot((1:size(TuningFR,2))*0.002+TuningOffset/1000,TuningFR(1,:),'Color','r','Linewidth',2);
         end
         
     end
@@ -451,10 +517,10 @@ end
 %        str2double(get(hObject,'String')) returns contents of xlims as a double
 
 
-% --- Executes on button press in OnlyHaltRelated.
-function OnlyHaltRelated_Callback(hObject, eventdata, handles)
-% hObject    handle to OnlyHaltRelated (see GCBO)
+% --- Executes on button press in SortReplay.
+function SortReplay_Callback(hObject, eventdata, handles)
+% hObject    handle to SortReplay (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of OnlyHaltRelated
+% Hint: get(hObject,'Value') returns toggle state of SortReplay

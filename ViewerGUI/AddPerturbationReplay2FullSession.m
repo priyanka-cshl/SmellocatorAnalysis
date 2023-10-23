@@ -121,6 +121,8 @@ switch AlignTo
 end
 
 if plotevents
+    line([-1 6], trialsdone + [0 0], 'Color', 'k');
+    
     EventPlotter(myEvents,trialsdone);
     
     % Plot TrialType

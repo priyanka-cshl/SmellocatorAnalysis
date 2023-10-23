@@ -7,7 +7,7 @@ params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('sniffaligned', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('sniffscalar', 3, @(x) isnumeric(x));
-
+params.addParameter('trialfilter', 1, @(x) isnumeric(x)); % 1 - plot all trials, 2 - plot only halt matched TZs, 3 - only use the hlat templates
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -15,23 +15,39 @@ plotspikes = params.Results.plotspikes;
 plotevents = params.Results.plotevents;
 sniffaligned = params.Results.sniffaligned;
 sniffscalar = params.Results.sniffscalar;
+trialfilter = params.Results.trialfilter;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
 whichUnit = abs(whichUnit);
-
-% hack to prevent OL-Template trials to be considered as perturbed trials
-f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
-if ~isempty(f)
-    for i = 1:numel(f)
-        TrialInfo.Perturbation{f(i),1} = [];
-    end
-end
-
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
-% get the trial sorting order
-whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
-    find(TrialInfo.Odor==whichodor));
+
+if trialfilter == 3 % only use template trials
+    whichTrials = intersect(find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template')), ...
+        find(TrialInfo.Odor==whichodor));
+    
+    % hack to prevent OL-Template trials to be considered as perturbed trials
+    f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
+    if ~isempty(f)
+        for i = 1:numel(f)
+            TrialInfo.Perturbation{f(i),1} = [];
+        end
+    end
+    
+else
+    % hack to prevent OL-Template trials to be considered as perturbed trials
+    f = find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'));
+    if ~isempty(f)
+        for i = 1:numel(f)
+            TrialInfo.Perturbation{f(i),1} = [];
+        end
+    end
+    
+    % get the trial sorting order
+    whichTrials = intersect(find(cellfun(@isempty, TrialInfo.Perturbation(:,1))), ...
+        find(TrialInfo.Odor==whichodor));
+    
+end
 whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) TrialInfo.Duration(whichTrials)]; %#ok<AGROW>
 whichTrials = sortrows(whichTrials,2);
 
@@ -64,6 +80,14 @@ if any(perturbationTrials)
             perturbationTrials(f,2) = perturbationTrials(f,2) + 0.1*k;
         end
     end
+    perturbationTZs = unique(perturbationTrials(:,2));
+else
+    perturbationTZs = [];
+end
+
+if trialfilter == 2 % only keep close loop trials that match the halted TZs
+    f = find(~ismember(whichTrials(:,2),perturbationTZs));
+    whichTrials(f,:) = [];
 end
 
 allTrials = vertcat(whichTrials, perturbationTrials);
