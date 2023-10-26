@@ -1,30 +1,33 @@
-function [x] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials, varargin)
+function [x, ActiveFRs, PassiveFRs, RawSpikeCounts] = AddReplay2FullSession(trialsdone, whichUnit, whichOdor, AlignedSpikes, Events, TrialInfo, AlignTo, SortTrials, varargin)
 
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('plotspikes', true, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotevents', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('psth', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('poolTZs', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
 plotspikes = params.Results.plotspikes;
 plotevents = params.Results.plotevents;
+psth = params.Results.psth;
+poolTZs = params.Results.poolTZs; % group trials of different TZs together when calculating PSTH
 
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
 % get the trial sorting order
 whichTrials = find(TrialInfo.Odor==whichodor); % both active and passive replays
 whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) ...
-               TrialInfo.Duration(whichTrials) (TrialInfo.TrialID(whichTrials)<0)']; %#ok<AGROW>
+    TrialInfo.Duration(whichTrials) (TrialInfo.TrialID(whichTrials)<0)']; %#ok<AGROW>
 
 
 % Sort trials - first by active and passive replay
 if SortTrials
-whichTrials(whichTrials(:,4)==0,:) = sortrows(whichTrials(whichTrials(:,4)==0,:),2);
-whichTrials(whichTrials(:,4)==1,:) = sortrows(whichTrials(whichTrials(:,4)==1,:),2);
-
-
+    whichTrials(whichTrials(:,4)==0,:) = sortrows(whichTrials(whichTrials(:,4)==0,:),2);
+    whichTrials(whichTrials(:,4)==1,:) = sortrows(whichTrials(whichTrials(:,4)==1,:),2);
+    
     for tz = 1:12
         q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==0));
         whichTrials(q,:) = sortrows(whichTrials(q,:),3);
@@ -32,6 +35,7 @@ whichTrials(whichTrials(:,4)==1,:) = sortrows(whichTrials(whichTrials(:,4)==1,:)
         whichTrials(q,:) = sortrows(whichTrials(q,:),3);
     end
 end
+
 % Plot all events
 myEvents = Events(whichTrials(:,1),:);
 switch AlignTo
@@ -94,6 +98,56 @@ for x = 1:size(whichTrials,1)
             PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('t'));
         end
     end
+end
+
+%%
+x = size(whichTrials,1);
+% calculate PSTH
+ActiveFRs = []; PassiveFRs = []; RawSpikeCounts = []; 
+BinOffset = round(Xlims(1)*1000);
+
+if psth
+    % active replays
+    if ~poolTZs
+        for TZ = 1:12
+            whichreplaytrials = intersect(find(whichTrials(:,2)==TZ),find(whichTrials(:,4)==0));
+            thisTZspikes = thisUnitSpikes(whichTrials(whichreplaytrials,1));
+            Events2Align = Offset(whichreplaytrials,1);
+            [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+            ActiveFRs(TZ,1:numel(myFR)) = myFR;
+            RawSpikeCounts(TZ,1:numel(myPSTH)) = myPSTH;
+        end
+    else
+        TZ = 1;
+        whichreplaytrials = find(whichTrials(:,4)==0); % all TZs
+        thisTZspikes = thisUnitSpikes(whichTrials(whichreplaytrials,1));
+        Events2Align = Offset(whichreplaytrials,1);
+        [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+        ActiveFRs(TZ,1:numel(myFR)) = myFR;
+        RawSpikeCounts(TZ,1:numel(myPSTH)) = myPSTH; 
+    end
+    entries_done = TZ;
+    
+    % passive replays
+    if ~poolTZs
+        for TZ = 1:12
+            whichreplaytrials = intersect(find(whichTrials(:,2)==TZ),find(whichTrials(:,4)==1));
+            thisTZspikes = thisUnitSpikes(whichTrials(whichreplaytrials,1));
+            Events2Align = Offset(whichreplaytrials,1);
+            [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+            PassiveFRs(TZ,1:numel(myFR)) = myFR;
+            RawSpikeCounts(TZ+entries_done,1:numel(myPSTH)) = myPSTH;
+        end
+    else
+        TZ = 1;
+        whichreplaytrials = find(whichTrials(:,4)==1); % all TZs
+        thisTZspikes = thisUnitSpikes(whichTrials(whichreplaytrials,1));
+        Events2Align = Offset(whichreplaytrials,1);
+        [myFR, myPSTH] = MakePSTH_v3(thisTZspikes,Events2Align,BinOffset,'downsample',500);
+        PassiveFRs(TZ,1:numel(myFR)) = myFR;
+        RawSpikeCounts(TZ+entries_done,1:numel(myPSTH)) = myPSTH; 
+    end
+    
 end
 
 %%

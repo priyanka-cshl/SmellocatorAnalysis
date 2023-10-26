@@ -22,7 +22,7 @@ function varargout = UnitViewer2(varargin)
 
 % Edit the above text to modify the response to help UnitViewer2
 
-% Last Modified by GUIDE v2.5 18-Aug-2023 11:27:11
+% Last Modified by GUIDE v2.5 26-Oct-2023 17:05:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -229,8 +229,10 @@ end
 function UpdateUnits(handles)
 whichUnit = handles.CurrentUnit.Data(1);
 AlignType = handles.AlignTo.Value;
-MyColors1 = brewermap(15,'*PuBu');
-MyColors2 = brewermap(15,'*OrRd');
+MyColors1 = brewermap(15,'*Blues');
+MyColors2 = brewermap(15,'*Reds');
+MyColors3 = brewermap(15,'*Greens');
+
 handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
 handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 switch AlignType
@@ -255,16 +257,22 @@ for i = 1:3
     else
         if handles.AlignToSniffs.Value
             [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.sniffAlignedSpikes, handles.EventsPhase, ...
-                handles.TrialInfo, handles.TrialInfo.InZonePhase, AlignType, 'plotevents', 0, 'sniffaligned', 1, 'sniffscalar', str2num(handles.sniffscalar.String));
+                handles.TrialInfo, handles.TrialInfo.InZonePhase, AlignType, 'plotevents', 0, 'psth', handles.plotPSTH.Value, ...
+                'sniffaligned', 1, 'sniffscalar', str2num(handles.sniffscalar.String));
         else
             [trialsdone, FRs, BinOffset, P_FRs] = PlotFullSession(whichUnit, i, handles.AlignedSpikes, handles.Events, ...
-                handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotevents', 0);
+                handles.TrialInfo, handles.TrialInfo.InZone, AlignType, 'plotevents', 0, 'psth', handles.plotPSTH.Value, 'poolTZs', handles.poolTZs.Value);
         end
     end
+    
+    % plot active/passive replays
     if any(strcmp(handles.TrialInfo.Perturbation,'OL-Replay'))
         % plot replay trials
-        AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, handles.SortReplay.Value, 'plotevents', 0);
+        [~, ActiveReplayFRs, PassiveReplayFRs] = ...
+            AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, ...
+            handles.SortReplay.Value, 'plotevents', 0, 'psth', handles.plotPSTH.Value, 'poolTZs', handles.poolTZs.Value);
     end
+    
     if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) || ...
             any(strcmp(handles.TrialInfo.Perturbation(:,1),'Offset-II-Template'))
          % plot passive halt trials
@@ -277,6 +285,7 @@ for i = 1:3
                 handles.ReplayEvents, handles.ReplayInfo, handles.ReplayInfo.InZone, AlignType, handles.SortReplay.Value, 'plotevents', 0);
         end
     end
+    
     set(gca, 'XLim', myXlim);
     set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
     
@@ -291,6 +300,21 @@ for i = 1:3
             end
             
             if ~handles.HidePSTH2.Value
+                
+                if ~isempty(ActiveReplayFRs)
+                    for t = 1:size(ActiveReplayFRs,1)
+                        set(groot,'defaultAxesColorOrder',MyColors2);
+                        plot((1:size(ActiveReplayFRs,2))*0.002+BinOffset/1000,ActiveReplayFRs(t,:),'Color',MyColors2(t,:),'Linewidth',1);
+                    end
+                end
+                
+                if ~isempty(PassiveReplayFRs)
+                    for t = 1:size(PassiveReplayFRs,1)
+                        set(groot,'defaultAxesColorOrder',MyColors2);
+                        plot((1:size(PassiveReplayFRs,2))*0.002+BinOffset/1000,PassiveReplayFRs(t,:),'Color',MyColors3(t,:),'Linewidth',1);
+                    end
+                end
+                
                 if ~isempty(P_FRs)
                     for t = 1:size(FRs,1)
                         set(groot,'defaultAxesColorOrder',MyColors2);
@@ -298,6 +322,8 @@ for i = 1:3
                     end
                 end
             end
+            
+            
         end
         set(gca, 'XLim', myXlim);
     end
@@ -389,12 +415,3 @@ UpdatePlots(handles);
 % Update handles structure
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of HidePSTH2
-
-
-% --- Executes on button press in plotPSTH.
-function plotPSTH_Callback(hObject, eventdata, handles)
-% hObject    handle to plotPSTH (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of plotPSTH
