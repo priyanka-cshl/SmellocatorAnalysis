@@ -59,10 +59,23 @@ if plotting
             thisTrialSpikes = thisTrialSpikes - OdorStart;
             PlotRaster(thisTrialSpikes,(x + trialsdone),Plot_Colors('o'));
             
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (x)*ones(numel(thisTrialSpikes),1)]);
+            %%SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (x)*ones(numel(thisTrialSpikes),1)]);
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
         end
     end
 end
+
+if plotting == 0 %% missing in current PG version
+    for x = 1:size(whichTrials,1)
+        OdorStart = TuningTTLs(whichTrials(x,1),4);
+        thisTrialSpikes = thisUnitSpikes.spikes(...
+            find( (thisUnitSpikes.spikes>(OdorStart+Xlims(1))) & ...
+            (thisUnitSpikes.spikes<(OdorStart+Xlims(2))) ) );
+        thisTrialSpikes = thisTrialSpikes - OdorStart;
+        SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
+    end
+end
+
 
 % calculate PSTH
 FR = [];

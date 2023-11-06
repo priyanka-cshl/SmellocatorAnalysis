@@ -262,7 +262,7 @@ if handles.OnlyHaltRelated.Value
         [trialsdone] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
             'plotspikes', 0, 'selectlocation', haltlocation);
     end
-    
+ 
     set(gca, 'XLim', myXlim, 'YLim', [0 (trialsdone)]);
     %set(gca, 'XLim', myXlim, 'YLim', [0 (trialsdone + replaysadded + perturbationreplaysadded)]);
 end
@@ -355,7 +355,7 @@ end
 if handles.OnlyHaltRelated.Value
     % add the trial aligned plot
     AlignType = 6; % perturbation start
-    myXlim = [-1.2 6];
+    myXlim = [-1.2 2];
     
     axes(handles.(['axes',num2str(i+9+1)])); 
     cla reset; 
@@ -379,15 +379,16 @@ if handles.OnlyHaltRelated.Value
     
     %haltlocation = 0;
     % add tuning trials
-    if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
-        AlignType = 1000 + haltlocation;
-        LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
-        [trialsdone, TuningFR, TuningOffset] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
-            handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotevents', 0, 'psth', handles.plotPSTH.Value);
-    else
-        [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
-        'plotevents', 0, 'selectlocation', haltlocation, 'psth', handles.plotPSTH.Value);
-    end
+%     if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
+%         AlignType = 1000 + haltlocation;
+%         LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+%         [trialsdone, TuningFR, TuningOffset] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
+%             handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotevents', 0, 'psth', handles.plotPSTH.Value);
+%     else
+%         [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
+%         'plotevents', 0, 'selectlocation', haltlocation, 'psth', handles.plotPSTH.Value);
+%     end
+   TuningFR = [];
     
     set(gca, 'XLim', myXlim);
     set(gca, 'YLim', handles.(['axes',num2str(i+1)]).YLim);

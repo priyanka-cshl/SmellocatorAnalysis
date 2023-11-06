@@ -183,6 +183,17 @@ if plotting
     end
 end
 
+% with current PG code I can't extract for analysis 
+if plotting == 0
+    SpikesPSTH = [];
+for x = 1:size(allTrials,1)
+    thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
+    % adjust spiketimes if needed
+    thisTrialSpikes = thisTrialSpikes - Offset(x);
+    SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (allTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
+end 
+end
+
 PassiveReplayFRs = [];
 PerturbationReplayFRs = [];
 BinOffset = round(Xlims(1)*1000);

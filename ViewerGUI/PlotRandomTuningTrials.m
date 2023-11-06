@@ -70,10 +70,20 @@ if plotting
             thisTrialSpikes = thisTrialSpikes - Offset(x);
             PlotRaster(thisTrialSpikes,x + trialsdone,Plot_Colors('o'));
             
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (x)*ones(numel(thisTrialSpikes),1)]);
+            %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (x)*ones(numel(thisTrialSpikes),1)]);
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]); %trying to see if same issue as before
 
         end
     end
+end
+
+if plotting == 0
+for x = 1:size(whichTrials,1)
+    thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
+    % adjust spiketimes if needed
+    thisTrialSpikes = thisTrialSpikes - Offset(x);
+    SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
+end 
 end
 
 % thisodorSpikes = thisUnitSpikes(whichTrials);
