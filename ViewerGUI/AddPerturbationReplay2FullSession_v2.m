@@ -177,8 +177,8 @@ if plotting
                 PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('r'));
             end
             
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes x*ones(numel(thisTrialSpikes),1)]);
-            
+            %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes x*ones(numel(thisTrialSpikes),1)]);
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (allTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
         end
     end
 end
