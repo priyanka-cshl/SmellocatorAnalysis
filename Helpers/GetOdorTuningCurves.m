@@ -28,7 +28,7 @@ switch tuningbinsize
 end
 
 if strcmp(computer, 'MACI64')
-    datapath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/';
+    datapath = '/Users/mariedussauze/Desktop/Analysis/data/Smellocator/Processed/Behavior';
 elseif strcmp(computer,'PCWIN64')
     datapath = 'C:\Users\Marie\Documents\data\Smellocator\Processed\Behavior';
 else

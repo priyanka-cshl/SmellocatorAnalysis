@@ -36,10 +36,11 @@ SpikesPSTH = [];
 if plotting
     
     if plotevents
+        line([-1 6], trialsdone + [0 0], 'Color', 'k');
         % Plot Events
         %EventPlotter(myEvents);
         % Plot TrialType
-        TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,0);
+        TrialTypePlotter(whichTrials(:,2),whichodor,[-1.2 -1],trialsdone);
     end
     
     % Plot Spikes
@@ -56,12 +57,25 @@ if plotting
                 find( (thisUnitSpikes.spikes>(OdorStart+Xlims(1))) & ...
                 (thisUnitSpikes.spikes<(OdorStart+Xlims(2))) ) );
             thisTrialSpikes = thisTrialSpikes - OdorStart;
-            PlotRaster(thisTrialSpikes,(x + trialsdone),Plot_Colors('r'));
+            PlotRaster(thisTrialSpikes,(x + trialsdone),Plot_Colors('o'));
             
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (x)*ones(numel(thisTrialSpikes),1)]);
+            %%SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (x)*ones(numel(thisTrialSpikes),1)]);
+            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
         end
     end
 end
+
+if plotting == 0 %% missing in current PG version
+    for x = 1:size(whichTrials,1)
+        OdorStart = TuningTTLs(whichTrials(x,1),4);
+        thisTrialSpikes = thisUnitSpikes.spikes(...
+            find( (thisUnitSpikes.spikes>(OdorStart+Xlims(1))) & ...
+            (thisUnitSpikes.spikes<(OdorStart+Xlims(2))) ) );
+        thisTrialSpikes = thisTrialSpikes - OdorStart;
+        SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
+    end
+end
+
 
 % calculate PSTH
 FR = [];
@@ -143,7 +157,7 @@ x = x + trialsdone;
             y2 = y1 + numel(find(TrialList==U(j)));
             Y = [y1 y1 y2 y2];
             if trialsdone
-                fill(X,Y,boxcolor(1,:),'EdgeColor','k');
+                fill(X,Y,boxcolor(1,:),'EdgeColor','k','Linewidth',2);
             else
                 fill(X,Y,boxcolor(1,:),'EdgeColor','none');
             end
