@@ -43,7 +43,7 @@ for myUnit = 1:length(SingleUnits) % for each cluster
                 else
                     tstop = TuningTTLs(mytrial,2) + startoffset;
                 end
-                SingleUnits(myUnit).trialtags(find(allspikes>=tstart & allspikes<tstop)) = -TuningTTLs(mytrial,end);
+                SingleUnits(myUnit).trialtags(find(allspikes>=tstart & allspikes<tstop)) = -TuningTTLs(mytrial,8); % original Trial ID
                 SingleUnits(myUnit).trialalignedspikes(find(allspikes>=tstart & allspikes<tstop)) = ...
                     SingleUnits(myUnit).spikes(find(allspikes>=tstart & allspikes<tstop)) - tstart;
             end
