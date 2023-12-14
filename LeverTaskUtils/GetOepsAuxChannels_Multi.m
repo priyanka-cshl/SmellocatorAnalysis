@@ -138,30 +138,30 @@ while sess <= size(BehaviorTrials_multi,2)
             disp('behavior and ephys files do not match');
             return;
         else
-            disp('matched clsoed-loop behavior and ephys files');
+            disp('matched closed-loop behavior and ephys files');
         end
         TrialIdx = [TrialIdx; [1 size(BehaviorTrials,1)]];
         sess = sess + 1;
 
     else % not the first session
         % find the next set of trials which correspond to closed loop
-        BestGuess = find(abs(TTLs.Trial((1+TrialIdx(sess-1,2)):end,3)-BehaviorTrials(2,3))<=0.01,5,'first');
-        if numel(BestGuess) == 1
-            BestGuess = TrialIdx(sess-1,2) + BestGuess - 1; % first matching trial
+        matched = 0;
+        BestGuesses = find(abs(TTLs.Trial((1+TrialIdx(sess-1,2)):end,3)-BehaviorTrials(2,3))<=0.01,5,'first');
+        while ~isempty(BestGuesses) && ~matched
+            BestGuess = TrialIdx(sess-1,2) + BestGuesses(1) - 1; % first matching trial
             % sanity checks
             if ~any(abs(BehaviorTrials(1:5,3)-TTLs.Trial((0:4)+BestGuess,3))>=0.01)
                 y = corrcoef(BehaviorTrials(:,3),TTLs.Trial((BestGuess-1)+(1:size(BehaviorTrials,1)),3));
                 if y(2,1)>=0.99
                     TrialIdx = [TrialIdx; BestGuess+[1 size(BehaviorTrials,1)]];
                     sess = sess + 1;
-                    disp('matched clsoed-loop behavior and ephys files');
+                    disp('matched closed-loop behavior and ephys files');
+                    matched = 1;
                 else
-                    disp('problem matching multiple closed loop sessions');
-                    keyboard;
+                    BestGuesses(1,:) = []; % try the next option
                 end
             else
-                disp('problem matching multiple closed loop sessions');
-                keyboard;
+                BestGuesses(1,:) = []; % try the next option
             end
         end
     end
