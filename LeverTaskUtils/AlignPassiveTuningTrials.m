@@ -37,7 +37,7 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
     end
     
     % if there are no passive replays
-    if ~any(find(TrialSequence(:,1)==999))
+    if ~any(find(TrialSequence(:,1)==999)) && ~any(find(TrialSequence(:,1)==800))
         % do motor locations in TuningTrials and TrialSequence match
         y = find(abs(TrialSequence(:,1) - TuningTrials(:,1))>5);
         if any(y)
