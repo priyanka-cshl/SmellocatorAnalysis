@@ -45,7 +45,11 @@ for whichunit = 1:N % every unit
             if j<nsubtrials
                 t3 = OdorTTLs(j+1,1); % next odor ON (OEPS)
             else
-                t3 = TTLs.Trial(thisReplay+1,1);
+                try
+                    t3 = TTLs.Trial(thisReplay+1,1);
+                catch
+                    t3 = TTLs.Trial(thisReplay,2) + 1; % the replay was the last trial
+                end
             end
             
             thisReplaySpikes = thisUnitspikes((thisUnitspikes>t1)&(thisUnitspikes<t3)) - t2;

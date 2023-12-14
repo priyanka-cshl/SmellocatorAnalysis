@@ -317,7 +317,11 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                     
                     tstart = OdorTTLs(1,5);
                     t1 = tstart - startoffset;
-                    t2 = TTLs.Trial(MyTrials(thisTrial)+1,1); % until next trial start
+                    if MyTrials(thisTrial)>=size(TTLs.Trial,1)
+                        t2 = TTLs.Trial(MyTrials(thisTrial),2) + startoffset;
+                    else
+                        t2 = TTLs.Trial(MyTrials(thisTrial)+1,1); % until next trial start
+                    end
                     thisTrialSpikeTimes = allspikes((allspikes>=t1)& (allspikes<t2)) - t1;
                 
                     [myPSTH,~,myRaster] = MakePSTH(thisTrialSpikeTimes',0,...
