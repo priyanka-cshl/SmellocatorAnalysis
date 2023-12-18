@@ -63,6 +63,9 @@ for myUnit = 1:length(SingleUnits) % for each cluster
                     TuningTrials(n,2) = TuningTTLs(1,8);
                     TuningTrials(n,3) = TuningTTLs(mytrial,8);
                     TuningTrials(n,1) = -1;
+                    if TuningTrials(n,2)
+                        TuningTrials(n,4) = allTTLs(TuningTrials(n,2),2); % timestamp of first trial end
+                    end
                 end
             end
         end

@@ -52,12 +52,13 @@ else
         find(TrialInfo.Odor==whichodor));
     
 end
-whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) TrialInfo.Duration(whichTrials)]; %#ok<AGROW>
-whichTrials = sortrows(whichTrials,2);
-
-for tz = 1:12
-    whichTrials(whichTrials(:,2)==tz,:) = sortrows(whichTrials(whichTrials(:,2)==tz,:),3);
+whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) TrialInfo.Duration(whichTrials)];
+if isfield(TrialInfo,'SessionSplits')
+    whichTrials(:,4) = whichTrials(:,1)>TrialInfo.SessionSplits(1,2);
+else
+    whichTrials(:,4) = 0;
 end
+whichTrials = sortrows(whichTrials,[4,2,3]); % to keep individual closed loop sessions separate 
 
 % also collect perturbation trials
 perturbationTrials = intersect(find(~cellfun(@isempty, TrialInfo.Perturbation)), ...
@@ -65,10 +66,8 @@ perturbationTrials = intersect(find(~cellfun(@isempty, TrialInfo.Perturbation)),
 perturbationTrials = intersect(find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Replay')), ...
     perturbationTrials);
 perturbationTrials = [perturbationTrials TrialInfo.TargetZoneType(perturbationTrials) TrialInfo.Duration(perturbationTrials)]; %#ok<AGROW>
-perturbationTrials = sortrows(perturbationTrials,2);
-for tz = 1:12
-    perturbationTrials(perturbationTrials(:,2)==tz,:) = sortrows(perturbationTrials(perturbationTrials(:,2)==tz,:),3);
-end
+perturbationTrials(:,4) = 0; % hack for dealing with separation of concatenated closed-loop sessions
+perturbationTrials = sortrows(perturbationTrials,[2,3]);
 
 % for offsets - sort by offset type
 if any(perturbationTrials)
@@ -158,6 +157,7 @@ if sniffaligned
     Xlims = sniffscalar*Xlims;
 end
 
+lineplotted = 0;
 if plotting
     
     if plotevents
@@ -171,8 +171,13 @@ if plotting
     for x = 1:size(whichTrials,1)
         if plotevents
             % Plot Target Zone periods - adjust times if needed
-            ZoneTimes = ZoneTimesIn{whichTrials(x)} - Offset(x);
+            ZoneTimes = ZoneTimesIn{whichTrials(x,1)} - Offset(x);
             InZonePlotter(ZoneTimes', x);
+            
+            if ~lineplotted && whichTrials(x,4) == 1
+                line([-1.5 6], [x x], 'Color', 'k');
+                lineplotted = lineplotted + 1;
+            end
         end
         if plotspikes
             % Plot Spikes

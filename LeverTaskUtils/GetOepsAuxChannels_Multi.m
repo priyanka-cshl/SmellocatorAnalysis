@@ -153,7 +153,7 @@ while sess <= size(BehaviorTrials_multi,2)
             if ~any(abs(BehaviorTrials(1:5,3)-TTLs.Trial((0:4)+BestGuess,3))>=0.01)
                 y = corrcoef(BehaviorTrials(:,3),TTLs.Trial((BestGuess-1)+(1:size(BehaviorTrials,1)),3));
                 if y(2,1)>=0.99
-                    TrialIdx = [TrialIdx; BestGuess+[1 size(BehaviorTrials,1)]];
+                    TrialIdx = [TrialIdx; (BestGuess-1)+[1 size(BehaviorTrials,1)]];
                     sess = sess + 1;
                     disp('matched closed-loop behavior and ephys files');
                     matched = 1;
@@ -169,6 +169,7 @@ while sess <= size(BehaviorTrials_multi,2)
 end
 
 BehaviorTrialIdx = TrialIdx;
+BehaviorTrialIdx(:,3) = TTLs.Trial(TrialIdx(:,1),2); % get the OEPS timestamps for first trial end for all sessions
 
 %% find the odor ON time 
 count = 0;

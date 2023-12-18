@@ -180,6 +180,9 @@ for n = 1:size(TuningFile,1)
     end
 end
 
+%% concatenate the multiple closed-loop sessions for easier processing later
+[Traces, TrialInfo, SniffTS] = StitchBehavior(Traces,TrialInfo,SniffTS,BehaviorTrials);
+
 %% Saving stuff in one place
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[regexprep(MyFileName,'_r[0-9]',NameTag),'_processed.mat']);
 

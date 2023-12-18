@@ -145,19 +145,24 @@ for whichunit = 1:N % every unit
     trialtags = SingleUnits(whichunit).trialtags;
     TetrodeOrder(whichunit,:) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
     for whichtrial = 1: nTrials % every trial
-        thisTrialspikes = thisUnitspikes(trialtags==whichtrial);
+        if isfield(TrialInfo,'OepsID')
+            whichOEPStrial = TrialInfo.OepsID(whichtrial,1); % to handles concatenated sessions
+        else
+            whichOEPStrial = whichtrial; % default case
+        end
+        thisTrialspikes = thisUnitspikes(trialtags==whichOEPStrial);
         if whichtrial>1
-            previousTrialspikes = thisUnitspikes(trialtags==whichtrial-1) - ...
-                (TTLs.Trial(whichtrial,1) - TTLs.Trial(whichtrial-1,1));
+            previousTrialspikes = thisUnitspikes(trialtags==whichOEPStrial-1) - ...
+                (TTLs.Trial(whichOEPStrial,1) - TTLs.Trial(whichOEPStrial-1,1));
             
             % ignore spikes that happened before previous trial off
-            prevToff = TTLs.Trial(whichtrial-1,2) - TTLs.Trial(whichtrial,1);
+            prevToff = TTLs.Trial(whichOEPStrial-1,2) - TTLs.Trial(whichOEPStrial,1);
             if ~isempty(previousTrialspikes)
                 previousTrialspikes(previousTrialspikes<prevToff) = [];
             end
         else
-            previousTrialspikes = thisUnitspikes(trialtags==whichtrial-1) - ...
-                (TTLs.Trial(whichtrial,1) - 0);
+            previousTrialspikes = thisUnitspikes(trialtags==whichOEPStrial-1) - ...
+                (TTLs.Trial(whichOEPStrial,1) - 0);
         end
         
         %         if ~isempty(previousTrialspikes)
@@ -175,16 +180,16 @@ for whichunit = 1:N % every unit
         end
         
         if whichunit == 1
-            x1 = TTLs.Trial(whichtrial,1);
-            x2 = TTLs.Trial(whichtrial,2) + 0.2; % next trial cannot start sooner than that
+            x1 = TTLs.Trial(whichOEPStrial,1);
+            x2 = TTLs.Trial(whichOEPStrial,2) + 0.2; % next trial cannot start sooner than that
             reward = TTLs.Reward(find((TTLs.Reward(:,1)>x1)&(TTLs.Reward(:,1)<x2)),1);
             if isempty(reward)
                 reward = NaN;
             end
             % OdorStart, Reward, TrialOFF, First TZ entry
-            Events(whichtrial,1:4) = [TTLs.Trial(whichtrial,4), ...
+            Events(whichtrial,1:4) = [TTLs.Trial(whichOEPStrial,4), ...
                 (reward(1) - x1), ...
-                TTLs.Trial(whichtrial,3), ...
+                TTLs.Trial(whichOEPStrial,3), ...
                 TrialInfo.TargetEntry(whichtrial,1)];
             
             if ~isempty(PerturbationEvents)

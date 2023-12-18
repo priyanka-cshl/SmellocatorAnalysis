@@ -22,18 +22,16 @@ whichTrials = find(TrialInfo.Odor==whichodor); % both active and passive replays
 whichTrials = [whichTrials TrialInfo.TargetZoneType(whichTrials) ...
     TrialInfo.Duration(whichTrials) (TrialInfo.TrialID(whichTrials)<0)']; %#ok<AGROW>
 
+if isfield(TrialInfo,'SessionId')
+    % change column 4 to be 0 - first active replay, 
+    % 1 - passive replay 1, 2 -
+    % passive replay 2 etc
+    whichTrials(:,4) = TrialInfo.SessionId(whichTrials(:,1));
+end
 
 % Sort trials - first by active and passive replay
 if SortTrials
-    whichTrials(whichTrials(:,4)==0,:) = sortrows(whichTrials(whichTrials(:,4)==0,:),2);
-    whichTrials(whichTrials(:,4)==1,:) = sortrows(whichTrials(whichTrials(:,4)==1,:),2);
-    
-    for tz = 1:12
-        q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==0));
-        whichTrials(q,:) = sortrows(whichTrials(q,:),3);
-        q = find((whichTrials(:,2)==tz)&(whichTrials(:,4)==1));
-        whichTrials(q,:) = sortrows(whichTrials(q,:),3);
-    end
+    whichTrials = sortrows(whichTrials,[4,2,3]); % to keep individual replay sessions separate
 end
 
 % Plot all events
@@ -77,13 +75,24 @@ if plotevents
     TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone);
 end
 
-
 % Plot Spikes
+lineplotted = 0;
 for x = 1:size(whichTrials,1)
     if plotevents
         % Plot Target Zone periods - adjust times if needed
         ZoneTimes = TrialInfo.InZone{whichTrials(x)} - Offset(x);
         InZonePlotter(ZoneTimes', x+trialsdone);
+        if ~lineplotted
+            line([-1.5 6], trialsdone - 1 + [x x], 'Color', 'k');
+            lineplotted = lineplotted + 1;
+        elseif lineplotted == 1 && whichTrials(x,4) == 1 % likely first passive replay round
+            line([-1.5 6], trialsdone -1 + [x x], 'Color', 'k');
+            lineplotted = lineplotted + 1;
+        elseif lineplotted == 2 && whichTrials(x,4) == 2 % likely second passive replay round
+            line([-1.5 6], trialsdone -1 + [x x], 'Color', 'k');
+            lineplotted = lineplotted + 1;
+        end
+        
     end
     
     if plotspikes

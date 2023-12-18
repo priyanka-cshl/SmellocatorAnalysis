@@ -63,10 +63,24 @@ for whichunit = 1:N % every unit
                 ReplayInfo.TargetZoneType(trialcount,1) = TrialInfo.TargetZoneType(templatetrials(j));
                 ReplayInfo.Duration(trialcount,1)       = TrialInfo.Duration(templatetrials(j));
                 ReplayInfo.InZone{trialcount}           = TrialInfo.InZone{templatetrials(j)};
-                if thisReplay <= TrialInfo.TrialID(end)
-                    ReplayInfo.TrialID(trialcount)          =  whichReplay + j/100;
+                if isfield(TrialInfo,'SessionSplits') % concatenated session
+                    if thisReplay <= TrialInfo.SessionSplits(1,2)
+                        ReplayInfo.TrialID(trialcount)          =  whichReplay + j/100;
+                        ReplayInfo.SessionId(trialcount)        =  0;
+                    else
+                        ReplayInfo.TrialID(trialcount)          = -(whichReplay + j/100);
+                        if thisReplay > TrialInfo.SessionSplits(2,2)
+                            ReplayInfo.SessionId(trialcount)    =  2;
+                        else
+                            ReplayInfo.SessionId(trialcount)    =  1;
+                        end
+                    end
                 else
-                    ReplayInfo.TrialID(trialcount)          = -(whichReplay + j/100);
+                    if thisReplay <= TrialInfo.TrialID(end)
+                        ReplayInfo.TrialID(trialcount)          =  whichReplay + j/100;
+                    else
+                        ReplayInfo.TrialID(trialcount)          = -(whichReplay + j/100);
+                    end
                 end
             end
         end
