@@ -63,7 +63,7 @@ function [EphysTuningTrials] = BasicPipeline(TrialSequence,TuningTrials,EphysTun
     % lets try the simplest thing first 
     [r,lags] = xcorr((EphysTuningTrials(:,3)),(TuningTrials(:,7)));
     extratrials = lags(find(r==max(r)));
-    if numel(extratrials) == 1 && extratrials < (size(EphysTuningTrials,1) - size(TuningTrials,1))
+    if numel(extratrials) == 1 && extratrials <= (size(EphysTuningTrials,1) - size(TuningTrials,1))
         if ~any(abs(TuningTrials(1:end-1,7) - EphysTuningTrials(extratrials+(1:size(TuningTrials,1)-1),3))>0.01) % last trial seems to be shorter sometimes
             % delete the extra trial
             EphysTuningTrials(1:extratrials,:) = [];
