@@ -74,8 +74,8 @@ for i = 1:size(TemplateTrials,1) % no. of templates
             
             % 2. extract the actual replayed traces
             % include startoffset before and after replay Trial ON and OFF
-            ReplayOFFidx = TrialInfo.TimeIndices(whichTrials(r),2);
-            tracelength = ReplayOFFidx + startoffset*SampleRate;
+            ReplayOFFidx(r) = TrialInfo.TimeIndices(whichTrials(r),2);
+            tracelength = ReplayOFFidx(r) + startoffset*SampleRate;
             % put in the traces upside down such that
             % all are aligned by replay off - because replay start can have 1-2
             % extra samples that will cause replays to look mis-aligned
@@ -94,12 +94,23 @@ for i = 1:size(TemplateTrials,1) % no. of templates
             end
         end
         
+        % need an extra step here - sometimes the replays don't match
+        if any(abs(ReplayOFFidx' - median(ReplayOFFidx))>5)
+            disp('passive replay trace lengths dont match!');
+            keyboard;
+            FixFunkyReplays(OpenLoop.ReplayTraces.Motor{i},OpenLoop.ReplayTraces.Rewards{i},ReplayOFFidx);
+
+            
+        end
+        
         % flip back all replay traces
         for j = 1:size(whichTraces,1)
             if ~strcmp(whichTraces{j},'Trial')
                 OpenLoop.ReplayTraces.(whichTraces{j}){i} = flipud(OpenLoop.ReplayTraces.(whichTraces{j}){i});
             end
         end
+        
+        
     end
     
     %% Open Loop Template
