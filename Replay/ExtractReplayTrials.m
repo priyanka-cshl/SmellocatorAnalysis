@@ -96,11 +96,9 @@ for i = 1:size(TemplateTrials,1) % no. of templates
         
         % need an extra step here - sometimes the replays don't match
         if any(abs(ReplayOFFidx' - median(ReplayOFFidx))>5)
-            disp('passive replay trace lengths dont match!');
-            keyboard;
-            FixFunkyReplays(OpenLoop.ReplayTraces.Motor{i},OpenLoop.ReplayTraces.Rewards{i},ReplayOFFidx);
-
-            
+            disp('WARNING: passive replay trace lengths dont match!');
+            keyboard; % continue
+            OpenLoop.ReplayTraces = FixFunkyReplays(OpenLoop.ReplayTraces,ReplayOFFidx,i);            
         end
         
         % flip back all replay traces
