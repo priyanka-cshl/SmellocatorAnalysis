@@ -1,15 +1,16 @@
-function [ReplayTraces] = FixFunkyReplays(ReplayTraces,ReplayLengths,templateindex)
+function [ReplayTraces] = FixFunkyReplays(ReplayTraces,ReplayLengths,ReplayTTLs,templateindex)
 %% function to fix the issue with some AON open loop sessions     
 % where some replays have corrupt and extra samples
 %%
 
-if nargin<3
+if nargin<4
     templateindex = 1;
 end
 
 global SampleRate; % = 500; % samples/second
 global startoffset; % = 1; % seconds
 traceOverlap = SampleRate*startoffset + 1; 
+whichTraces = fieldnames(ReplayTraces);
 
 % step 1: find the culprit replays
 buggy_replays   = find(abs(ReplayLengths' - median(ReplayLengths))>5);
@@ -25,9 +26,7 @@ for b = 1:numel(buggy_replays)
         % error will increase because of corrupt samples in the
         % buggy replay - find the inflexion point
         smoothing_window = 25; % 50 ms window for running average
-        mismatch_point = find(abs(smooth(buggy_backwards(traceOverlap:end) - OK_replay(traceOverlap:end),25))>2,1,'first');
-        
-        
+        mismatch_point = find(abs(smooth(buggy_backwards(traceOverlap:end) - OK_replay(traceOverlap:end),smoothing_window))>2,1,'first');
         
         % try to align the remaining trace by ignore some samples  
         temp1  = OK_replay(mismatch_point:(end-traceOverlap));
@@ -41,11 +40,42 @@ for b = 1:numel(buggy_replays)
             min_length = min(length(adjusted_vec),length(OK_replay));
             match_quality = corrcoef([adjusted_vec(1:min_length,1) OK_replay(1:min_length,1)]);
             if match_quality(1,2)>=0.97
+                disp(['fixed buggy replay #', num2str(buggy_replays(b))]);
                 % do the corrupt samples fall in the ITI period?
-                ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b)) = ...
-                    -ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b));
-                disp(['fixed buggy replay #', num2str(b)]);
+                % remap timestamps relative to replay end
+                thisReplayTTLs = ReplayTTLs.OdorValve{buggy_replays(b)};
+                thisReplayEnd = ReplayTraces.Timestamps{templateindex}(traceOverlap,buggy_replays(b));
+                tempTS = ReplayTraces.Timestamps{templateindex}(:,buggy_replays(b)) - thisReplayEnd + thisReplayTTLs(end,2);
+                bug_ended = tempTS(samps_to_discard(1),1);
+                bug_began = tempTS(samps_to_discard(end),1);
+                afterTrial = find(thisReplayTTLs(:,2)>=bug_began, 1, 'first');
+                if find(thisReplayTTLs(:,1)>=bug_ended, 1, 'first') == afterTrial
+                    disp(['buggy samples were in the ITI after subtrial# ',num2str(afterTrial-1)]);
+                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial-1 0 bug_began bug_ended];
+                else
+                    disp(['buggy samples were within subtrial# ',num2str(afterTrial)]);
+                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial 1 bug_began bug_ended];
+                end
                 
+                % edit the Replay traces to chop out the corrupt samples 
+                % and just put them in the end 
+                % traces will get flipped back so these will actually go in
+                % the very beginning of the corrected traces
+                for j = 2:size(whichTraces,1) % first is trial IDs, last is corruption
+                    temptrace = ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b));
+                    if ~strcmp(whichTraces{j},'Timestamps')
+                        ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = ...
+                            vertcat(temptrace(setdiff(1:length(temptrace),samps_to_discard),:), ...
+                                temptrace(samps_to_discard,:));
+                    else
+                        ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = ...
+                            vertcat(temptrace(setdiff(1:length(temptrace),samps_to_discard),:), ...
+                                -temptrace(samps_to_discard,:));
+                    end
+                end
+                            
+%                 ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b)) = ...
+%                     -ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b));
             else
                 disp('having trouble fixing buggy replays');
                 keyboard;

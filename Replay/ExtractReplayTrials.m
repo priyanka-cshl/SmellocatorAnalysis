@@ -98,7 +98,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
         if any(abs(ReplayOFFidx' - median(ReplayOFFidx))>5)
             disp('WARNING: passive replay trace lengths dont match!');
             keyboard; % continue
-            OpenLoop.ReplayTraces = FixFunkyReplays(OpenLoop.ReplayTraces,ReplayOFFidx,i);            
+            [OpenLoop.ReplayTraces] = FixFunkyReplays(OpenLoop.ReplayTraces,ReplayOFFidx,ReplayTTLs,i);            
         end
         
         % flip back all replay traces
@@ -108,7 +108,8 @@ for i = 1:size(TemplateTrials,1) % no. of templates
             end
         end
         
-        
+
+                
     end
     
     %% Open Loop Template
@@ -173,6 +174,14 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     OpenLoop.TemplateTraces.Trial(i) = {TrialTrace};
     
     %% Aligning open loop template and replay traces
+    % if there are any corrupt replays we want to ignore them when deciding
+    % where to chop the template for extra samples
+    if isfield(OpenLoop.ReplayTraces,'Corrupt')
+        CorruptReplays = find(OpenLoop.ReplayTraces.Corrupt{1}(:,1));
+    else
+        CorruptReplays = [];
+    end
+    
     X = [];
     if isempty(ReplayTTLs)
         X(:,2) = find(diff(OpenLoop.TemplateTraces.Rewards{i})==1)+1;
