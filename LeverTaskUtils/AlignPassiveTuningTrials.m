@@ -121,16 +121,31 @@ if (size(TTLs.Trial,1) - SkipTrials) >= size(TuningTrials,1)
                     if ~any(round((TuningTrials(weirdo,7) - EphysTuningTrials(weirdo,3)),2,'decimal')~=0.05)
                         TuningTrials(weirdo,7) = EphysTuningTrials(weirdo,3);
                     else
-                        if numel(weirdo)>10 && weirdo(1) == 1 && size(EphysTuningTrials,1) > size(TuningTrials,1)
-                            % sometimes there seem to be excess trials in
-                            % the beginning
-                            n = size(EphysTuningTrials,1) - size(TuningTrials,1);
-                            if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(n:end-1,3))>0.01)
-                                disp('warning: using a recent hack that was written for S6_20230710');
-                                keyboard;
-                                EphysTuningTrials(1:n-1,:) = [];
-                                EphysTuningTrials(end,:) = [];
+                        % sometimes there seem to be excess trials in
+                        % the beginning of the OEPS trial list
+                        if size(EphysTuningTrials,1)>size(TuningTrials,1)
+                            % Lets try the most basic strategy - find the best set
+                            % of trials in either side that matches using trial
+                            % duration
+                            A = EphysTuningTrials(:,3);
+                            B = TuningTrials(:,7);
+                            [r,lags] = xcorr(A,B,abs(size(EphysTuningTrials,1)-size(TuningTrials,1)));
+                            bestlag = lags(find(r==max(r)));
+                            A = A(bestlag(1) + (1:length(B)),1);
+                            if ~any(abs(A - B)>0.01)
+                                % delete the excess trials from the ephys side
+                                EphysTuningTrials(1:bestlag(1),:) = [];
                             end
+%                         elseif numel(weirdo)>10 && weirdo(1) == 1 && size(EphysTuningTrials,1) > size(TuningTrials,1)
+%                             % sometimes there seem to be excess trials in
+%                             % the beginning
+%                             n = size(EphysTuningTrials,1) - size(TuningTrials,1);
+%                             if ~any(abs(TuningTrials(:,7) - EphysTuningTrials(n:end-1,3))>0.01)
+%                                 disp('warning: using a recent hack that was written for S6_20230710');
+%                                 keyboard;
+%                                 EphysTuningTrials(1:n-1,:) = [];
+%                                 EphysTuningTrials(end,:) = [];
+%                             end
                         elseif any(find(TrialSequence(:,1)==800))
                             U1 = unique(round(TuningTrials(:,7),0,'decimal'));
                             U2 = unique(round(EphysTuningTrials(:,3),0,'decimal'));
