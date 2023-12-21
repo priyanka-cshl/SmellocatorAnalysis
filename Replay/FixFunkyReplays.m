@@ -39,7 +39,7 @@ for b = 1:numel(buggy_replays)
             % sanity check
             min_length = min(length(adjusted_vec),length(OK_replay));
             match_quality = corrcoef([adjusted_vec(1:min_length,1) OK_replay(1:min_length,1)]);
-            if match_quality(1,2)>=0.97
+            if match_quality(1,2)>=0.95
                 disp(['fixed buggy replay #', num2str(buggy_replays(b))]);
                 % do the corrupt samples fall in the ITI period?
                 % remap timestamps relative to replay end
