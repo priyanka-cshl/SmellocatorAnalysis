@@ -51,10 +51,10 @@ for b = 1:numel(buggy_replays)
                 afterTrial = find(thisReplayTTLs(:,2)>=bug_began, 1, 'first');
                 if find(thisReplayTTLs(:,1)>=bug_ended, 1, 'first') == afterTrial
                     disp(['buggy samples were in the ITI after subtrial# ',num2str(afterTrial-1)]);
-                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial-1 0 bug_began bug_ended];
+                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial-1 0 bug_began bug_ended numel(samps_to_discard)];
                 else
                     disp(['buggy samples were within subtrial# ',num2str(afterTrial)]);
-                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial 1 bug_began bug_ended];
+                    ReplayTraces.Corrupt{templateindex}(buggy_replays(b),:) = [afterTrial 1 bug_began bug_ended numel(samps_to_discard)];
                 end
                 
                 % edit the Replay traces to chop out the corrupt samples 
@@ -63,19 +63,16 @@ for b = 1:numel(buggy_replays)
                 % the very beginning of the corrected traces
                 for j = 2:size(whichTraces,1) % first is trial IDs, last is corruption
                     temptrace = ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b));
-                    if ~strcmp(whichTraces{j},'Timestamps')
-                        ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = ...
+                    ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = ...
                             vertcat(temptrace(setdiff(1:length(temptrace),samps_to_discard),:), ...
                                 temptrace(samps_to_discard,:));
-                    else
-                        ReplayTraces.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = ...
-                            vertcat(temptrace(setdiff(1:length(temptrace),samps_to_discard),:), ...
-                                -temptrace(samps_to_discard,:));
-                    end
-                end
                             
-%                 ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b)) = ...
-%                     -ReplayTraces.Timestamps{templateindex}(samps_to_discard,buggy_replays(b));
+                    if strcmp(whichTraces{j},'Timestamps')
+                        temptrace(samps_to_discard,:) = -temptrace(samps_to_discard,:);
+                    end
+                    
+                    ReplayTraces.Uncorrected.(whichTraces{j}){templateindex}(:,buggy_replays(b)) = temptrace;
+                end
             else
                 disp('having trouble fixing buggy replays');
                 keyboard;
@@ -86,6 +83,14 @@ for b = 1:numel(buggy_replays)
         disp('having trouble fixing buggy replays');
         keyboard;
     end
+end
+
+% extra step to remove trailing samples at the end of each trace (this will
+% go to the beginning of the traces when flipped back and cause
+% misalignment)
+trailing_samps = max(ReplayTraces.Corrupt{templateindex}(:,5)) - 1;
+for j = 2:size(whichTraces,1)
+    ReplayTraces.(whichTraces{j}){templateindex}(end-trailing_samps:end,:) = [];
 end
 
 end

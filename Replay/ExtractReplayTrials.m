@@ -108,8 +108,6 @@ for i = 1:size(TemplateTrials,1) % no. of templates
             end
         end
         
-
-                
     end
     
     %% Open Loop Template
@@ -253,7 +251,7 @@ for i = 1:size(TemplateTrials,1) % no. of templates
             disp('template and replay traces align well');
         else
             disp('template and replay traces do not seem to align well');
-            %keyboard;
+            keyboard;
         end
     end
     
