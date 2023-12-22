@@ -127,7 +127,7 @@ for thisTrial = 1:size(Trial.Indices,1)
                 % sometimes there's noise and lines toggle 
                 toggles = Initiations(OdorStart:end-1,2) - Initiations(OdorStart+1:end,1);
                 %if OdorStart == size(Initiations,1)-1 && (Initiations(end,1) - Initiations(OdorStart,2) <= 3)
-                if any(abs(toggles)<=5)
+                if any(abs(toggles)<=6)
                     InitiationsFixed = [InitiationsFixed; thisTrial];
                     Initiations(OdorStart,2) = Initiations(end,2);
                     Initiations(OdorStart+1:end,:) = [];

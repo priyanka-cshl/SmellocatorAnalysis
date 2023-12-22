@@ -118,6 +118,9 @@ if ~isempty(BehaviorTrials)
             % case 2 : behavior acq started mid-trial, first trial might be a bit shorter
         elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(2:6,3))>=0.01)
             % do nothing
+        elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(3:7,3))>=0.01)
+            % OEPS side has an extra trial
+            TTLs.Trial(1,:) = [];
         end
     end
     

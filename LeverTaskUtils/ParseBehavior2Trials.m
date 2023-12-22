@@ -106,22 +106,24 @@ for thisTrial = 1:numel(TrialOn)
         % handing timestamp drops
         TrialInfo.TimeStampsDropped(thisTrial,1) = Trial.TimeStampDrops(thisTrial);
         if TrialInfo.TimeStampsDropped(thisTrial,1)
-            % find the location where missing samples need to be patched in
-           f = find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001);
-           samples_missing = int16((Traces.Timestamps{thisTrial}(f+1) - Traces.Timestamps{thisTrial}(f))*SampleRate - 1);
-           timestamps_missing = linspace(Traces.Timestamps{thisTrial}(f),Traces.Timestamps{thisTrial}(f+1),samples_missing+2);
-           timestamps_missing(:,1) = [];
-           timestamps_missing(:,end) = [];
-           % pad NaNs into the Traces
-           Traces.Lever{thisTrial} = [Traces.Lever{thisTrial}(1:f); Inf(samples_missing,1); Traces.Lever{thisTrial}(f+1:end)];
-           Traces.Motor{thisTrial} = [Traces.Motor{thisTrial}(1:f); Inf(samples_missing,1); Traces.Motor{thisTrial}(f+1:end)];
-           Traces.Sniffs{thisTrial} = [Traces.Sniffs{thisTrial}(1:f); Inf(samples_missing,1); Traces.Sniffs{thisTrial}(f+1:end)];
-           Traces.Licks{thisTrial} = [Traces.Licks{thisTrial}(1:f); Inf(samples_missing,1); Traces.Licks{thisTrial}(f+1:end)];
-           Traces.Rewards{thisTrial} = [Traces.Rewards{thisTrial}(1:f); Inf(samples_missing,1); Traces.Rewards{thisTrial}(f+1:end)];
-           % making an assumption here
-           Traces.Trial{thisTrial} = [Traces.Trial{thisTrial}(1:f); zeros(samples_missing-1,1); 1; Traces.Trial{thisTrial}(f+1:end)];
-           Traces.Timestamps{thisTrial} = [Traces.Timestamps{thisTrial}(1:f); timestamps_missing'; Traces.Timestamps{thisTrial}(f+1:end)];
-           Traces.TimestampsAnalog{thisTrial} = [Traces.TimestampsAnalog{thisTrial}(1:f); timestamps_missing'; Traces.TimestampsAnalog{thisTrial}(f+1:end)];
+           while ~isempty(find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001))
+               % find the location where missing samples need to be patched in
+               f = find(abs(diff(Traces.Timestamps{thisTrial}))>SampleRate^-1+0.0001,1,'first');
+               samples_missing = int16((Traces.Timestamps{thisTrial}(f+1) - Traces.Timestamps{thisTrial}(f))*SampleRate - 1);
+               timestamps_missing = linspace(Traces.Timestamps{thisTrial}(f),Traces.Timestamps{thisTrial}(f+1),samples_missing+2);
+               timestamps_missing(:,1) = [];
+               timestamps_missing(:,end) = [];
+               % pad NaNs into the Traces
+               Traces.Lever{thisTrial} = [Traces.Lever{thisTrial}(1:f); Inf(samples_missing,1); Traces.Lever{thisTrial}(f+1:end)];
+               Traces.Motor{thisTrial} = [Traces.Motor{thisTrial}(1:f); Inf(samples_missing,1); Traces.Motor{thisTrial}(f+1:end)];
+               Traces.Sniffs{thisTrial} = [Traces.Sniffs{thisTrial}(1:f); Inf(samples_missing,1); Traces.Sniffs{thisTrial}(f+1:end)];
+               Traces.Licks{thisTrial} = [Traces.Licks{thisTrial}(1:f); Inf(samples_missing,1); Traces.Licks{thisTrial}(f+1:end)];
+               Traces.Rewards{thisTrial} = [Traces.Rewards{thisTrial}(1:f); Inf(samples_missing,1); Traces.Rewards{thisTrial}(f+1:end)];
+               % making an assumption here
+               Traces.Trial{thisTrial} = [Traces.Trial{thisTrial}(1:f); zeros(samples_missing-1,1); 1; Traces.Trial{thisTrial}(f+1:end)];
+               Traces.Timestamps{thisTrial} = [Traces.Timestamps{thisTrial}(1:f); timestamps_missing'; Traces.Timestamps{thisTrial}(f+1:end)];
+               Traces.TimestampsAnalog{thisTrial} = [Traces.TimestampsAnalog{thisTrial}(1:f); timestamps_missing'; Traces.TimestampsAnalog{thisTrial}(f+1:end)];
+           end
         end
         
         %% Extract Trial Timestamps
