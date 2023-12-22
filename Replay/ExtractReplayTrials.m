@@ -174,12 +174,6 @@ for i = 1:size(TemplateTrials,1) % no. of templates
     %% Aligning open loop template and replay traces
     % if there are any corrupt replays we want to ignore them when deciding
     % where to chop the template for extra samples
-    if isfield(OpenLoop.ReplayTraces,'Corrupt')
-        CorruptReplays = find(OpenLoop.ReplayTraces.Corrupt{1}(:,1));
-    else
-        CorruptReplays = [];
-    end
-    
     X = [];
     if isempty(ReplayTTLs)
         X(:,2) = find(diff(OpenLoop.TemplateTraces.Rewards{i})==1)+1;
