@@ -438,9 +438,9 @@ end
     
 % plot spike amplitudes
 if handles.spike_amplitudes.Value
-    hold off
     thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
     axes(handles.amplitudeaxes);
+    hold off
     plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.');
     hold on
     session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
