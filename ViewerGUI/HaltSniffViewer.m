@@ -22,7 +22,7 @@ function varargout = HaltSniffViewer(varargin)
 
 % Edit the above text to modify the response to help HaltSniffViewer
 
-% Last Modified by GUIDE v2.5 23-Oct-2023 19:03:24
+% Last Modified by GUIDE v2.5 26-Dec-2023 13:28:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -355,7 +355,8 @@ end
 if handles.OnlyHaltRelated.Value
     % add the trial aligned plot
     AlignType = 6; % perturbation start
-    myXlim = [-1.2 2];
+    %myXlim = [-1.2 2];
+    myXlim = [-1.2 6];
     
     axes(handles.(['axes',num2str(i+9+1)])); 
     cla reset; 
@@ -379,16 +380,16 @@ if handles.OnlyHaltRelated.Value
     
     %haltlocation = 0;
     % add tuning trials
-%     if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
-%         AlignType = 1000 + haltlocation;
-%         LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
-%         [trialsdone, TuningFR, TuningOffset] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
-%             handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotevents', 0, 'psth', handles.plotPSTH.Value);
-%     else
-%         [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
-%         'plotevents', 0, 'selectlocation', haltlocation, 'psth', handles.plotPSTH.Value);
-%     end
-   TuningFR = [];
+    if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
+        AlignType = 1000 + haltlocation;
+        LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
+        [trialsdone, TuningFR, TuningOffset] = PlotRandomTuningTrials(trialsdone, whichUnit, whichodor, handles.PseudoRandomTuningSpikes, ...
+            handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, LocationDuration, myXlim, 'plotevents', 0, 'psth', handles.plotPSTH.Value);
+    else
+        [trialsdone, TuningFR, TuningOffset] = PlotTuningTrials(trialsdone, whichUnit, whichodor, handles.SingleUnits, handles.Tuning.TTLs, ...
+        'plotevents', 0, 'selectlocation', haltlocation, 'psth', handles.plotPSTH.Value);
+    end
+    %TuningFR = [];
     
     set(gca, 'XLim', myXlim);
     set(gca, 'YLim', handles.(['axes',num2str(i+1)]).YLim);
@@ -542,4 +543,3 @@ function SortReplay_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of SortReplay
-

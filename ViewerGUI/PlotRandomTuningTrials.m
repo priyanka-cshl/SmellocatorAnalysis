@@ -14,7 +14,10 @@ plotevents = params.Results.plotevents;
 psth = params.Results.psth;
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
-
+if ~plotting % only for analysis
+    plotevents = 0;
+    plotspikes = 0;
+end 
 % colormap
 %[whichcolor] = GetLocationColor(x);
 
@@ -46,44 +49,36 @@ end
 Xlims = [-1 2];
 SpikesPSTH = [];
 
-if plotting
-    if plotevents
-        line([-1 6], trialsdone + [0 0], 'Color', 'k');
-        % Plot Events
-        %EventPlotter(myEvents);
-        % Plot TrialType
-        TrialTypePlotter(whichTrials(:,1),whichOdor,[-1.2 -1],trialsdone);
-    end
-    
-    if plotspikes
-        
-        for x = 1:size(whichTrials,1)
-            if plotevents
-                % Plot Odor On periods - adjust times if needed
-                ZoneTimes = [0 LocationDuration];
-                InZonePlotter(ZoneTimes', (x + trialsdone));
-            end
-            % Plot Spikes
-            thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
-            
-            % adjust spiketimes if needed
-            thisTrialSpikes = thisTrialSpikes - Offset(x);
-            PlotRaster(thisTrialSpikes,x + trialsdone,Plot_Colors('o'));
-            
-            %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (x)*ones(numel(thisTrialSpikes),1)]);
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]); %trying to see if same issue as before
-
-        end
-    end
+if plotevents
+    line([-1 6], trialsdone + [0 0], 'Color', 'k');
+    % Plot Events
+    %EventPlotter(myEvents);
+    % Plot TrialType
+    TrialTypePlotter(whichTrials(:,1),whichOdor,[-1.2 -1],trialsdone);
 end
 
-if plotting == 0
 for x = 1:size(whichTrials,1)
-    thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
-    % adjust spiketimes if needed
-    thisTrialSpikes = thisTrialSpikes - Offset(x);
-    SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
-end 
+    if plotevents
+        % Plot Odor On periods - adjust times if needed
+        ZoneTimes = [0 LocationDuration];
+        InZonePlotter(ZoneTimes', (x + trialsdone));
+    end
+    
+    if plotspikes || ~plotting
+        % Get Spikes
+        thisTrialSpikes = thisUnitSpikes{whichTrials(x,1)}{1};
+        
+        % adjust spiketimes if needed
+        thisTrialSpikes = thisTrialSpikes - Offset(x);
+        
+        % Plot Spikes
+        if plotspikes
+            PlotRaster(thisTrialSpikes,x + trialsdone,Plot_Colors('o'));
+        end
+        
+        %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (x)*ones(numel(thisTrialSpikes),1)]);
+        SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes' (whichTrials(x,1))*ones(numel(thisTrialSpikes),1)]); %trying to see if same issue as before
+    end
 end
 
 % thisodorSpikes = thisUnitSpikes(whichTrials);

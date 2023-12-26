@@ -23,6 +23,10 @@ trialfilter = params.Results.trialfilter;
 poolTZs = params.Results.poolTZs; % group trials of different TZs together when calculating PSTH
 
 plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
+if ~plotting % only for analysis
+    plotevents = 0;
+    plotspikes = 0;
+end 
 whichUnit = abs(whichUnit);
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 whichodor = whichOdor;
@@ -137,61 +141,50 @@ switch AlignTo
         Xlims = [-1.2 -1];
 end
 
-if plotting
+if plotevents
+    line([-1 6], trialsdone + [0 0], 'Color', 'k');
+    
+    EventPlotter(myEvents,trialsdone);
+    
+    % Plot TrialType
+    TrialTypePlotter(perturbationTrials(:,2),-whichodor,Xlims,trialsdone);
+    
+    TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone+size(perturbationTrials,1));
+end
+
+if sniffaligned
+    Xlims = sniffscalar*Xlims;
+end
+
+SpikesPSTH = [];
+
+% Spikes
+for x = 1:size(allTrials,1)
+    
     if plotevents
-        line([-1 6], trialsdone + [0 0], 'Color', 'k');
-        
-        EventPlotter(myEvents,trialsdone);
-        
-        % Plot TrialType
-        TrialTypePlotter(perturbationTrials(:,2),-whichodor,Xlims,trialsdone);
-        
-        TrialTypePlotter(whichTrials(:,2),whichodor,Xlims,trialsdone+size(perturbationTrials,1));
+        % Plot Target Zone periods - adjust times if needed
+        %ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
+        ZoneTimes = ZoneTimesIn{allTrials(x)} - Offset(x);
+        InZonePlotter(ZoneTimes', x+trialsdone);
     end
     
-    if sniffaligned
-        Xlims = sniffscalar*Xlims;
-    end
-    
-    SpikesPSTH = [];
-    
-    % Plot Spikes
-    for x = 1:size(allTrials,1)
+    if plotspikes || ~plotting
+        % Get Spikes
+        thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
+        % adjust spiketimes if needed
+        thisTrialSpikes = thisTrialSpikes - Offset(x);
         
-        if plotevents
-            % Plot Target Zone periods - adjust times if needed
-            %ZoneTimes = TrialInfo.InZone{allTrials(x)} - Offset(x);
-            ZoneTimes = ZoneTimesIn{allTrials(x)} - Offset(x);
-            InZonePlotter(ZoneTimes', x+trialsdone);
-        end
-        
+        % Plot Spikes
         if plotspikes
-            % Plot Spikes
-            thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
-            % adjust spiketimes if needed
-            thisTrialSpikes = thisTrialSpikes - Offset(x);
-            
             if x>size(perturbationTrials,1) % passive replays
                 PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('b'));
             else % replayed perturbations
                 PlotRaster(thisTrialSpikes,x+trialsdone,Plot_Colors('r'));
             end
-            
-            %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes x*ones(numel(thisTrialSpikes),1)]);
-            SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (allTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
         end
+        %SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes x*ones(numel(thisTrialSpikes),1)]);
+        SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (allTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
     end
-end
-
-% with current PG code I can't extract for analysis 
-if plotting == 0
-    SpikesPSTH = [];
-for x = 1:size(allTrials,1)
-    thisTrialSpikes = thisUnitSpikes{allTrials(x,1)}{1};
-    % adjust spiketimes if needed
-    thisTrialSpikes = thisTrialSpikes - Offset(x);
-    SpikesPSTH = vertcat(SpikesPSTH, [thisTrialSpikes (allTrials(x,1))*ones(numel(thisTrialSpikes),1)]);
-end 
 end
 
 PassiveReplayFRs = [];
