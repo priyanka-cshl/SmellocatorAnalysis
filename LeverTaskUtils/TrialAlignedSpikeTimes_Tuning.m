@@ -8,7 +8,7 @@ for whichunit = 1:N % every unit
     trialtags = SingleUnits(whichunit).trialtags;
     TetrodeOrder(whichunit,:) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
     for whichtrial = 1: nTrials % every trial 
-        original_trial = TTLs(whichtrial,end); % actual trial # (including behavior trials)
+        original_trial = TTLs(whichtrial,8); % actual trial # (including behavior trials)
         thisTrialspikes = thisUnitspikes(trialtags==-original_trial);
         if whichtrial>1
             previousTrialspikes = thisUnitspikes(trialtags==-(original_trial-1)) - ...

@@ -25,6 +25,7 @@ while TrialOn(1)>TrialOff(1)
 end
 while TrialOn(end)>TrialOff(end)
     TrialOn(end,:) = [];
+    %TrialOff(end+1,1) = length(TrialColumn); % added 2023-12-26
 end
 
 % sometimes a trial gets split into two - because of noisy TTL toggle?

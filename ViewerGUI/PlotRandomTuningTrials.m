@@ -24,7 +24,7 @@ end
 whichUnit = abs(whichUnit);
 thisUnitSpikes = AlignedSpikes(:,whichUnit);
 % get trials of the particular odor
-whichTrials = find(TrialSequence(:,2)==whichOdor);
+whichTrials = find(TrialSequence(:,2)==(whichOdor+1));
 BinOffset = XLims(1)*1000;
 
 LMat = TrialSequence(whichTrials,3:end);

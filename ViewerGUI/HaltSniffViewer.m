@@ -252,6 +252,9 @@ if handles.OnlyHaltRelated.Value
         trialsdone = trialsdone + perturbationreplaysadded;
     end
     
+    if handles.PlotCenterTuning.Value
+        haltlocation = 0;
+    end
     % add tuning trials
     if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
         AlignType = 1000 + haltlocation;
@@ -378,7 +381,9 @@ if handles.OnlyHaltRelated.Value
     end
     trialsdone = trialsdone + perturbationreplaysadded;
     
-    %haltlocation = 0;
+    if handles.PlotCenterTuning.Value
+        haltlocation = 0;
+    end
     % add tuning trials
     if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
         AlignType = 1000 + haltlocation;
