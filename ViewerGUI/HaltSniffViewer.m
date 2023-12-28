@@ -160,16 +160,16 @@ if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
         TrialAlignedSpikeTimes_Tuning(handles.SingleUnits,handles.Tuning.TTLs);
     
     % transition markers
-    odorTS(1,1) = sum(handles.Tuning.extras.sessionsettings(1,4)); % w.r.t. trial start (motor-settle, pre-odor)
+    odorTS(1,1) = handles.Tuning.extras.sessionsettings(1,4); % w.r.t. trial start (pre-odor)
     nLocations = size(handles.Tuning.extras.sequence,2) - 2;
     LocationShifts = 0; 
     for i = 1:nLocations
         if i == 1
-            LocationShifts(i,1) = -handles.Tuning.extras.sessionsettings(1,3);
-            LocationShifts(i,2) = sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+            LocationShifts(i,1) = -handles.Tuning.extras.sessionsettings(1,3); % w.r.t. trial start (settle)
+            LocationShifts(i,2) = sum(handles.Tuning.extras.sessionsettings(1,[4,5])); % w.r.t. trial start (pre + odor)
         else
             LocationShifts(i,1) = LocationShifts(i-1,2);
-            LocationShifts(i,2) = LocationShifts(i,1) + sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+            LocationShifts(i,2) = LocationShifts(i,1) + sum(handles.Tuning.extras.sessionsettings(1,[3,5])); % settle + odor
         end
     end
     odorTS(1,2) = LocationShifts(end,2);
