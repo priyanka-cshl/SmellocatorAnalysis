@@ -107,16 +107,16 @@ MySession = handles.WhereSession.String;
 
 if any(handles.Tuning.extras.sequence(:,1)==800) % pseudorandom tuning
     % transition markers
-    odorTS(1,1) = sum(handles.Tuning.extras.sessionsettings(1,4)); % w.r.t. trial start (motor-settle, pre-odor)
+    odorTS(1,1) = handles.Tuning.extras.sessionsettings(1,4); % w.r.t. trial start (pre-odor)
     nLocations = size(handles.Tuning.extras.sequence,2) - 2;
     LocationShifts = 0; 
     for i = 1:nLocations
         if i == 1
-            LocationShifts(i,1) = -handles.Tuning.extras.sessionsettings(1,3);
-            LocationShifts(i,2) = sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+            LocationShifts(i,1) = -handles.Tuning.extras.sessionsettings(1,3); % w.r.t. trial start (settle)
+            LocationShifts(i,2) = sum(handles.Tuning.extras.sessionsettings(1,[4,5])); % w.r.t. trial start (pre + odor)
         else
             LocationShifts(i,1) = LocationShifts(i-1,2);
-            LocationShifts(i,2) = LocationShifts(i,1) + sum(handles.Tuning.extras.sessionsettings(1,[4,5]));
+            LocationShifts(i,2) = LocationShifts(i,1) + sum(handles.Tuning.extras.sessionsettings(1,[3,5])); % settle + odor
         end
     end
     odorTS(1,2) = LocationShifts(end,2);
@@ -148,11 +148,32 @@ end
 LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
 HalfLocations = size(handles.TuningTiming.LocationShifts,1)/2;
 switch AlignType
-    case {1,2}
-        myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
-        myXlim(1) = myXlim(1) - LocationDuration;
+    case 1 % Trial On
+        % need an extra offset 
+        if handles.TuningTiming.LocationShifts(1,2) > diff(handles.TuningTiming.LocationShifts(2,:))
+            my_start_offset = handles.TuningTiming.LocationShifts(1,2) - diff(handles.TuningTiming.LocationShifts(2,:));
+            % normalize my location duration to correctly shift the image
+            % of location plots
+            my_start_offset = my_start_offset/LocationDuration;
+            myXlim(1) = 0.5 + my_start_offset;
+            myXlim(2) = 0.5 + my_start_offset + HalfLocations*2*LocationDuration;
+        end
+        
+%         myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
+%         myXlim(1) = myXlim(1) - LocationDuration;
+    case 2 % Odor On
+        % first calculate extra offset w.r.t. Trial Start 
+        if handles.TuningTiming.LocationShifts(1,2) > diff(handles.TuningTiming.LocationShifts(2,:))
+            my_start_offset = handles.TuningTiming.LocationShifts(1,2) - diff(handles.TuningTiming.LocationShifts(2,:));
+            % normalize my location duration to correctly shift the image
+            % of location plots
+            my_start_offset = my_start_offset/LocationDuration;
+            myXlim(1) = 0.5 + my_start_offset;
+            myXlim(2) = 0.5 + my_start_offset + HalfLocations*2*LocationDuration;
+        end
     otherwise
-        myXlim =  [0 HalfLocations*2];
+        myXlim =  [0 HalfLocations*2] + 0.5;
+        %myXlim =  [0 HalfLocations*2*LocationDuration];
 end
 for i = 1:4
     axes(handles.(['axes',num2str(i)])); 
@@ -178,7 +199,7 @@ switch AlignType
         myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
         myXlim(1) = myXlim(1) - LocationDuration;
     otherwise
-        myXlim = LocationDuration*[-floor(HalfLocations) floor(HalfLocations)];
+        myXlim = LocationDuration*[-floor(HalfLocations) ceil(HalfLocations)];
 end
    
 PSTHLims = [];
