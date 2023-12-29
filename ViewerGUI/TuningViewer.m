@@ -149,38 +149,33 @@ LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
 HalfLocations = size(handles.TuningTiming.LocationShifts,1)/2;
 switch AlignType
     case 1 % Trial On
+        myXlim(1,:) = [0 HalfLocations*2] + 0.5;
         % need an extra offset 
-        if handles.TuningTiming.LocationShifts(1,2) > diff(handles.TuningTiming.LocationShifts(2,:))
-            my_start_offset = handles.TuningTiming.LocationShifts(1,2) - diff(handles.TuningTiming.LocationShifts(2,:));
-            % normalize my location duration to correctly shift the image
-            % of location plots
-            my_start_offset = my_start_offset/LocationDuration;
-            myXlim(1) = 0.5 + my_start_offset;
-            myXlim(2) = 0.5 + my_start_offset + HalfLocations*2*LocationDuration;
-        end
-        
-%         myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
-%         myXlim(1) = myXlim(1) - LocationDuration;
+        my_start_offset = handles.Tuning.extras.sessionsettings(1,4) - handles.Tuning.extras.sessionsettings(1,3) + 1000;
+        % normalize my location duration to correctly shift the image of location plots
+        my_start_offset = my_start_offset/LocationDuration/1000;
+        myXlim(1,:) = myXlim(1,:) - my_start_offset;
+        myXlim(2,:) = [-1 HalfLocations*2*LocationDuration];
     case 2 % Odor On
-        % first calculate extra offset w.r.t. Trial Start 
-        if handles.TuningTiming.LocationShifts(1,2) > diff(handles.TuningTiming.LocationShifts(2,:))
-            my_start_offset = handles.TuningTiming.LocationShifts(1,2) - diff(handles.TuningTiming.LocationShifts(2,:));
-            % normalize my location duration to correctly shift the image
-            % of location plots
-            my_start_offset = my_start_offset/LocationDuration;
-            myXlim(1) = 0.5 + my_start_offset;
-            myXlim(2) = 0.5 + my_start_offset + HalfLocations*2*LocationDuration;
-        end
+        % same as trial start but shift everything to the left by pre-odor
+        myXlim(1,:) = [0 HalfLocations*2] + 0.5;
+        % need an extra offset 
+        my_start_offset = - handles.Tuning.extras.sessionsettings(1,3) + 1000;
+        % normalize my location duration to correctly shift the image of location plots
+        my_start_offset = my_start_offset/LocationDuration/1000;
+        myXlim(1,:) = myXlim(1,:) - my_start_offset;
+        myXlim(2,:) = [-1 HalfLocations*2*LocationDuration];
     otherwise
-        myXlim =  [0 HalfLocations*2] + 0.5;
-        %myXlim =  [0 HalfLocations*2*LocationDuration];
+        myXlim(1,:) =  [0 HalfLocations*2] + 0.5;
+        myXlim(2,:) =  [-HalfLocations HalfLocations]*LocationDuration;
+        myXlim(2,:) =  [0 HalfLocations*2*LocationDuration];
 end
 for i = 1:4
     axes(handles.(['axes',num2str(i)])); 
     cla reset; 
-    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, myXlim, 'plotspikes', 0); %, varargin);
+    PlotRandomTuningSession(whichUnit, i, handles.AlignedSpikes, handles.TuningTiming, handles.Tuning.extras.sequence, AlignType, myXlim(2,:), 'plotspikes', 0); %, varargin);
     colormap(handles.(['axes',num2str(i)]),brewermap([500],'rdbu'));
-    set(gca, 'XLim', myXlim, 'XTick', [], 'YTick', []);
+    set(gca, 'XLim', myXlim(1,:), 'XTick', [], 'YTick', []);
     UpdateUnits(handles);
 end
 
@@ -195,9 +190,13 @@ handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 LocationDuration = mode(diff(handles.TuningTiming.LocationShifts'));
 HalfLocations = size(handles.TuningTiming.LocationShifts,1)/2;
 switch AlignType
-    case {1,2}
+    case 1 % Trial On
         myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
-        myXlim(1) = myXlim(1) - LocationDuration;
+        myXlim(1) = myXlim(1) - sum(handles.Tuning.extras.sessionsettings(1,4:5))/1000 - 1; % LocationDuration;
+    case 2
+        myXlim = handles.TuningTiming.LocationShifts([1,end],2)';
+        myXlim(1) = myXlim(1) - handles.Tuning.extras.sessionsettings(1,5)/1000 - 1; % LocationDuration;
+        myXlim(2) = myXlim(2) + handles.Tuning.extras.sessionsettings(1,4)/1000;
     otherwise
         myXlim = LocationDuration*[-floor(HalfLocations) ceil(HalfLocations)];
 end

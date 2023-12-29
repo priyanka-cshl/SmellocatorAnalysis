@@ -78,7 +78,6 @@ trialflag = [];
 InitiationsFixed = []; 
 %% Process lever snippets trial-by-trial
 for thisTrial = 1:size(Trial.Indices,1)
-    
     if TrialOn(thisTrial)
         % extract continuous traces for lever
         % extract from previous trial OFF and upto this trial start

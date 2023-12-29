@@ -60,18 +60,24 @@ disp(MyFileName);
 
 % sanity check - did some guess work in CorrectMatlabSampleDrops to compute
 % odor start - check if it made sense
+problematic_odor_starts = [];
 if ~isempty(InitiationsFixed)
     if any(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01)
         weirdo = find(abs(diff(TrialInfo.OdorStart(InitiationsFixed,:),1,2))>=0.01);
-        if any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
-            disp('something funky with computing odorstart from Lever trace');
-            keyboard;
-            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
-        else
-            % Initiation hold was larger than a second - that's couldn't
-            % compute it accurately from trial traces
-            TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
-        end
+        problematic_odor_starts = InitiationsFixed(weirdo);
+%         if any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
+%             disp('something funky with computing odorstart from Lever trace');
+%             keyboard;
+%             if ~errorflags(1)
+%                 TrialInfo.OdorStart(InitiationsFixed(weirdo),2) = TrialInfo.OdorStart(InitiationsFixed(weirdo),1);
+%             else
+%                 TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+%             end
+%         else
+%             % Initiation hold was larger than a second - that's couldn't
+%             % compute it accurately from trial traces
+%             TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+%         end
     end
 end
 
@@ -119,6 +125,21 @@ if isempty(TTLs)
     disp('no matching recording file found');
 else
     FileLocations.OEPS = myephysdir;
+    % fix problematic odor starts
+    if ~isempty(problematic_odor_starts)
+        OEPS_OdorStarts = TTLs.Trial(problematic_odor_starts,4);
+        if ~any(abs(TrialInfo.OdorStart(problematic_odor_starts,1)-OEPS_OdorStarts)>=0.01)
+            TrialInfo.OdorStart(InitiationsFixed(weirdo),2) = TrialInfo.OdorStart(InitiationsFixed(weirdo),1);
+        else
+            disp('something funky with computing odorstart from Lever trace and/or InRewardZone');
+            keyboard;
+            if ~any(TrialInfo.OdorStart(InitiationsFixed(weirdo),2)>-1)
+                % Initiation hold was larger than a second - that's why couldn't
+                % compute it accurately from trial traces
+                TrialInfo.OdorStart(InitiationsFixed(weirdo),1) = TrialInfo.OdorStart(InitiationsFixed(weirdo),2);
+            end
+        end
+    end
 end
 
 if ~isempty(TuningTTLs)
