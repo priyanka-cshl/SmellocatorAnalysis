@@ -25,6 +25,13 @@ for i = 1:nTemplates
     end
 end
 
+% % hack for S3_20230327_r0_processed.mat 
+% % ---- managed to do halt replays from S1 instead 
+% if contains(MySession,'S3_20230327_r0_processed.mat')
+%     MyPhantomSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/S1/S1_20230327_r0_processed.mat';
+%     [Templates, TrialInfo] = LoadPhantomTemplates(MyPhantomSession);
+% end
+
 nTrials = numel(ReplayTTLs.TrialID); % how many replays
 subtrials = [];
 for j = 1:nTrials
@@ -56,8 +63,20 @@ for whichunit = 1:N % every unit
             %             end
             
             % which template does this replay correspond to
-            [~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors(:,1:numel(OdorTTLs(:,4)')), 'rows');
+            try
+                [~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors(:,1:numel(OdorTTLs(:,4)')), 'rows');
+            catch
+                disp(['no template match for replay# ',num2str(whichReplay)]);
+                keyboard;
+                continue;
+            end
             
+            if ~whichtemplate
+                disp(['no template match for replay# ',num2str(whichReplay)]);
+                keyboard;
+                continue;
+            end
+                        
             templatetrials = abs(Templates.Trials(whichtemplate(1),:));
             FirstTrialDuration = TrialInfo.Duration(templatetrials(1));
             perturbedtrial = find(Templates.Trials(whichtemplate(1),:)<0);
