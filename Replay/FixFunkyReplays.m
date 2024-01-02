@@ -11,13 +11,14 @@ global SampleRate; % = 500; % samples/second
 global startoffset; % = 1; % seconds
 traceOverlap = SampleRate*startoffset + 1; 
 whichTraces = fieldnames(ReplayTraces);
+todelete = [];
 
 % step 1: find the culprit replays
 buggy_replays   = find(abs(ReplayLengths' - median(ReplayLengths))>5);
 [~,OK_replay]   = min(ReplayLengths' - median(ReplayLengths));
 OK_replay = ReplayTraces.Motor{templateindex}(:,OK_replay); % backwards from trial end
 for b = 1:numel(buggy_replays)
-    extra_samples = ReplayLengths(buggy_replays(b)) - median(ReplayLengths);
+    extra_samples = ReplayLengths(buggy_replays(b)) - round(median(ReplayLengths));
     if extra_samples>0
         % buggy_replay have extra samples and possibly some
         % corrupt ones surrounding it
@@ -76,6 +77,9 @@ for b = 1:numel(buggy_replays)
             else
                 disp('having trouble fixing buggy replays');
                 keyboard;
+                % figure, plot(OK_replay), hold on, plot(buggy_backwards)
+                % can delete this particular replay
+                todelete = [todelete; buggy_replays(b)];
             end
         end
         
@@ -88,9 +92,20 @@ end
 % extra step to remove trailing samples at the end of each trace (this will
 % go to the beginning of the traces when flipped back and cause
 % misalignment)
-trailing_samps = max(ReplayTraces.Corrupt{templateindex}(:,5)) - 1;
-for j = 2:size(whichTraces,1)
-    ReplayTraces.(whichTraces{j}){templateindex}(end-trailing_samps:end,:) = [];
+if isfield(ReplayTraces,'Corrupt')
+    trailing_samps = max(ReplayTraces.Corrupt{templateindex}(:,5)) - 1;
+    for j = 2:size(whichTraces,1)
+        ReplayTraces.(whichTraces{j}){templateindex}(end-trailing_samps:end,:) = [];
+    end
+end
+
+% delete unfixable replays
+if ~isempty(todelete)
+    keyboard;
+    for j = 2:size(whichTraces,1)
+        ReplayTraces.(whichTraces{j}){templateindex}(:,todelete) = [];
+    end
+    ReplayTraces.(whichTraces{1}){templateindex}(todelete,:) = [];
 end
 
 end
