@@ -117,7 +117,7 @@ if any(TrialSequence(:,1)==999)
         thisTrial = x(i); % trial #
         start_idx = MyTrials(thisTrial,3) - startoffset*SampleRate; % 1 sec preceding trial start
         if thisTrial>=size(MyTrials,1)
-            stop_idx = size(MyData,1);
+            stop_idx = min(size(MyData,1), (MyTrials(thisTrial,4) + startoffset*SampleRate));
         else
             stop_idx = MyTrials(thisTrial+1,3) -1; % upto next trial start
         end
