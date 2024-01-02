@@ -1,0 +1,2 @@
+function [] = testfunc()
+end
