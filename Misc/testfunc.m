@@ -1,2 +1,3 @@
 function [] = testfunc()
+%%
 end
