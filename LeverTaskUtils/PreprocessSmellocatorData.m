@@ -178,12 +178,18 @@ end
 
 %% Sniffs
 [SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
+% calculate the timestamp difference between Ephys and Behavior
+TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
+TrialStart_Ephys = TTLs.Trial(1,2);
+% factor to convert all behavior timestamps to match Ephys
+TimestampAdjust.ClosedLoop = TrialStart_Ephys - TrialStart_behavior; % add to behavior TS to convert to OEPS
+
 [SniffTS_passive] = ReadThermistorData(TuningFile); % in behavior timestamps
 % for the passive case, convert sniff timestamps to OEPS base
 % check first for clock drifts - compare trial starts between OEPS and
 % matlab
 if ~any(abs((TuningTTLs(:,1) - TuningTTLs(1,1)) - (TuningTTLs(:,9) - TuningTTLs(1,9)))>0.04)
-    Passive_Timestamp_adjust = TuningTTLs(1,1) - TuningTTLs(1,9);
+    TimestampAdjust.Passive = TuningTTLs(1,1) - TuningTTLs(1,9);
 else
     disp('trial start mismatch in ephys and behavior tuning files');
     keyboard;
@@ -195,6 +201,6 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'Passive_Timestamp_adjust');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust');
     
 end

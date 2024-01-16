@@ -190,18 +190,24 @@ for n = 1:size(TuningFile,1)
         % matlab
         
         if ~any(abs((TuningTTLs{n}(:,1) - TuningTTLs{n}(1,1)) - (TuningTTLs{n}(:,9) - TuningTTLs{n}(1,9)))>0.04)
-            Passive_Timestamp_adjust(n) = TuningTTLs{n}(1,1) - TuningTTLs{n}(1,9);
+            TimestampAdjust.Passive(n) = TuningTTLs{n}(1,1) - TuningTTLs{n}(1,9);
         else
             disp('trial start mismatch in ephys and behavior tuning files');
             keyboard;
         end
     else
-        Passive_Timestamp_adjust(n) = NaN;
+        TimestampAdjust.Passive(n) = NaN;
     end
 end
 
 %% concatenate the multiple closed-loop sessions for easier processing later
 [Traces, TrialInfo, SniffTS] = StitchBehavior(Traces,TrialInfo,SniffTS,BehaviorTrials);
+% calculate the timestamp difference between Ephys and Behavior - only for
+% the first closed loop session
+TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
+TrialStart_Ephys = TTLs.Trial(1,2);
+% factor to convert all behavior timestamps to match Ephys
+TimestampAdjust.ClosedLoop = TrialStart_Ephys - TrialStart_behavior; % add to behavior TS to convert to OEPS
 
 %% Saving stuff in one place
 savepath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[regexprep(MyFileName,'_r[0-9]',NameTag),'_processed.mat']);
@@ -211,7 +217,7 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'Passive_Timestamp_adjust', ...
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust', ...
                'TrialStretches');
     
 end

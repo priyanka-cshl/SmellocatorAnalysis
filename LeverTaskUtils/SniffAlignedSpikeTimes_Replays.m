@@ -32,10 +32,33 @@ subtrials = [];
 for j = 1:nTrials
     subtrials = vertcat(subtrials,size(ReplayTTLs.OdorValve{j},1));
 end
-nsubtrials = mode(subtrials);
+
+if nTemplates == 1
+    nsubtrials = numel(Templates.Odors);
+else
+    nsubtrials = mode(subtrials);
+end
 
 % load sniffs
-load(MySession,'SniffTS_passive', 'Passive_Timestamp_adjust'); % sniff timestamps in behavior timebase
+% load the passive sniff timestamps and convert to OEPS timebase
+load(MySession,'SniffTS_passive'); %, 'TimestampAdjust'); % sniff timestamps in behavior timebase
+loaded_adjuster = 0;
+while ~loaded_adjuster
+    lastwarn('', ''); % reset the lastwarn message and id
+    load(MySession,'TimestampAdjust'); % this might throw a warning because TimestampAdjust may not exist
+    [~, warnId] = lastwarn(); % if a warning was raised, warnId will not be empty.
+    if(isempty(warnId))
+        Passive_Timestamp_adjust = TimestampAdjust.Passive;
+        loaded_adjuster = 1;
+    else
+        % reprocess the session in question
+        disp('Run preprocess again');
+        keyboard;
+        % continue if you want to quickly reprocess
+        [~,F,ext] = fileparts(MySession);
+        PreprocessSmellocatorData(strrep(F,'_processed',ext),1);
+    end
+end
 SniffTS_passive(:,1:3) = SniffTS_passive(:,1:3) + Passive_Timestamp_adjust; % Sniff Times in OEPS timebase
 
 if ~isempty(SniffTS_passive)
@@ -47,7 +70,13 @@ if ~isempty(SniffTS_passive)
         
         if size(OdorTTLs,1) >= nsubtrials % valid replay
             % which template does this replay correspond to
-            [~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors(:,1:numel(OdorTTLs(:,4)')), 'rows');
+            thisTrialOdors = OdorTTLs(:,4)';
+            if numel(thisTrialOdors)>size(Templates.Odors,2)
+                thisTrialOdors(:,1) = [];
+                OdorTTLs(1,:) = [];
+            end
+            %[~, whichtemplate] = ismember(OdorTTLs(:,4)',Templates.Odors(:,1:numel(OdorTTLs(:,4)')), 'rows');
+            [~, whichtemplate] = ismember(thisTrialOdors,Templates.Odors(:,1:numel(thisTrialOdors)), 'rows');
             
             templatetrials = abs(Templates.Trials(whichtemplate(1),:));
             FirstTrialDuration = TrialInfo.Duration(templatetrials(1));

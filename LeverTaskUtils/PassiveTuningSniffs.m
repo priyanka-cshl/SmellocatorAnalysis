@@ -15,7 +15,25 @@ else
 end
 
 % load the passive sniff timestamps and convert to OEPS timebase
-load(MySession,'SniffTS_passive', 'Passive_Timestamp_adjust'); % sniff timestamps in behavior timebase
+load(MySession,'SniffTS_passive'); %, 'TimestampAdjust'); % sniff timestamps in behavior timebase
+loaded_adjuster = 0;
+while ~loaded_adjuster
+    lastwarn('', ''); % reset the lastwarn message and id
+    load(MySession,'TimestampAdjust'); % this might throw a warning because TimestampAdjust may not exist
+    [~, warnId] = lastwarn(); % if a warning was raised, warnId will not be empty.
+    if(isempty(warnId))
+        Passive_Timestamp_adjust = TimestampAdjust.Passive;
+        loaded_adjuster = 1;
+    else
+        % reprocess the session in question
+        disp('Run preprocess again');
+        keyboard;
+        % continue if you want to quickly reprocess
+        [~,F,ext] = fileparts(MySession);
+        PreprocessSmellocatorData(strrep(F,'_processed',ext),1);
+    end
+end
+
 SniffTS_passive(:,1:3) = SniffTS_passive(:,1:3) + Passive_Timestamp_adjust; % Sniff Times in OEPS timebase
 
 % keep track of previous and next sniffs (for plotting)

@@ -185,7 +185,7 @@ handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
 myYlims = [];
-for i = 1%:3
+for i = 1:3
     axes(handles.(['axes',num2str(i+9)])); 
     cla reset; 
     set(gca,'color','none');
