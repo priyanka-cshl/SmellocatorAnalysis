@@ -20,6 +20,8 @@ load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
     'startoffset', 'errorflags', 'SampleRate', ...
     'TTLs', 'ReplayTTLs', 'Tuning*', 'SingleUnits');
 
+TrialInfo.SessionPath = MySession; % useful when passing around to other functions
+
 Tuning.TTLs = TuningTTLs;
 if ~exist('Tuningextras')
     Tuning.extras = [];

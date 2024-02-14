@@ -1,159 +1,38 @@
- function [TrialAlignedSniffs, SniffAlignedSpikes, TrialAlignedSpikes, TetrodeOrder, Events, Events_phase, TrialInfo] = TrialAndSniffAlignedSpikeTimes(SingleUnits,TTLs,nTrials,TrialInfo,MySession)
-
+function [TrialAlignedSniffs, SniffAlignedSpikes, TrialAlignedSpikes, TetrodeOrder, Events, Events_phase, TrialInfo] = TrialAndSniffAlignedSpikeTimes(SingleUnits,TTLs,TrialInfo,PerturbationTag)
+ 
 N = size(SingleUnits,2); % total units
 
-%% to get comparable alignment time-points as perturbartion start in ctrl trials
-PerturbationEvents = [];
-if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
-    x = find(~cellfun(@isempty, TrialInfo.Perturbation(:,1))); % find perturbation trials
-    
-    if any(strcmp(TrialInfo.Perturbation(x,1),'Halt-Flip')) || ...
-            any(strcmp(TrialInfo.Perturbation(x,1),'Halt-Flip-Template')) 
-        
-        HaltTrials = [find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip')); ...
-            find(strcmp(TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) ]; % halt flip trials
-        
-        load(MySession,'Traces','SampleRate');
-        PerturbationParams = TrialInfo.Perturbation{HaltTrials(1),2}; % start and stop Idx w.r.t. TrialStart, and halted odor location
-        Duration = PerturbationParams(2) - PerturbationParams(1);
-        Threshold = 4; % Lever threshold at which perturbation starts
-        
-        % for all control trials, find perturbation start point
-        for i = 1:nTrials
-            if ~ismember(i,HaltTrials)
-                f = find(Traces.Lever{i}(TrialInfo.TimeIndices(i,1):end)<Threshold,1,'first');
-                if ~isempty(f)
-                    f = f + TrialInfo.TimeIndices(i,1) - 1;
-                    if abs(Traces.Lever{i}(f-1)-4)<abs(Traces.Lever{i}(f)-4)
-                        f = f-1;
-                    end
-                    f = f - TrialInfo.TimeIndices(i,1);
-                    PerturbationEvents(i,:) = [f f+Duration NaN];
-                else
-                    PerturbationEvents(i,:) = [NaN NaN NaN];
-                end
-            else
-                if ~isempty(TrialInfo.Perturbation{i,2})
-                    PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
-                else
-                    PerturbationEvents(i,:) = [NaN NaN NaN];
-                end
-            end
-        end
-    end
-    
-    if any(strcmp(TrialInfo.Perturbation(x,1),'Offset-II')) || ...
-            any(strcmp(TrialInfo.Perturbation(x,1),'Offset-II-Template'))
-        
-        OffsetTrials = [find(strcmp(TrialInfo.Perturbation(:,1),'Offset-II')); ...
-            find(strcmp(TrialInfo.Perturbation(:,1),'Offset-II-Template')) ];
-        
-        load(MySession,'SampleRate');
-        PerturbationParams = TrialInfo.Perturbation{OffsetTrials(1),2}; % offset and perturbation start w.r.t. TrialStart, and offset odor location
-        Duration = PerturbationParams(2) - PerturbationParams(1);
-        
-        % for all control trials, find perturbation start point
-        % time-point when 0.9x of the hold times are reached
-        for i = 1:nTrials
-            if ~ismember(i,OffsetTrials)
-                
-                % get all target zone stays
-                thisTrialHolds = TrialInfo.HoldSettings(i,2:3); % contiguous, aggegate in seconds
-                AllHolds = diff(TrialInfo.InZone{i}',1);
-                
-                PertubationStart = NaN;
-                if ~isempty(AllHolds)
-                    whichSegment = find(AllHolds>=0.9*thisTrialHolds(1),1,'first'); % any contiguous hold that would trigger offset perturbation
-                    if isempty(whichSegment)
-                        whichSegment = ...
-                            find(cumsum(AllHolds)>=0.9*thisTrialHolds(2),1,'first'); % any aggregate hold that would trigger offset perturbation
-                        if ~isempty(whichSegment)
-                            deltaT = sum(AllHolds)-0.9*thisTrialHolds(2);
-                            PertubationStart = SampleRate* ...
-                                (TrialInfo.InZone{i}(whichSegment,2) - deltaT); % in indices w.r.t. TrialStart
-                        end
-                    else
-                        PertubationStart = SampleRate* ...
-                            (TrialInfo.InZone{i}(whichSegment,1) + thisTrialHolds(1)*0.9); % in indices w.r.t. TrialStart
-                    end
-                end
-                PerturbationEvents(i,:) = [PertubationStart NaN NaN];
-            else
-                if ~isempty(TrialInfo.Perturbation{i,2})
-                    PerturbationEvents(i,:) = TrialInfo.Perturbation{i,2};
-                else
-                    PerturbationEvents(i,:) = [NaN NaN NaN];
-                end
-            end
-        end
-        
-    end
-    
-    if any(strcmp(TrialInfo.Perturbation(x,1),'RuleReversal'))
-        load(MySession,'SampleRate');
-        PerturbationEvents(1:nTrials,1) = 0;
-        % mark all flipped trials as one
-        PerturbationEvents(find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal')),1) = 1;
-    end
+if nargin < 4
+    PerturbationEvents = [];
+else
+    % to get comparable alignment time-points as perturbartion start in ctrl trials
+    [PerturbationEvents] = FindPutativePerturbationStart(TrialInfo, PerturbationTag);
+    % for halts:    [nx3]:[HaltStart HaltEnd HaltLocation] 
+    % for offsets:  [nx3]:[[OffsetStart FeedbackResume OffsetLocation]
+    % for reverals: [nx1]:[[1 if reversed, 0 otherwise]
+    % n = trials
 end
 
 %% Sniff alignment
-sniffwarpmethod = 3; % fixed latency
-
+% get trial start and stop times
+trialtimes = TrialInfo.SessionTimestamps(:,[1 2 1]);
 % recompute Trialstart in behavior timebase - only need this because of
 % sample drops at trial start
-trialtimes = TrialInfo.SessionTimestamps(:,[1 2 1]);
 funkytrials = find(TrialInfo.TimeStampsDropped);
 if ~isempty(funkytrials)
     trialtimes(funkytrials,1) = trialtimes(funkytrials,2) - TTLs.Trial(funkytrials,3);
 end
+trialtimes(:,3) = [];
 
-load(MySession,'SniffTS'); % sniff timestamps in behavior timebase
+% the sniff time-points (same time base as the trial times)
+load(TrialInfo.SessionPath,'SniffTS'); % sniff timestamps in behavior timebase
 
-if ~isempty(SniffTS)
-    % get a cell array trial aligned sniffs
-    for whichtrial = 1: nTrials % every trial
-        if whichtrial==1
-            first_inhalation = 2;
-        else
-            first_inhalation = find(SniffTS(:,1)>=trialtimes(whichtrial-1,2),1,'first'); % after prev trial OFF
-        end
-        last_inhalation  = find(SniffTS(:,2)<=trialtimes(whichtrial,2),1,'last'); % before trial end
-        
-        mysniffs = SniffTS(first_inhalation:last_inhalation,1:3) - trialtimes(whichtrial,1); % -ve timestamps are in ITI
-        mysniffs(:,4) = (1:size(mysniffs,1))' - numel(find(mysniffs(:,1)<=0));
-        mysniffs(:,6) = SniffTS(first_inhalation:last_inhalation,4); % odor location 
-        
-        % flag sniffs where entire inhalation period was in the target
-        % zone?
-        if ~isempty(TrialInfo.InZone{whichtrial})
-            whichsniffs = find(mysniffs(:,1)>=TrialInfo.TargetEntry(whichtrial,1));
-            mysniffs(whichsniffs,5) = 1;
-            for entries = 1:size(TrialInfo.InZone{whichtrial},1)
-                stay = TrialInfo.InZone{whichtrial}(entries,:);
-                whichsniffs = intersect( (find(mysniffs(:,1)>=stay(1))) , ...
-                    (find(mysniffs(:,2)<=stay(2))) );
-                mysniffs(whichsniffs,5) = 2;
-            end
-        end
-        
-%         % better way - use the location
-%         whichsniffs = intersect(find(mysniffs(:,3)>0), find(abs(mysniffs(:,6))<=9));
-        
-        mysniffs(mysniffs(:,3)<=0,5) = -1;
-        
-        % also note the sniff before and sniff after
-        mysniffs = horzcat(mysniffs, ...
-            SniffTS(first_inhalation-1:last_inhalation-1,1:3) - trialtimes(whichtrial,1), ...
-            SniffTS(first_inhalation-1:last_inhalation-1,4), ...
-            SniffTS(first_inhalation+1:last_inhalation+1,1:3) - trialtimes(whichtrial,1), ...
-            SniffTS(first_inhalation+1:last_inhalation+1,4) );
-        
-        TrialAlignedSniffs{whichtrial} = mysniffs;
-        
-    end
-end
+TrialAlignedSniffs = GetTrialAlignedSniffs(trialtimes,SniffTS);
+% type help GetTrialAlignedSniffs to check notes on the output
 
+%% Align Spikes to Trials and also parse by sniffs
+sniffwarpmethod = 3; % fixed latency
+nTrials     = size(TrialInfo.TrialID,2); 
 for whichunit = 1:N % every unit
     thisUnitspikes = SingleUnits(whichunit).trialalignedspikes;
     trialtags = SingleUnits(whichunit).trialtags;

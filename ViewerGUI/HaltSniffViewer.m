@@ -132,10 +132,12 @@ end
 %% Get all spikes, all units aligned to trials
 [handles.AlignedSniffs, handles.sniffAlignedSpikes, handles.trialAlignedSpikes, ...
     handles.whichtetrode, handles.Events, handles.EventsPhase, handles.TrialInfo] = ...
-    TrialAndSniffAlignedSpikeTimes(SingleUnits,TTLs,size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
+    TrialAndSniffAlignedSpikeTimes(SingleUnits,TTLs,handles.TrialInfo);
 
 %% same for replays
 if ~isempty(OpenLoop)
+    
+    [handles.ReplayInfo] = ParseReplaysToSubtrials(OpenLoop,handles.TrialInfo,ReplayTTLs,TTLs);
     
     % sniffs
     [handles.ReplayAlignedSniffs, handles.SniffAlignedReplaySpikes, handles.ReplayInfo] = ...
