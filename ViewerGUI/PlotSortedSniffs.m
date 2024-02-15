@@ -123,7 +123,8 @@ if plotting
             if warptype
                 ExhalationTimes = ExhalationTimes * (mean(AllSniffs(:,14+warptype))/AllSniffs(x,14+warptype));
             end
-            thissnifflocation = floor(AllSniffs(x,6)+110);
+            %thissnifflocation = floor(AllSniffs(x,6)+110);
+            thissnifflocation = floor(AllSniffs(x,[10 6 14])+110);
             SniffPlotter(ExhalationTimes', x, SniffColors(thissnifflocation,:));
             
             if x == size(AllSniffs,1)
@@ -195,15 +196,29 @@ end
         plot(X(:),Y(:),'Color',Plot_Colors('b'),'Linewidth',2);
     end
 
-    function SniffPlotter(TS, rowidx, boxcolor)
+%     function SniffPlotter(TS, rowidx, boxcolor)
+%         %foo = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.8);
+%         foo = fill(NaN,NaN,boxcolor,'FaceAlpha',0.8);
+%         foo.EdgeColor = 'none';
+%         if ~isempty(TS)
+%             foo.Vertices = [ ...
+%                 reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
+%                 repmat([rowidx-1 rowidx rowidx rowidx-1]',size(TS,2),1)];
+%             foo.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+%         end
+%     end
+    function SniffPlotter(AllTS, rowidx, boxcolor)
         %foo = fill(NaN,NaN,Plot_Colors('TZ'),'FaceAlpha',0.8);
-        foo = fill(NaN,NaN,boxcolor,'FaceAlpha',0.8);
-        foo.EdgeColor = 'none';
-        if ~isempty(TS)
-            foo.Vertices = [ ...
-                reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
-                repmat([rowidx-1 rowidx rowidx rowidx-1]',size(TS,2),1)];
-            foo.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+        for t = 1:size(AllTS,2)
+            TS = AllTS(:,t);
+            foo = fill(NaN,NaN,boxcolor(t,:),'FaceAlpha',0.8);
+            foo.EdgeColor = 'none';
+            if ~isempty(TS)
+                foo.Vertices = [ ...
+                    reshape([TS(:) TS(:)]', 2*numel(TS), []) , ...
+                    repmat([rowidx-1 rowidx rowidx rowidx-1]',size(TS,2),1)];
+                foo.Faces = reshape(1:2*numel(TS),4,size(TS,2))';
+            end
         end
     end
 
