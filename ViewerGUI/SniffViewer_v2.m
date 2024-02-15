@@ -70,6 +70,8 @@ end
 
 handles.CurrentUnit.Data(1) = NaN;
 
+handles.SelectedSniffs = [];
+
 set(handles.axes10,'Color','none');
 set(handles.axes11,'Color','none');
 set(handles.axes12,'Color','none');
@@ -82,7 +84,7 @@ guidata(hObject, handles);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = SniffViewer_v2_OutputFcn(hObject, eventdata, handles) 
+function varargout = SniffViewer_v2_OutputFcn(hObject, eventdata, handles)  %#ok<*INUSL>
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -93,7 +95,7 @@ varargout{1} = handles.output;
 
 
 % --- Executes on button press in LoadSession.
-function LoadSession_Callback(hObject, eventdata, handles)
+function LoadSession_Callback(hObject, eventdata, handles) %#ok<DEFNU>
 % hObject    handle to LoadSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -107,131 +109,107 @@ end
 
 %% get the data loaded
 MySession = handles.WhereSession.String;
-[TracesOut, ColNames, handles.TrialInfo, SingleUnits, TTLs, ...
-    ReplayTTLs, SampleRate, TimestampAdjuster, PassiveTracesOut, StartStopIdx, OpenLoop, handles.Tuning] = ...
-    LoadProcessedDataSession(MySession); % LoadProcessedSession; % loads relevant variables
+[handles.TrialAligned, handles.TrialInfo, ...
+    handles.ReplayAligned, handles.ReplayInfo, ...
+    handles.TuningAligned, handles.TuningInfo, ...
+    handles.AllUnits] = ...
+    PreprocessSpikesAndSniffs(MySession);
 
-handles.SingleUnits = SingleUnits;
-handles.TimestampAdjuster = TimestampAdjuster;
-
-%% Get all spikes, all units aligned to trials
-[handles.AlignedSniffs, handles.sniffAlignedSpikes, handles.trialAlignedSpikes, handles.whichtetrode] = ...
-    SniffAlignedSpikeTimes(SingleUnits,TTLs,size(handles.TrialInfo.TrialID,2),handles.TrialInfo,MySession);
-
-%% same for replays
-if ~isempty(OpenLoop)
-    [handles.ReplayAlignedSniffs, handles.SniffAlignedReplaySpikes, handles.ReplayInfo] = ...
-        SniffAlignedSpikeTimes_Replays(SingleUnits,TTLs,ReplayTTLs,handles.TrialInfo,OpenLoop,MySession);
-else
-    handles.ReplayAlignedSniffs = [];
-end
-
-%% also for passive tuning
-handles.TuningSniffs = PassiveTuningSniffs(handles.Tuning,MySession);
-
-handles.NumUnits.String = num2str(size(SingleUnits,2));
-if isnan(handles.CurrentUnit.Data(1)) || handles.CurrentUnit.Data(1)>size(SingleUnits,2)
+handles.NumUnits.String = num2str(size(handles.AllUnits.Spikes,2));
+if isnan(handles.CurrentUnit.Data(1)) || handles.CurrentUnit.Data(1)>size(handles.AllUnits.Spikes,2)
     handles.CurrentUnit.Data(1) = 1;
 end
 
-UpdatePlots(handles);
+handles = UpdatePlots(handles);
 
 % Update handles structure
 guidata(hObject, handles);
 
-function UpdatePlots(handles)
-whichUnit = handles.CurrentUnit.Data(1);
-MyColors1 = brewermap(15,'*PuBu');
-MyColors2 = brewermap(15,'*OrRd');
-handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
-handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
+function [handles] = UpdatePlots(handles)
 
-myXlim = eval(handles.xlims.String); %[-0.1 1.1];
+% get sniff time stamps and info for the sniffs we want to plot
+[handles.SelectedSniffs] = SelectSniffs(handles.TrialAligned, handles.TrialInfo, [1 2 3], ...
+                                'includeITI', 1);
+                            
+% sort the sniffs
+for whichodor = 1:3
+    handles.SelectedSniffs{whichodor} = ...
+        SortSniffs(handles.SelectedSniffs{whichodor}, handles.SortOrder.Value);
+end
 
-for i = 1:3
-    axes(handles.(['axes',num2str(i)])); 
+myXlim = eval(handles.xlims.String);
+
+for whichodor = 1:3
+    axes(handles.(['axes',num2str(whichodor)]));  %#ok<LAXES>
     cla reset; 
     hold on
     
-    % plot baseline trials
-    [nSniffs] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
-                                 handles.TrialInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-                                 'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
-                             
-    
-%     % plot passive replay trials                         
-%     if ~isempty(handles.ReplayAlignedSniffs)
-%         [nSniffs] = PlotPassiveReplaySniffs(nSniffs, whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
-%             handles.ReplayInfo, 'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-%             'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
-%     end
-    
-%     % add tuning sniffs
-%     [nSniffs] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
-%         'plotspikes', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-%         'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+    nSniffs = SniffAlignedPlot(handles.SelectedSniffs{whichodor}, [], ...
+                'plotspikes', 0, ...
+                'alignto', handles.SniffAlignment.Value, ...
+                'warptype', handles.WarpType.Value-1);
             
-    set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'YTick', []);
+    set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'XTick', [], 'YTick', []);
+            
 end
+
 UpdateUnits(handles);
 
 function UpdateUnits(handles)
 whichUnit = handles.CurrentUnit.Data(1);
-MyColors1 = brewermap(8,'YlOrRd');
-MyColors2 = brewermap(15,'*OrRd');
-handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));
-handles.Cluster_ID.String = num2str(handles.whichtetrode(whichUnit,2));
+handles.tetrode.String = num2str(handles.AllUnits.ChannelInfo(whichUnit,1));
+handles.Cluster_ID.String = num2str(handles.AllUnits.ChannelInfo(whichUnit,2));
+myXlim = eval(handles.xlims.String);
+PSTHOffset = -1000;
+FRLims = [0 0];
 
-myXlim = eval(handles.xlims.String); %[-0.1 1.1];
-
-myYlims = [];
-for i = 1:3
-    axes(handles.(['axes',num2str(i+9)])); 
+for whichodor = 1:3
+    axes(handles.(['axes',num2str(whichodor+9)]));  %#ok<LAXES>
     cla reset; 
     set(gca,'color','none');
     hold on
-    % plot baseline trials
-    [nSniffs,FR,BinOffset] = PlotSortedSniffs(whichUnit, i, handles.trialAlignedSpikes, handles.AlignedSniffs, ...
-                     handles.TrialInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-                     'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1, ...
-                     'psth', handles.plotPSTH.Value);
     
-%     % plot passive replay trials                         
-%     if ~isempty(handles.ReplayAlignedSniffs)
-%         [nSniffs] = PlotPassiveReplaySniffs(nSniffs, whichUnit, i, handles.SniffAlignedReplaySpikes, handles.ReplayAlignedSniffs, ...
-%             handles.ReplayInfo, 'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-%             'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
-%     end
-%     % add tuning sniffs
-%     [~] = PlotTuningSniffs(whichUnit, i, handles.SingleUnits, handles.TuningSniffs, handles.Tuning.extras.sequence, nSniffs, ...
-%         'plotevents', 0, 'sortorder', (handles.SortOrder.Value-1), ...
-%         'alignto', handles.SniffAlignment.Value, 'warptype', handles.WarpType.Value-1);
+    [nSniffs,AllFR{whichodor}] = SniffAlignedPlot(handles.SelectedSniffs{whichodor}, handles.AllUnits.Spikes{whichUnit}, ...
+                'plotevents', 0, ...
+                'psth', handles.plotPSTH.Value, ...
+                'psthoffset', PSTHOffset, ...
+                'alignto', handles.SniffAlignment.Value, ...
+                'warptype', handles.WarpType.Value-1);
     
     set(gca, 'XLim', myXlim, 'YTick', []);
-    set(gca, 'YLim', handles.(['axes',num2str(i)]).YLim);
-   
-    % plot PSTHs
+    set(gca, 'YLim', handles.(['axes',num2str(whichodor)]).YLim);
+    
     if handles.plotPSTH.Value
-        axes(handles.(['axes',num2str(i+3)]));
-        cla reset;
-        hold on
-        
-        for t = 1:size(FR,2)
-            %set(groot,'defaultAxesColorOrder',MyColors2);
-            if t < 5
-                plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color',MyColors1(t+3,:));
-            else
-                plot((1:size(FR{t},1))*0.002+BinOffset/1000,FR{t},'Linewidth',2,'Color','k');
-            end
-        end
-        set(gca, 'XLim', myXlim);
-        myYlims(i,:) = get(gca, 'YLim');
+        FRLims(1) = max(FRLims(1), min(cell2mat(cellfun(@min, AllFR{whichodor}, 'UniformOutput', false))));
+        FRLims(2) = max(FRLims(2), max(cell2mat(cellfun(@max, AllFR{whichodor}, 'UniformOutput', false))));
     end
 end
 
+% plot PSTHs
+MyColors1 = brewermap(8,'YlOrRd');
+ColorList(1,:) = Plot_Colors('b'); % ITI sniffs
+ColorList(2,:) = MyColors1(4,:); % snifftype = 0 % approach
+ColorList(3,:) = MyColors1(6,:); % snifftype = 1 % settle
+ColorList(4,:) = MyColors1(7,:); % snifftype = 2 % at target
+
 if handles.plotPSTH.Value
-    for i = 1:3
-        set(handles.(['axes',num2str(i+3)]),'YLim', [min(myYlims(:,1)) max(myYlims(:,2))]);
+    for whichodor = 1:3
+        axes(handles.(['axes',num2str(whichodor+3)])); %#ok<LAXES>
+        cla reset;
+        hold on
+        FR = AllFR{whichodor};
+        
+        for t = 1:size(FR,2)
+            if t < 5
+                plot((1:size(FR{t},1))*0.002+PSTHOffset/1000,FR{t},'Linewidth',2,'Color',ColorList(t,:));
+            else
+                plot((1:size(FR{t},1))*0.002+PSTHOffset/1000,FR{t},'Linewidth',2,'Color','k');
+            end
+        end
+        set(gca, 'XLim', myXlim, 'YLim', FRLims);
+        if whichodor>1
+            set(gca,'YTickLabel', {});
+        end
     end
 end
 
@@ -267,7 +245,6 @@ handles.CurrentUnit.Data(1) = min(handles.CurrentUnit.Data(1)+1,str2double(handl
 UpdateUnits(handles);
 % Update handles structure
 guidata(hObject, handles);
-
 
 % --- Executes on button press in PrevUnit.
 function PrevUnit_Callback(hObject, eventdata, handles)

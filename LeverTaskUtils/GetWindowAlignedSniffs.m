@@ -63,7 +63,12 @@ if ~isempty(SniffTS)
         % sniff type
         sniffdetails(:,4)   = 0; 
         % ITI sniffs
-        sniffdetails(currentsniff(:,1)<0,4) = -1;
+        if isfield(trialinfo,'OdorStart')
+            odorON = trialinfo.OdorStart(whichtrial,1); % seconds w.r.t. trial start
+            sniffdetails((currentsniff(:,1)< odorON),4) = -1; % ITI (air OFF)
+        else
+            sniffdetails(currentsniff(:,1)<0,4) = -1;
+        end
         if isfield(trialinfo,'TargetEntry')
             sniffdetails(currentsniff(:,1)>trialinfo.TargetEntry(whichtrial),4) = 1; % after Target Entry
         end
