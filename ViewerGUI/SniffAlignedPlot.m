@@ -1,4 +1,4 @@
-function [nSniffs,FR] = SniffAlignedPlot(AllSniffs, thisUnitSpikes, varargin)
+function [nSniffs,FR,SpikesPlot] = SniffAlignedPlot(AllSniffs, thisUnitSpikes, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -9,6 +9,7 @@ params.addParameter('psth', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('alignto', 1, @(x) isnumeric(x)); % 1 - inhalation start, 2 - inhalation end
 params.addParameter('warptype', 0, @(x) isnumeric(x)); % 0 - no warp, 1 - by sniff duration, 2 - by inhalation duration
 params.addParameter('psthoffset', -1000, @(x) isnumeric(x));
+params.addParameter('spikeplothandle', 1, @(x) ishghandle(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -18,10 +19,12 @@ psth = params.Results.psth;
 alignto = params.Results.alignto;
 warptype = params.Results.warptype;
 BinOffset = params.Results.psthoffset; % timewindow before t0 included in the PSTH 
+spikehandle = params.Results.spikeplothandle;
 
 % plotting sniff color
-SniffColors = colormap(brewermap(220,'Spectral'));
-
+if plotevents
+    SniffColors = colormap(brewermap(220,'Spectral'));
+end
 SpikesPlot = []; SpikesPSTH = [];
 
 % Plot Spikes
@@ -74,10 +77,11 @@ for x = 1:size(AllSniffs,1)
 end
 nSniffs = size(AllSniffs,1);
 
-% Spike plotting
-if plotspikes && ~isempty(SpikesPlot)
-    plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
-end
+% % Spike plotting
+% if plotspikes && ~isempty(SpikesPlot)
+%     %plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k','Markersize',0.5);
+%     set(spikehandle,'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+% end
 
 % PSTH calculation
 if psth

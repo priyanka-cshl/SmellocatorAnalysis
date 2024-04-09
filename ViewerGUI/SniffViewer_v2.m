@@ -22,7 +22,7 @@ function varargout = SniffViewer_v2(varargin)
 
 % Edit the above text to modify the response to help SniffViewer_v2
 
-% Last Modified by GUIDE v2.5 15-Feb-2024 06:04:27
+% Last Modified by GUIDE v2.5 29-Feb-2024 11:17:39
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -68,17 +68,25 @@ else
     handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20211005_r0_processed.mat');
 end
 
+% housekeeping
 handles.CurrentUnit.Data(1) = NaN;
-
 handles.SelectedSniffs = [];
 
-set(handles.axes10,'Color','none');
-set(handles.axes11,'Color','none');
-set(handles.axes12,'Color','none');
+for i = 1:4
+    currentaxis = handles.(['Spikes',num2str(i)]);
+    axes(currentaxis);
+    set(currentaxis,'Color','none');
+    hold on
+    
+    handles.(['spikesplot',num2str(i)]) = plot(NaN, NaN, '.k','Markersize', 0.5);
+end
 
 % Update handles structure
 guidata(hObject, handles);
 
+if exist(handles.WhereSession.String)==2
+    LoadSession_Callback(hObject, eventdata, handles);
+end
 % UIWAIT makes SniffViewer_v2 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
@@ -107,6 +115,7 @@ if isempty(handles.WhereSession.String)
 handles.WhereSession.String = fullfile(SessionPath,WhichSession);
 end
 
+tic
 %% get the data loaded
 MySession = handles.WhereSession.String;
 [handles.TrialAligned, handles.TrialInfo, ...
@@ -120,16 +129,22 @@ if isnan(handles.CurrentUnit.Data(1)) || handles.CurrentUnit.Data(1)>size(handle
     handles.CurrentUnit.Data(1) = 1;
 end
 
-handles = UpdatePlots(handles);
+fprintf('loading data: '); toc
+
+handles = UpdatePlots(hObject, eventdata, handles);
 
 % Update handles structure
 guidata(hObject, handles);
 
-function [handles] = UpdatePlots(handles)
+function [handles] = UpdatePlots(hObject, eventdata, handles)
+
+tic
 
 % get sniff time stamps and info for the sniffs we want to plot
-[handles.SelectedSniffs] = SelectSniffs(handles.TrialAligned, handles.TrialInfo, [1 2 3], ...
-                                'includeITI', 1);
+[handles.SelectedSniffs] = SelectSniffs(handles.TrialAligned, handles.TrialInfo, [1 2 3], 'includeITI', 1);
+                            
+% also get air sniffs from tuning
+[handles.SelectedSniffs{4}] = SelectSniffs(handles.TuningAligned, handles.TuningInfo, 0, 'includeITI', 1);
                             
 % sort the sniffs
 for whichodor = 1:3
@@ -139,8 +154,11 @@ end
 
 myXlim = eval(handles.xlims.String);
 
+fprintf('processing data: '); toc
+
+tic
 for whichodor = 1:3
-    axes(handles.(['axes',num2str(whichodor)]));  %#ok<LAXES>
+    axes(handles.(['Sniffs',num2str(whichodor)]));  %#ok<LAXES>
     cla reset; 
     hold on
     
@@ -150,8 +168,15 @@ for whichodor = 1:3
                 'warptype', handles.WarpType.Value-1);
             
     set(gca, 'XLim', myXlim, 'YLim', [0 nSniffs], 'XTick', [], 'YTick', []);
+    
+    axes(handles.(['Spikes',num2str(whichodor)]));  %#ok<LAXES>
+    set(gca, 'XLim', myXlim, 'YTick', [], 'YLim', handles.(['Sniffs',num2str(whichodor)]).YLim);
             
 end
+fprintf('plotting sniffs: '); toc
+
+% Update handles structure
+guidata(hObject, handles);
 
 UpdateUnits(handles);
 
@@ -163,21 +188,15 @@ myXlim = eval(handles.xlims.String);
 PSTHOffset = -1000;
 FRLims = [0 0];
 
+tic
 for whichodor = 1:3
-    axes(handles.(['axes',num2str(whichodor+9)]));  %#ok<LAXES>
-    cla reset; 
-    set(gca,'color','none');
-    hold on
     
-    [nSniffs,AllFR{whichodor}] = SniffAlignedPlot(handles.SelectedSniffs{whichodor}, handles.AllUnits.Spikes{whichUnit}, ...
+    [nSniffs{whichodor},AllFR{whichodor},SpikesPlot{whichodor}] = SniffAlignedPlot(handles.SelectedSniffs{whichodor}, handles.AllUnits.Spikes{whichUnit}, ...
                 'plotevents', 0, ...
                 'psth', handles.plotPSTH.Value, ...
                 'psthoffset', PSTHOffset, ...
                 'alignto', handles.SniffAlignment.Value, ...
                 'warptype', handles.WarpType.Value-1);
-    
-    set(gca, 'XLim', myXlim, 'YTick', []);
-    set(gca, 'YLim', handles.(['axes',num2str(whichodor)]).YLim);
     
     if handles.plotPSTH.Value
         FRLims(1) = max(FRLims(1), min(cell2mat(cellfun(@min, AllFR{whichodor}, 'UniformOutput', false))));
@@ -185,16 +204,24 @@ for whichodor = 1:3
     end
 end
 
-% plot PSTHs
-MyColors1 = brewermap(8,'YlOrRd');
-ColorList(1,:) = Plot_Colors('b'); % ITI sniffs
-ColorList(2,:) = MyColors1(4,:); % snifftype = 0 % approach
-ColorList(3,:) = MyColors1(6,:); % snifftype = 1 % settle
-ColorList(4,:) = MyColors1(7,:); % snifftype = 2 % at target
+for whichodor = 1:3
+% plotspikes
+myspikeplot = ['spikesplot',num2str(whichodor)];
+set(handles.(myspikeplot),'XData',SpikesPlot{whichodor}(:,1),'YData',SpikesPlot{whichodor}(:,2));
+end
+drawnow
+fprintf('plotting spikes: '); toc
 
 if handles.plotPSTH.Value
+    % plot PSTHs
+    MyColors1 = brewermap(8,'YlOrRd');
+    ColorList(1,:) = Plot_Colors('b'); % ITI sniffs
+    ColorList(2,:) = MyColors1(4,:); % snifftype = 0 % approach
+    ColorList(3,:) = MyColors1(6,:); % snifftype = 1 % settle
+    ColorList(4,:) = MyColors1(7,:); % snifftype = 2 % at target
+    
     for whichodor = 1:3
-        axes(handles.(['axes',num2str(whichodor+3)])); %#ok<LAXES>
+        axes(handles.(['Psth',num2str(whichodor)])); %#ok<LAXES>
         cla reset;
         hold on
         FR = AllFR{whichodor};
@@ -241,7 +268,12 @@ function NextUnit_Callback(hObject, eventdata, handles)
 % hObject    handle to NextUnit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.CurrentUnit.Data(1) = min(handles.CurrentUnit.Data(1)+1,str2double(handles.NumUnits.String));
+temp = rem(handles.CurrentUnit.Data(1)+1, str2double(handles.NumUnits.String));
+if ~temp
+    handles.CurrentUnit.Data(1) = str2double(handles.NumUnits.String);
+else
+    handles.CurrentUnit.Data(1) = temp;
+end
 UpdateUnits(handles);
 % Update handles structure
 guidata(hObject, handles);
@@ -251,7 +283,12 @@ function PrevUnit_Callback(hObject, eventdata, handles)
 % hObject    handle to PrevUnit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.CurrentUnit.Data(1) = max(handles.CurrentUnit.Data(1)-1,1);
+temp = rem(handles.CurrentUnit.Data(1)-1, str2double(handles.NumUnits.String));
+if ~temp
+    handles.CurrentUnit.Data(1) = str2double(handles.NumUnits.String);
+else
+    handles.CurrentUnit.Data(1) = temp;
+end
 UpdateUnits(handles);
 % Update handles structure
 guidata(hObject, handles);
@@ -287,9 +324,9 @@ function ShadeExhalation_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 for i = 1:3
     if handles.ShadeExhalation.Value
-        set(handles.(['axes',num2str(i)]).Children, 'Visible', 'on')
+        set(handles.(['Sniffs',num2str(i)]).Children, 'Visible', 'on')
     else
-        set(handles.(['axes',num2str(i)]).Children, 'Visible', 'off')
+        set(handles.(['Sniffs',num2str(i)]).Children, 'Visible', 'off')
     end
 end
 guidata(hObject, handles);
@@ -305,8 +342,8 @@ function xlims_Callback(hObject, eventdata, handles)
 myXlim = eval(handles.xlims.String); %[-0.1 1.1];
 
 for i = 1:3
-    set(handles.(['axes',num2str(i+0)]),'XLim', myXlim);
-    set(handles.(['axes',num2str(i+9)]),'XLim', myXlim);
+    set(handles.(['Sniffs',num2str(i)]),'XLim', myXlim);
+    set(handles.(['Spikes',num2str(i)]),'XLim', myXlim);
 end
 % Hints: get(hObject,'String') returns contents of xlims as text
 %        str2double(get(hObject,'String')) returns contents of xlims as a double

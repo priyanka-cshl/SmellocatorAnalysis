@@ -21,10 +21,14 @@ for n = 1:numel(OdorList)
     AllSniffs = [];
     
     %% for closed loop or replay trials
-    % get all unpertubed trials
-    whichtrials = find(cellfun(@isempty, TrialInfo.Perturbation(:,1))); % vanilla closed-loop
-    % also include trials marked as OL-Template - they are also just control trials
-    whichtrials = sort([whichtrials; find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'))]); % also used the template trials (no-perturbations)
+    if ~isfield(TrialInfo,'TuningTrialID')
+        % get all unpertubed trials
+        whichtrials = find(cellfun(@isempty, TrialInfo.Perturbation(:,1))); % vanilla closed-loop
+        % also include trials marked as OL-Template - they are also just control trials
+        whichtrials = sort([whichtrials; find(strcmp(TrialInfo.Perturbation(:,1),'OL-Template'))]); % also used the template trials (no-perturbations)
+    else
+        whichtrials = (1:size(TrialInfo.Odor,1))';
+    end
     % only keep trials of a particular odor
     if isfield(TrialInfo, 'Odor')
         whichtrials(find(TrialInfo.Odor(whichtrials)~=whichodor),:) = [];
@@ -46,8 +50,9 @@ for n = 1:numel(OdorList)
     
     % add a column for current sniff and inhalation duration
     AllSniffs(:,15:16) = AllSniffs(:,[9 8]) - AllSniffs(:,7);
-    
-    AllOdorSniffs{whichodor} = AllSniffs;
+    % add a column for previous sniff duration
+    AllSniffs(:,17) = AllSniffs(:,7) - AllSniffs(:,5);
+    AllOdorSniffs{n} = AllSniffs;
     
     % AllSniffs = sortrows(AllSniffs, [2 4 15]); % odorstate, snifftype and duration
 end
