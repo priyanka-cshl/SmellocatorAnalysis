@@ -15,9 +15,11 @@ function [TrialAlignedSniffs, RefTimeStamps] = GetWindowAlignedSniffs(trialtimes
 %                    0 (in trial, before first significant TZ entry)
 %                    1 (in trial, after first significant TZ entry)
 %                    2 (in target zone)
-%           Cols 5-10: are timestamps for prev, current and next sniffs
-%               PrevInhStart PrevInhEnd CurrentInhStart CurrentInhEnd NextInhStart NextInhEnd
-%           Cols 11-13: MotorLocation for prev, current, and next sniff
+%           Cols 5-11: are timestamps for prev, current and next sniffs
+%               PrevInhStart PrevInhEnd 
+%               CurrentInhStart CurrentInhEnd
+%               NextInhStart NextInhEnd NextExhEnd
+%           Cols 12-14: MotorLocation for prev, current, and next sniff
 %       : RefTimeStamp: [t x 1], where each entry is the reference window
 %           start time that was subtracted from the raw sniff timestamps
 
