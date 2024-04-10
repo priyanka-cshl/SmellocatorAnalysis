@@ -3,13 +3,15 @@
 
 %% Step 1: Get the spiking data and sniff parameters
 MySession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q4/Q4_20221109_r0_processed.mat';
-MyUnits = [2 55]; % 12 69 4 9 19 14 16 26 41 10];
 
 [TrialAligned, TrialInfo, ...
     ReplayAligned, ReplayInfo, ...
     TuningAligned, TuningInfo, ...
     AllUnits] = ...
     PreprocessSpikesAndSniffs(MySession);
+
+MyUnits = 1:size(AllUnits.ChannelInfo,1); % all Units
+%MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10];
 
 % get sniff time stamps and info for the sniffs we want to plot
 [SelectedSniffs] = SelectSniffs_forKernelFits(TrialAligned, TrialInfo, [1 2 3]);
@@ -46,15 +48,20 @@ for unitcount = 1:numel(MyUnits)
     
     % starting kernels
     [StartingKernels] = InitialKernelEstimates(SniffPSTHs, SniffParams, ...
-        'kernellength', 500, 'binsize', PSTHbinsize);
+        'kernellength', 700, 'binsize', PSTHbinsize);
     
     %kernelsIn{unitcount} = StartingKernels;
     [kernelsout{unitcount},resnorm,residual,exitflag,output] = GetSniffKernels(StartingKernels, SniffParams, SniffPSTHs, ...
                  'binsize', PSTHbinsize);
-             
-    fprintf(['took %d evals, \n', ...
-        'and has residual norm %f.\n'],...
-        output.funcCount, resnorm);
+    
+%              fprintf(['took %d evals and has residual norm %f.\n'],...
+%         output.funcCount, resnorm);
+%     
+%     [kernelsout2{unitcount},resnorm2,residual2,exitflag2,output2] = GetSniffKernels(kernelsout{unitcount}, SniffParams, SniffPSTHs, ...
+%                  'binsize', PSTHbinsize);
+%              
+%     fprintf(['took %d evals and has residual norm %f.\n'],...
+%         output2.funcCount, resnorm2);
     
 end
 
@@ -119,16 +126,19 @@ for unitcount = 1:numel(MyUnits)
         set(gca,'Clim',[0 blims(2)]);
     end
     set(gcf,'Position',[143 403 1653 420]);
-    saveas(gcf,fullfile('/home/priyanka/Desktop/sniffPSTHPredictions',['unit ',num2str(whichUnit),'.png']));
+    %saveas(gcf,fullfile('/home/priyanka/Desktop/sniffPSTHPredictions',['unit ',num2str(whichUnit),'.png']));
 end
 
+%%
 cf = []; 
 for i = 1:numel(MyUnits) 
     cf(i,:) = kernelsout{i}([1 end]); 
+    %cf(i,:) = kernelsout{i}([1 end-2:end]); 
 end
 figure('Name','location-coeffs & baselines')
 subplot(2,1,1);
-plot(cf(:,2),'-o'); %,'XTicklabel',MyUnits);
+%plot(cf(:,2:4),'-o'); %,'XTicklabel',MyUnits);
+plot(cf(:,2),'-o'); 
 xticks(1:numel(MyUnits));
 xticklabels(num2str(MyUnits'));
 
