@@ -86,9 +86,10 @@ for whichReplay = 1:nReplays % every replay
         
         % get subtrial indices from the matching Template
         templatetrials = abs(Templates.Trials(whichtemplate(1),:)); 
+        templatetrials = templatetrials(find(templatetrials)); % sometimes zeros get padded at the end - if templates have unequal no. of trials
         
         % Add a column in OdorTTLs (Col 5) for TrialStart w.r.t. Odor ON
-        OdorTTLs(:,5) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials,1);
+        OdorTTLs(:,5) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials,1); 
         % OdorTTLs(:,end+1) = OdorTTLs(:,1) - TrialInfo.OdorStart(templatetrials(find(templatetrials)),1);
         
         % get duration of the first trial - for aligning the first trial
