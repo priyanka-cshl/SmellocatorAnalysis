@@ -2,7 +2,17 @@
 %  of a given neuron and fit the ITI, Air and Odor kernels
 
 %% Step 1: Get the spiking data and sniff parameters
-MySession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q4/Q4_20221109_r0_processed.mat';
+%SessionName = 'Q4_20221109_r0';
+%SessionName = 'S12_20230731_r0';
+SessionName = 'Q9_20221116_r0';
+MySession = fullfile('/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/', ...
+                        SessionName(1:regexp(SessionName,'_','once')-1), ...
+                        [SessionName,'_processed.mat']);
+FigPath = ['/home/priyanka/Desktop/sniffPSTHPredictions/', SessionName(1:regexp(SessionName,'_','once')-1)];
+if ~exist(FigPath,'dir')
+    mkdir(FigPath);
+    fileattrib(FigPath, '+w','a');
+end
 
 [TrialAligned, TrialInfo, ...
     ReplayAligned, ReplayInfo, ...
@@ -10,8 +20,10 @@ MySession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q4/Q4_20221109
     AllUnits] = ...
     PreprocessSpikesAndSniffs(MySession);
 
-MyUnits = 1:size(AllUnits.ChannelInfo,1); % all Units
-%MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10];
+%MyUnits = 1:size(AllUnits.ChannelInfo,1); % all Units 
+%MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q4
+%MyUnits = [2 3 6 9 10 11 16 17 18 19 25 26 28 29 31 34 39 42 44 46 47 48 49 50 54 58 69 70 72 73 74 85 87 88 95 97]; % S12
+MyUnits = [1 11 15 18 19 23 28 29 36 39 43 49 94]; %Q9
 
 % get sniff time stamps and info for the sniffs we want to plot
 [SelectedSniffs] = SelectSniffs_forKernelFits(TrialAligned, TrialInfo, [1 2 3]);
@@ -126,7 +138,7 @@ for unitcount = 1:numel(MyUnits)
         set(gca,'Clim',[0 blims(2)]);
     end
     set(gcf,'Position',[143 403 1653 420]);
-    %saveas(gcf,fullfile('/home/priyanka/Desktop/sniffPSTHPredictions',['unit ',num2str(whichUnit),'.png']));
+    saveas(gcf,fullfile(FigPath,['unit ',num2str(whichUnit),'.png']));
 end
 
 %%
@@ -146,4 +158,4 @@ subplot(2,1,2);
 plot(cf(:,1),'-o'); %,'XTicklabel',MyUnits);
 xticks(1:numel(MyUnits));
 xticklabels(num2str(MyUnits'));
-saveas(gcf,fullfile('/home/priyanka/Desktop/sniffPSTHPredictions',['fittedcoeffs.png']));
+saveas(gcf,fullfile(FigPath,['fittedcoeffs.png']));
