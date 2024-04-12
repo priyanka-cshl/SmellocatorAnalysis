@@ -1,35 +1,35 @@
-function varargout = HaltSniffViewer(varargin)
-% HALTSNIFFVIEWER MATLAB code for HaltSniffViewer.fig
-%      HALTSNIFFVIEWER, by itself, creates a new HALTSNIFFVIEWER or raises the existing
+function varargout = TrialSniffViewer(varargin)
+% TRIALSNIFFVIEWER MATLAB code for TrialSniffViewer.fig
+%      TRIALSNIFFVIEWER, by itself, creates a new TRIALSNIFFVIEWER or raises the existing
 %      singleton*.
 %
-%      H = HALTSNIFFVIEWER returns the handle to a new HALTSNIFFVIEWER or the handle to
+%      H = TRIALSNIFFVIEWER returns the handle to a new TRIALSNIFFVIEWER or the handle to
 %      the existing singleton*.
 %
-%      HALTSNIFFVIEWER('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in HALTSNIFFVIEWER.M with the given input arguments.
+%      TRIALSNIFFVIEWER('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in TRIALSNIFFVIEWER.M with the given input arguments.
 %
-%      HALTSNIFFVIEWER('Property','Value',...) creates a new HALTSNIFFVIEWER or raises the
+%      TRIALSNIFFVIEWER('Property','Value',...) creates a new TRIALSNIFFVIEWER or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before HaltSniffViewer_OpeningFcn gets called.  An
+%      applied to the GUI before TrialSniffViewer_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to HaltSniffViewer_OpeningFcn via varargin.
+%      stop.  All inputs are passed to TrialSniffViewer_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help HaltSniffViewer
+% Edit the above text to modify the response to help TrialSniffViewer
 
-% Last Modified by GUIDE v2.5 26-Dec-2023 13:28:35
+% Last Modified by GUIDE v2.5 25-Jan-2024 15:15:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @HaltSniffViewer_OpeningFcn, ...
-                   'gui_OutputFcn',  @HaltSniffViewer_OutputFcn, ...
+                   'gui_OpeningFcn', @TrialSniffViewer_OpeningFcn, ...
+                   'gui_OutputFcn',  @TrialSniffViewer_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1}) && isempty(strfind(varargin{1},'.mat'))
@@ -44,15 +44,15 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before HaltSniffViewer is made visible.
-function HaltSniffViewer_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before TrialSniffViewer is made visible.
+function TrialSniffViewer_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to HaltSniffViewer (see VARARGIN)
+% varargin   command line arguments to TrialSniffViewer (see VARARGIN)
 
-% Choose default command line output for HaltSniffViewer
+% Choose default command line output for TrialSniffViewer
 handles.output = hObject;
 
 [Paths] = WhichComputer();
@@ -77,12 +77,12 @@ set(handles.axes12,'Color','none');
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes HaltSniffViewer wait for user response (see UIRESUME)
+% UIWAIT makes TrialSniffViewer wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = HaltSniffViewer_OutputFcn(hObject, eventdata, handles) 
+function varargout = TrialSniffViewer_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -113,6 +113,8 @@ MySession = handles.WhereSession.String;
 
 handles.SingleUnits = SingleUnits;
 handles.TimestampAdjuster = TimestampAdjuster;
+% load(handles.TrialInfo.SessionPath,'TimestampAdjust'); 
+% handles.TimestampAdjuster = TimestampAdjust.ClosedLoop;
 
 %% check that its a halt session - if not disable Halt only options
 if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip')) || ...
@@ -137,7 +139,24 @@ end
 %% same for replays
 if ~isempty(OpenLoop)
     
+    % parse Replay stretches into subtrials
     [handles.ReplayInfo] = ParseReplaysToSubtrials(OpenLoop,handles.TrialInfo,ReplayTTLs,TTLs);
+    
+    % get subtrial aligned sniffs
+    if any(handles.ReplayInfo.TrialID(:,1)>0) % active replays
+        % concate sniffs from closed loop and passive sessions
+        % passive are already in OEPS timebase, convert closed loop ones to
+        % OEPS time base
+        load(handles.TrialInfo.SessionPath,'SniffTS', 'SniffTS_passive','TimestampAdjust'); 
+        % closed-loop sniff timestamps are in behavior timebase,
+        % passive are in OEPS timebase
+        SniffTS = [ (SniffTS + TimestampAdjust.ClosedLoop) ; ...
+                    (SniffTS_passive + TimestampAdjust.Passive) ];
+    else
+        load(handles.TrialInfo.SessionPath,'SniffTS_passive','TimestampAdjust'); 
+        SniffTS = SniffTS_passive + TimestampAdjust.Passive;
+    end
+    ReplayAlignedSniffs = GetTrialAlignedSniffs(handles.ReplayInfo.trialtimes,SniffTS);
     
     % sniffs
     [handles.ReplayAlignedSniffs, handles.SniffAlignedReplaySpikes, handles.ReplayInfo] = ...

@@ -1,4 +1,4 @@
-function [x,FR,BinOffset,haltlocation] = PlotSortedSniffs(whichUnit, whichOdor, TrialAlignedSpikes, TrialAlignedSniffs, TrialInfo, varargin)
+function [x,FR,BinOffset,haltlocation] = PlotSortedSniffs_v2(whichUnit, whichOdor, TrialAligned, TrialInfo, varargin)
 
 narginchk(1,inf)
 params = inputParser;
@@ -23,7 +23,7 @@ warptype = params.Results.warptype;
 BehaviorSampRate = params.Results.BehaviorSampleRate;
 haltmode = params.Results.haltmode;
 
-plotting = whichUnit>0; % hack to use the same function for UnitViewer and for analysis
+plotting = whichUnit>0; % hack to use the same function for ViewerGUIs and for analysis
 whichUnit = abs(whichUnit);
 
 Xlims = -[0.1 1.1];
