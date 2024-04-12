@@ -176,7 +176,7 @@ end
 UpdateUnits(handles);
 
 function UpdateUnits(handles)
-whichUnit = handles.CurrentUnit.Data(1);
+whichUnit = handles.CurrentUnit.Data(1)
 MyColors1 = brewermap(8,'YlOrRd');
 MyColors2 = brewermap(15,'*OrRd');
 handles.tetrode.String = num2str(handles.whichtetrode(whichUnit,1));

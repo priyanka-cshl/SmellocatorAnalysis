@@ -125,7 +125,7 @@ whichUnit = handles.CurrentUnit.Data(1);
 axes(handles.SpikeAmplitudes);
 thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
 hold off
-plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.','Color',[0.8 0.8 0.8]);
+plot(handles.SingleUnits(whichUnit).spikes,thisunitamps,'.','Color',-0.8+[0.8 0.8 0.8],'MarkerSize',10);
 hold on
 session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
 line([session_end session_end],get(gca,'YLim'),'Color','k');
@@ -153,7 +153,7 @@ thisunitamps = thisunitamps/max(thisunitamps,[],'omitnan');
 hold off
 %plot(handles.SingleUnits(whichUnit).spikes,thisunitphases,'.');
 colormap('hsv');
-scatter(handles.SingleUnits(whichUnit).spikes,thisunitphases,15,thisunitamps,'.');
+scatter(handles.SingleUnits(whichUnit).spikes,thisunitphases,15,thisunitamps,'o','filled');
 set(gca,'YLim',eval(handles.RespScaling.String));
 hold on
 line([session_end session_end],get(gca,'YLim'),'Color','k');
