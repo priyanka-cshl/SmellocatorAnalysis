@@ -48,7 +48,7 @@ function [zdata] = sniff_out(StartingKernels,xdata)
     [zdata] = SniffKernels2PSTH(baseline,kernels,locationcoef,x_data);
     
 end
-zdata = [];
+%zdata = [];
 
 %% stop clock
 toc
