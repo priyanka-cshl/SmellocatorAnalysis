@@ -98,8 +98,14 @@ for x = 1:numel(allreplays) % for every unique replay stretch
     PlotBehavior(timestamps,[],[],[],[],Trial,[],20);
     hold on
     
+    SampleRate = 500;
+    fband = [0.1 30];
+    Np    = 4; % filter order
+    [b,a] = butter(Np,fband/(SampleRate/2)); % band pass Butterworth filter coefficients
+    
     % plot the sniffing
     Sniffs = MyTraces(:,3,1); % closed loop
+    Sniffs = filtfilt(b,a,Sniffs);
     plot(timestamps,2*(Sniffs/max(Sniffs)),'Color',Plot_Colors('k'),'LineWidth',2);
     
     % plot passive traces
@@ -107,6 +113,7 @@ for x = 1:numel(allreplays) % for every unique replay stretch
         ts = PassiveReplayTraces.Timestamps{p};
         ts = ts-ts(1);
         Sniffs = PassiveReplayTraces.Sniffs{p};
+        Sniffs = filtfilt(b,a,Sniffs);
         plot(ts,(p*3)+2*(Sniffs/max(Sniffs)),'Color',Plot_Colors('r'),'LineWidth',2);
     end
     

@@ -1,11 +1,12 @@
 function [] = QuickCheckReplay(MySessionName)
+SetupSmellocatorGlobals;
 Paths = WhichComputer();
 foo = regexp(MySessionName,'_','split');
 AnimalName = foo{1};
 MySession = fullfile(Paths.Grid.Behavior_processed,AnimalName,MySessionName);
 
 % Load the relevant variables
-load(MySession, 'Traces', 'TrialInfo', 'TTLs', 'ReplayTTLs', 'SingleUnits', 'PassiveReplayTraces');
+load(MySession, 'Traces', 'TrialInfo', 'TTLs', 'ReplayTTLs', 'SingleUnits', 'PassiveReplayTraces', 'TargetZones');
 PlotUnits = 8 + [1:8];
 [OpenLoop] = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
 
