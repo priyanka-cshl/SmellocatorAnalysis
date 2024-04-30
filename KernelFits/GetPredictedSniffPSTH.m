@@ -1,4 +1,4 @@
-function [PSTHOut] = GetPredictedSniffPSTH(SniffParams,EstimatedKernels,varargin)
+function [PSTHOut,kernels,locationcoef] = GetPredictedSniffPSTH(SniffParams,EstimatedKernels,varargin)
 
 narginchk(1,inf)
 params = inputParser;
