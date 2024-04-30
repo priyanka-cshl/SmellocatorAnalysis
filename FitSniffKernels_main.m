@@ -2,13 +2,19 @@
 %  of a given neuron and fit the ITI, Air and Odor kernels
 
 %% Step 1: Get the spiking data and sniff parameters
-%SessionName = 'Q4_20221109_r0';
-%SessionName = 'S12_20230731_r0';
-SessionName = 'Q9_20221116_r0';
+
+SessionName = 'Q4_20221109_r0'; MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q4
+
+%SessionName = 'S12_20230731_r0'; MyUnits = [2 3 6 9 10 11 16 17 18 19 25 26 28 29 31 34 39 42 44 46 47 48 49 50 54 58 69 70 72 73 74 85 87 88 95 97]; % S12
+%SessionName = 'Q9_20221116_r0'; MyUnits = [1 11 15 18 19 23 28 29 36 39 43 49 94]; %Q9
+%SessionName = 'Q8_20221204_r0'; MyUnits = [49 54 104]; %Q8
+%SessionName = 'Q3_20221019_r0'; MyUnits = [16 18]; %Q3
+%SessionName = 'O3_20210927_r0'; MyUnits = [2 3 7 9 11 13 14 15 19 25 27 28 33 35 42 43 45 48 54 58 59 62 66 72] % O3
+
 MySession = fullfile('/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/', ...
                         SessionName(1:regexp(SessionName,'_','once')-1), ...
                         [SessionName,'_processed.mat']);
-FigPath = ['/home/priyanka/Desktop/sniffPSTHPredictions/', SessionName(1:regexp(SessionName,'_','once')-1)];
+FigPath = ['/home/priyanka/Desktop/sniffPSTHPredictionsSoftMax/', SessionName(1:regexp(SessionName,'_','once')-1)];
 if ~exist(FigPath,'dir')
     mkdir(FigPath);
     fileattrib(FigPath, '+w','a');
@@ -20,23 +26,11 @@ end
     AllUnits] = ...
     PreprocessSpikesAndSniffs(MySession);
 
-%MyUnits = 1:size(AllUnits.ChannelInfo,1); % all Units 
-%MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q4
-%MyUnits = [2 3 6 9 10 11 16 17 18 19 25 26 28 29 31 34 39 42 44 46 47 48 49 50 54 58 69 70 72 73 74 85 87 88 95 97]; % S12
-MyUnits = [1 11 15 18 19 23 28 29 36 39 43 49 94]; %Q9
-
 % get sniff time stamps and info for the sniffs we want to plot
 [SelectedSniffs] = SelectSniffs_forKernelFits(TrialAligned, TrialInfo, [1 2 3]);
 
-% % sort the sniffs
-% sortorder = 1; % by Sniff Type, then sniff duration, then inh duration, then trial ID
-% for whichodor = 1:3
-%     SelectedSniffs{whichodor} = ...
-%         SortSniffs(SelectedSniffs{whichodor}, sortorder);
-% end
 %%
 PSTHbinsize = 10;
-
 for unitcount = 1:numel(MyUnits)
     whichUnit = MyUnits(unitcount);
     
@@ -58,23 +52,30 @@ for unitcount = 1:numel(MyUnits)
     % 5-6:  currsniffTrialID currsniffIndex ...
     % 7:10: prevsniffstate prevsniffloc previnhstart previnhend]
     
-    % starting kernels
-    [StartingKernels] = InitialKernelEstimates(SniffPSTHs, SniffParams, ...
-        'kernellength', 700, 'binsize', PSTHbinsize);
+    % Split sniffs into 2 halves
+    nsniffs = size(SniffParams,1);
+    AllsniffIDs = randperm(nsniffs);
+    sniffIDs{1} = AllsniffIDs(1:floor(nsniffs/2));
+    sniffIDs{2} = AllsniffIDs((1+floor(nsniffs/2)):end);
     
-    %kernelsIn{unitcount} = StartingKernels;
-    [kernelsout{unitcount},resnorm,residual,exitflag,output] = GetSniffKernels(StartingKernels, SniffParams, SniffPSTHs, ...
-                 'binsize', PSTHbinsize);
+    SniffsUsed{unitcount} = sniffIDs;
     
-%              fprintf(['took %d evals and has residual norm %f.\n'],...
-%         output.funcCount, resnorm);
-%     
-%     [kernelsout2{unitcount},resnorm2,residual2,exitflag2,output2] = GetSniffKernels(kernelsout{unitcount}, SniffParams, SniffPSTHs, ...
-%                  'binsize', PSTHbinsize);
-%              
-%     fprintf(['took %d evals and has residual norm %f.\n'],...
-%         output2.funcCount, resnorm2);
-    
+    for set = 1:2
+        
+        SniffPSTHs_  = SniffPSTHs(sniffIDs{set},:);
+        SniffPSTHs_  = SniffPSTHs_(:,1:(1+max(SniffPSTHs_(:,1))));
+        SniffParams_ = SniffParams(sniffIDs{set},:);
+        
+        % starting kernels
+        [StartingKernels] = InitialKernelEstimates(SniffPSTHs_, SniffParams_, ...
+            'kernellength', 700, 'binsize', PSTHbinsize);
+        
+        %kernelsIn{unitcount} = StartingKernels;
+        [kernelsout{unitcount,set},resnorm{unitcount,set},residual{unitcount,set},exitflag,output] = ...
+            GetSniffKernels(StartingKernels, SniffParams_, SniffPSTHs_, ...
+            'binsize', PSTHbinsize, 'rectifyFR', 0);
+        
+    end
 end
 
 

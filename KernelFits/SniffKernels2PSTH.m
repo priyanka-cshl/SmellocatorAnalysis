@@ -44,7 +44,7 @@ for i = 1:size(x_data,1) % every sniff
 end
 
 zdata = z_data;
-zdata(zdata<0) = 0;
+%zdata = MySoftPlus(z_data);
 for k = 1:size(zdata,1)
     zdata(k,(1+snifflengths(k,1)):end) = 0;
 end

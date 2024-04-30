@@ -8,11 +8,12 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('binsize', 10, @(x) isnumeric(x)); % in ms
-
+params.addParameter('rectifyFR', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
 binsize = params.Results.binsize;
+rectifyFR = params.Results.rectifyFR;
 
 % start clock
 tic
@@ -47,6 +48,9 @@ function [zdata] = sniff_out(StartingKernels,xdata)
     % get psth
     [zdata] = SniffKernels2PSTH(baseline,kernels,locationcoef,x_data);
     
+    if rectifyFR
+        zdata(zdata<0) = 0;
+    end
 end
 %zdata = [];
 
