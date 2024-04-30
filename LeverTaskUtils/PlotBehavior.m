@@ -1,7 +1,17 @@
-function [] = PlotBehavior(timestamps,Lever,Sniffs,Licks,Rewards,Trial,TZ,OdorBoxHeight)
+function [] = PlotBehavior(timestamps,Lever,Sniffs,Licks,Rewards,Trial,TZ,OdorBoxHeight,varargin)
+
+narginchk(1,inf)
+params = inputParser;
+params.CaseSensitive = false;
+params.addParameter('plotTF', true, @(x) islogical(x) || x==0 || x==1);
+
+% extract values from the inputParser
+params.parse(varargin{:});
+plotTF = params.Results.plotTF;
+
 if nargin<8
     OdorBoxHeight = 5;
-end
+end    
 
 %% Plots
 % Trials
@@ -28,7 +38,7 @@ handles.trial_off = fill(NaN,NaN,[1 1 1]);
 handles.trial_off.EdgeColor = 'none';
 
 if ~isempty(Trial)
-    if ~isempty(TZ)
+    if ~isempty(TZ) && plotTF
         [handles] = PlotToPatch_TrialTF(handles, Trial, timestamps, [0 OdorBoxHeight],mean(TZ,2));
         [handles] = PlotToPatch_Trial(handles, Trial, timestamps, [0 -1],1);
     else
@@ -42,11 +52,20 @@ end
 
 % TargetZone
 if ~isempty(TZ)
-    %handles.targetzone = fill(NaN,NaN,[1 1 0],'FaceAlpha',0.2);
-    handles.targetzone = fill(NaN,NaN,[1 1 1]);
-    handles.targetzone.EdgeColor = 'none';
-
-    [handles.targetzone] = PlotToPatch_TargetZone(handles.targetzone, abs(TZ), timestamps);
+    if plotTF
+        %handles.targetzone = fill(NaN,NaN,[1 1 0],'FaceAlpha',0.2);
+        handles.targetzone = fill(NaN,NaN,[1 1 1]);
+        handles.targetzone.EdgeColor = 'none';
+        
+        [handles.targetzone] = PlotToPatch_TargetZone(handles.targetzone, abs(TZ), timestamps);
+    else
+        handles.targetzone = fill(NaN,NaN,[1 1 0],'FaceAlpha',0.2);
+        %handles.targetzone = fill(NaN,NaN,[1 1 1]);
+        handles.targetzone.EdgeColor = 'none';
+        
+        [handles.targetzone] = PlotToPatch_TargetZone(handles.targetzone, abs(TZ), timestamps);
+    end
+    
 end
 
 % Lever
