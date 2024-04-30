@@ -60,6 +60,15 @@ for unitcount = 1:numel(SelectedUnits)
         subplot(2,8,i);
         set(gca,'Clim',[0 blims(2)]);
     end
+    
+    dt = 0.010; % in s
+    PSTHtemp = PSTHOut(whichsniffs(s),1:end);
+    figure; hold on
+    for s = 1:size(PSTHtemp,1)
+        [T] = PechePourPoisson(100*PSTHtemp(s,:),dt);
+        plot(T,s + 0*T, '.k','Markersize', 0.5);
+    end
+    
 end
 
 % 
