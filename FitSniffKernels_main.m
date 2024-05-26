@@ -3,8 +3,14 @@
 
 %% Step 1: Get the spiking data and sniff parameters
 
-SessionName = 'Q4_20221109_r0'; MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q4
-
+%SessionName = 'O9_20220630_r0'; MyUnits = [];
+%SessionName = 'O8_20220702_r0'; MyUnits = [];
+%SessionName = 'S12_20230804_r0'; MyUnits = [];
+%SessionName = 'Q4_20221109_r0'; MyUnits = [];
+%SessionName = 'Q8_20221204_r0'; MyUnits = [];
+%SessionName = 'Q9_20221116_r0'; MyUnits = [];
+SessionName = 'Q3_20221019_r0'; MyUnits = [];
+%SessionName = 'Q4_20221109_r0'; MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q4
 %SessionName = 'S12_20230731_r0'; MyUnits = [2 3 6 9 10 11 16 17 18 19 25 26 28 29 31 34 39 42 44 46 47 48 49 50 54 58 69 70 72 73 74 85 87 88 95 97]; % S12
 %SessionName = 'Q9_20221116_r0'; MyUnits = [1 11 15 18 19 23 28 29 36 39 43 49 94]; %Q9
 %SessionName = 'Q8_20221204_r0'; MyUnits = [49 54 104]; %Q8
@@ -14,7 +20,7 @@ SessionName = 'Q4_20221109_r0'; MyUnits = [2 55 12 69 4 9 19 14 16 26 41 10]; %Q
 MySession = fullfile('/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/', ...
                         SessionName(1:regexp(SessionName,'_','once')-1), ...
                         [SessionName,'_processed.mat']);
-FigPath = ['/home/priyanka/Desktop/sniffPSTHPredictionsSoftMax/', SessionName(1:regexp(SessionName,'_','once')-1)];
+FigPath = ['/home/priyanka/Desktop/sniffPSTHPredictions/', SessionName(1:regexp(SessionName,'_','once')-1)];
 if ~exist(FigPath,'dir')
     mkdir(FigPath);
     fileattrib(FigPath, '+w','a');
@@ -28,6 +34,10 @@ end
 
 % get sniff time stamps and info for the sniffs we want to plot
 [SelectedSniffs] = SelectSniffs_forKernelFits(TrialAligned, TrialInfo, [1 2 3]);
+
+if isempty(MyUnits)
+    MyUnits = 1:size(AllUnits.ChannelInfo,1); % all Units 
+end
 
 %%
 PSTHbinsize = 10;
@@ -58,26 +68,33 @@ for unitcount = 1:numel(MyUnits)
     sniffIDs{1} = AllsniffIDs(1:floor(nsniffs/2));
     sniffIDs{2} = AllsniffIDs((1+floor(nsniffs/2)):end);
     
-    SniffsUsed{unitcount} = sniffIDs;
+    %SniffsUsed{unitcount} = sniffIDs;
+    Sniffs.Params{unitcount} = SniffParams;
+    Sniffs.PSTHs{unitcount}  = SniffPSTHs;
     
-    for set = 1:2
-        
-        SniffPSTHs_  = SniffPSTHs(sniffIDs{set},:);
+    for sniffset = 1:2
+      
+        Sniffs.IDs{unitcount}{sniffset} = sniffIDs{sniffset};
+              
+        SniffPSTHs_  = SniffPSTHs(sniffIDs{sniffset},:);
         SniffPSTHs_  = SniffPSTHs_(:,1:(1+max(SniffPSTHs_(:,1))));
-        SniffParams_ = SniffParams(sniffIDs{set},:);
+        SniffParams_ = SniffParams(sniffIDs{sniffset},:);
         
         % starting kernels
         [StartingKernels] = InitialKernelEstimates(SniffPSTHs_, SniffParams_, ...
             'kernellength', 700, 'binsize', PSTHbinsize);
         
         %kernelsIn{unitcount} = StartingKernels;
-        [kernelsout{unitcount,set},resnorm{unitcount,set},residual{unitcount,set},exitflag,output] = ...
+        [kernelsout{unitcount,sniffset},resnorm{unitcount,sniffset},residual{unitcount,sniffset},exitflag,output] = ...
             GetSniffKernels(StartingKernels, SniffParams_, SniffPSTHs_, ...
             'binsize', PSTHbinsize, 'rectifyFR', 0);
         
     end
 end
 
+%%
+SavePath = fullfile(FigPath,[SessionName(1:regexp(SessionName,'_r','once')-1),'_sniffs.mat']);
+save(SavePath,'SessionName','MyUnits','Sniffs','kernelsout','PSTHbinsize');
 
 %% compare PSTH
 %MyUnits = sort(MyUnits);
@@ -140,6 +157,7 @@ for unitcount = 1:numel(MyUnits)
     end
     set(gcf,'Position',[143 403 1653 420]);
     saveas(gcf,fullfile(FigPath,['unit ',num2str(whichUnit),'.png']));
+    close all
 end
 
 %%
@@ -160,3 +178,8 @@ plot(cf(:,1),'-o'); %,'XTicklabel',MyUnits);
 xticks(1:numel(MyUnits));
 xticklabels(num2str(MyUnits'));
 saveas(gcf,fullfile(FigPath,['fittedcoeffs.png']));
+
+close all
+
+disp('done!');
+
