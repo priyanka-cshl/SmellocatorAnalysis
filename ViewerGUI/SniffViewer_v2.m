@@ -22,7 +22,7 @@ function varargout = SniffViewer_v2(varargin)
 
 % Edit the above text to modify the response to help SniffViewer_v2
 
-% Last Modified by GUIDE v2.5 29-Feb-2024 11:17:39
+% Last Modified by GUIDE v2.5 25-Jun-2024 15:19:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -133,6 +133,21 @@ fprintf('loading data: '); toc
 
 handles = UpdatePlots(hObject, eventdata, handles);
 
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes on button press in ReloadUnits.
+function ReloadUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to ReloadUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% need to reprocess single units 
+[SingleUnits] = ReSaveSingleUnits(handles.WhereSession.String);
+for whichunit = 1:size(SingleUnits,2)
+    handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
+    handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
+end
+handles.NumUnits.String = num2str(size(handles.AllUnits.Spikes,2));
 % Update handles structure
 guidata(hObject, handles);
 
@@ -347,3 +362,5 @@ for i = 1:3
 end
 % Hints: get(hObject,'String') returns contents of xlims as text
 %        str2double(get(hObject,'String')) returns contents of xlims as a double
+
+
