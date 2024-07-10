@@ -90,7 +90,8 @@ end
 %% set up the model
 % start with random kernels
 
-for thisunit = 1:numel(MyUnits)
+for thisunit = 26 %1:numel(MyUnits)
+    tic
     unitid = MyUnits(thisunit);
     InputVector(7,:) = PSTHs(unitid,:);
     kernelLength = 700; % in ms
@@ -98,17 +99,21 @@ for thisunit = 1:numel(MyUnits)
     Eval_max = 1e+6; Iter_max = 1e+6; model_fit = @sniff_out; lb = -100 + 0*StartingKernels; ub = 100 + 0*StartingKernels;
     Fun_Tol  = 1e-8; Step_Tol = 1e-8;
     options = optimset('MaxFunEvals',Eval_max,'MaxIter',Iter_max); %,'TolFun',Fun_Tol,'TolX',Step_Tol);
-    [fittedkernel{thisunit}] = fmincon(@(parameters)ssq(parameters,InputVector),StartingKernels,[],[],[],[],lb,ub,[],options);
-    
+    %[fittedkernel{thisunit}] = fmincon(@(parameters)ssq(parameters,InputVector),StartingKernels,[],[],[],[],lb,ub,[],options);
+    [fittedkernel{thisunit}] = fminunc(@(parameters)ssq(parameters,InputVector),StartingKernels,options);
+    toc
 end
 
 function SSE = ssq(parameters,x)
 
     predictors = x(1:6,:);
     data = x(7,:);
+    %datasmooth = sgolayfilt(data,1,5);
     [baseline,kernels,locationcoef] = ParseSniffKernels(parameters);
     [fitted] = SniffKernels2continuousPSTH(baseline,kernels,locationcoef,predictors);
+    fitted(fitted<0) = 0;
     error1 = fitted-data;
+    %error1 = fitted-datasmooth;
     SSE = sum(error1.^2);
 end
 
