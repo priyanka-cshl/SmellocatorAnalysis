@@ -82,6 +82,37 @@ SniffTS = [];
 sortlocs = compute_sortlocs(locs_ex,locs_in);
 while any(diff(sortlocs(:,3))==0)
     
+    
+    details = 'Peak/Valley Curation';
+    gui_fig = uifigure('position',[745 420 430 240]);
+    opt_list = {'Option 1','Option 2','Option 3'};
+    opt_list2 = {'Option 1','Option 2','Option 3'};
+    uilabel(gui_fig,'text',char(details),'Position',[62 203 400 22]);
+    uilabel(gui_fig,'text','Sub-category','Position',[62 102 331 22]);
+    field1 = uidropdown(gui_fig,'Items',opt_list,'Editable','on','Position',[64 143 329 22]);
+    uilabel(gui_fig,'text','Category','Position',[62 164 331 22]);
+    field2 = uidropdown(gui_fig,'Items',opt_list2,'Editable','on','Position',[64 81 329 22]);
+    uibutton(gui_fig,'push','Position',[64 32 100 22],'Text','Ok','ButtonPushedFcn',@ok_fun);
+    uibutton(gui_fig,'push','Position',[293 32 100 22],'Text','Cancel','ButtonPushedFcn',@cancel_fun);
+    % you can initialize output variables here, or define them
+    % ALL in each of ok_fun and cancel_fun:
+    str1 = '';
+    str2 = '';
+    cancel = 0;
+    % set gui_fig's CloseRequestFcn to @cancel_fun in case the user closes it
+    % the without clicking the Cancel button, but instead uses the X button (e.g., in
+    % the upper-right corner in Windows). In that case, you still want
+    % cancel_fun to have run and set cancel=1.
+    set(gui_fig,'CloseRequestFcn',@cancel_fun);
+    
+    % don't return until gui_fig is deleted:
+    waitfor(gui_fig);
+
+    
+    
+    
+    
+    
     figure;
     %fig = uifigure("Name","Peak/Valley curation");
     plot(RespirationData(:,1),TH_filt);
@@ -187,6 +218,23 @@ end
         temp(temp>0) = 1;
         temp(temp<0) = 0;
         sortlocs(:,3) = temp;
+    end
+
+    function ok_fun(~,~)
+        disp('ahh')
+        str1 = field1.Value;
+        str2 = field2.Value;
+%         cancel = 0; % make sure you define all output variables, either
+                      % here and in cancel_fun, or set default values in
+                      % the parent function above
+        closereq()
+    end
+    function cancel_fun(~,~)
+        disp('cancel')
+%         str = ''; % define all output variables
+%         str = '';
+        cancel = 1;
+        closereq()
     end
 
 end
