@@ -41,7 +41,9 @@ if ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
         keyboard;
     end
     
+    % Lever, OdorLocation, Sniffs, TrialState, Rewards, Licks, Timestamps
     LeverOEPS = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(43,:);
+    SniffsOEPS
     % rescale 
     LeverOEPS = 2.5 + (double(LeverOEPS)/12800);
     
@@ -92,5 +94,26 @@ if ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
     %LeverSnippet 
 end
 
+function [MyData] = patch_smellocatordata_gap(drop_point,MyData)
+% drop_points = last index in MyData after which the samples got dropped.
+% MyData = actual old data with the timestamp drops
 
+% 1. create a dummy block
+ts_before   = MyData(drop_point,1);
+ts_after    = MyData(drop_point+1,1);
+ts_dropped  = (ts_before + 0.002):0.002:(ts_after - 0.002);
+DummyBlock  = nan(numel(ts_dropped),size(MyData,2));
+
+idx_trialoff    = find(MyData((drop_point+1):end,6)==0,1,'first') + drop_point;
+ts_full         = [ts_dropped MyData((drop_point+1):idx_trialoff,1)'];
+[~,idx_OEPS(1)] = min(abs(TS-ts_full(1)-TimestampAdjust.ClosedLoop));
+[~,idx_OEPS(2)] = min(abs(TS-ts_full(end)-TimestampAdjust.ClosedLoop));
+
+idx_ephys = idx_OEPS(1):idx_OEPS(2);
+ts_OEPS   = TS(idx_ephys);
+% Thermistor, Lever, Piezo, RE
+Traces_OEPS(:,1) = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(42:45,:); 
+
+
+end
 %end
