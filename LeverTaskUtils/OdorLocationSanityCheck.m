@@ -7,9 +7,22 @@ checkflags = [0 0 0];
 MotorCol = find(cellfun(@isempty,regexp(DataTags,'Motor'))==0);
 EncoderCol = find(cellfun(@isempty,regexp(DataTags,'Encoder'))==0);
 
+% if samples were patched - there will be Nan values in the MotorCol
+MotorAnalog = MyData(:,EncoderCol);
+MotorDiscrete = MyData(:,MotorCol);
+% ignore any NaN values
+MotorAnalog(find(isnan(MotorDiscrete)),:) = [];
+MotorDiscrete(find(isnan(MotorDiscrete)),:) = [];
+
 % check that TEENSY analog output had no drift
-[coeff,gof] = fit(MyData(:,MotorCol),MyData(:,EncoderCol),'poly1');
+%[coeff,gof] = fit(MyData(:,MotorCol),MyData(:,EncoderCol),'poly1');
+[coeff,gof] = fit(MotorAnalog,MotorDiscrete,'poly1');
 checkflags(1) = (gof.rsquare > 0.98);
+
+if any(isnan(MyData(:,MotorCol))) && checkflags(1)
+    nanpoints = find(isnan(MyData(:,MotorCol)));
+    MyData(nanpoints,MotorCol) = coeff.p1*MyData(nanpoints,EncoderCol) + coeff.p2;
+end
 
 % check if Motor Position values were ~0 whenever the Motor physically
 % crossed home - interrupted the photodiode

@@ -8,6 +8,25 @@ end
 
 [MyData, MyParams, DataTags, TFtype] = LoadSessionData(FileName, 0, PIDflag);
 
+%% check if samples were dropped and pad those in from the OEPS file if possible
+drop_points = find(abs(diff(MyData(:,1)))>0.01); % indices at which timestamps were dropped
+if ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
+    % all timestamps were dropped at trial starts
+    disp('Timestamps dropped at trial starts, finding the OEPS file to patch smaples ...');
+    
+    % find the ephys file
+    [FilePaths, MyFileName] = fileparts(FileName);
+    [myEphysdir] = WhereRawOEPS(MyFileName,FilePaths);
+    if ~isempty(myEphysdir)
+        disp('found Ephys File.. Starting data patch ..');
+        [MyData] = PatchSampleDrops(MyData, myEphysdir);
+    else
+        disp('could not find an Ephys file');
+        keyboard;
+    end
+    
+end
+
 %% clean up params table
 % HACK 1: only keep entries that have non-zero timestamps
 MyParams(1: find(MyParams(:,1)==0,1,'last')-1,:) = [];

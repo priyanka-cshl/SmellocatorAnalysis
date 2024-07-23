@@ -177,7 +177,13 @@ if ~isempty(TTLs)
 end
 
 %% Sniffs
-[SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
+% [SniffTS] = ReadThermistorData(MyFilePath); % in behavior timestamps
+if any(ismember(DataTags,'thermistor'))
+    [SniffTS] = Thermistor2Sniffs(MyData(:,[1 find(ismember(DataTags,'thermistor')) find(ismember(DataTags,'Motor'))]));
+else
+    SniffTS = [];
+end
+
 % calculate the timestamp difference between Ephys and Behavior
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
 TrialStart_Ephys = TTLs.Trial(1,2);
