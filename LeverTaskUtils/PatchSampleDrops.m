@@ -104,16 +104,30 @@ ts_after    = MyData(drop_point+1,1);
 ts_dropped  = (ts_before + 0.002):0.002:(ts_after - 0.002);
 DummyBlock  = nan(numel(ts_dropped),size(MyData,2));
 
+% 2. find trial off indices and timestamps
 idx_trialoff    = find(MyData((drop_point+1):end,6)==0,1,'first') + drop_point;
 ts_full         = [ts_dropped MyData((drop_point+1):idx_trialoff,1)'];
+
+% 3. convert to OEPS indices to get the correct trace portions out
 [~,idx_OEPS(1)] = min(abs(TS-ts_full(1)-TimestampAdjust.ClosedLoop));
 [~,idx_OEPS(2)] = min(abs(TS-ts_full(end)-TimestampAdjust.ClosedLoop));
-
 idx_ephys = idx_OEPS(1):idx_OEPS(2);
 ts_OEPS   = TS(idx_ephys);
 % Thermistor, Lever, Piezo, RE
-Traces_OEPS(:,1) = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(42:45,:); 
+Traces_OEPS = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(42:45,:);
 
+% 4. interpolate to get traces at behavior resolution
+% Vq = interp1(X,V,Xq)
+Traces_interp = interp1( (ts_OEPS-ts_OEPS(1)), (Traces_OEPS), (ts_full-ts_full(1)) );
+
+% 5. get behavior traces to confirm the match
+whichcolumns = [15 4 10 5]; % Thermistor, Lever, Piezo, RE
+Data_B = MyData((drop_point+1):idx_trialoff,whichcolumns);
+% which portion of the interpolated traces to compare?
+[~,idx_split] = min(abs(ts_full-ts_after));
+Data_E = Traces_interp(idx_split:end,:);
+
+% 6. compare
 
 end
 %end
