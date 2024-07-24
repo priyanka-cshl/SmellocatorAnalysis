@@ -114,11 +114,11 @@ end
                         keyboard;
                     end
                     
-                    % fix InTargetZone vector - just put to zero - Lever
-                    % cannot be in target zone at these points
-                    % fix Rewards vector - just put to zero - no rewards
-                    % here
-                    % fix HomeSensor vector - just put to zero - no home here
+                    % fix InTargetZone(7), Rewards and(9) HomeSensor cols (14)
+                    % just put them all to zero
+                    % Lever can't be in target zone post init and pretrial start
+                    % no rewards in this window
+                    % home not possible either
                     DummyBlock(:,[7 9 14]) = 0;
                     
                     % Missing Licks - patch in from OEPS
@@ -127,63 +127,36 @@ end
                     missinglicksOff = intersect(find(TTLs.Licks(:,2)>=ts_dropped(1)+TSadjuster), ...
                         find(TTLs.Licks(:,2)<=ts_dropped(end)+TSadjuster));
                     if isempty(missinglicksOn) && isempty(missinglicksOff)
+                        % no licks found
                         DummyBlock(:,10) = 0;
                     else
+                        % licks found
                         AllLicks = vertcat([missinglicksOn ones(numel(missinglicksOn),1)],[missinglicksOff zeros(numel(missinglicksOff),1)]);
                         AllLicks = sortrows(AllLicks,1);
-                        
-                        if ~AllLicks(1,2)==MyData(drop_point,10) && AllLicks(end,2)==MyData(drop_point+1,10)
-                            if size(AllLicks,1)>1
-                                DummyBlock(:,10) = ~AllLicks(1,2);
-                                for l = 2:2:size(AllLicks,1)
-                                    [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l-1),1)));
-                                    [~,lickstop] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l),2)));
-                                    DummyBlock(lickstart:lickstop,10) = AllLicks(1,2);
+                        % are these legit detections
+                        if ~AllLicks(1,2)==MyData(drop_point,10) %&& AllLicks(end,2)==MyData(drop_point+1,10)
+                            for l = 1:size(AllLicks,1)
+                                % get indices in the dropped trace
+                                if AllLicks(l,2)
+                                    [~,AllLicks(l,3)] = min(abs(ts_dropped+TSadjuster - TTLs.Licks(AllLicks(l),1)));
+                                else
+                                    [~,AllLicks(l,3)] = min(abs(ts_dropped+TSadjuster - TTLs.Licks(AllLicks(l),2)));
                                 end
-                                
-                                if l < size(AllLicks,1) % last transition
-                                    [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(1),1)));
-                                end
-                            else
-                                DummyBlock(:,10) = ~AllLicks(1,2);
-                                [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(1),1)));
-                                DummyBlock(lickstart:end,10) = AllLicks(1,2);
                             end
-                            
+                            if mod(size(AllLicks,1),2)
+                                AllLicks(end+1,:) = [NaN ~AllLicks(end,2) size(DummyBlock,1)];
+                            end
+                            for l = 2:2:size(AllLicks,1)
+                                DummyBlock(:,10) = ~AllLicks(1,2);
+                                DummyBlock(AllLicks(l-1,3):AllLicks(l,3),10) = AllLicks(1,2);
+                            end
                         else
                             disp('lick transitions do not make sense');
                             keyboard;
+                            % DummyBlock(:,10) = 0;
                         end
-                                if AllLicks(1,2)
-                                    DummyBlock(:,10) = 0;
-                                    [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(1),1)));
-                                    DummyBlock(lickstart:end,10) = 1;
-                                else
-                                    DummyBlock(:,10) = 1;
-                                    [~,lickstop] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(1),2)));
-                                    DummyBlock(lickstart:end,10) = 2;
-                                end
-                        elseif ~mod(size(AllLicks,1),2) && ~AllLicks(1,2)==MyData(drop_point,10) && AllLicks(end,2)==MyData(drop_point+1,10)
-                            if AllLicks(1,2) 
-                                DummyBlock(:,10) = 0;
-                                for l = 1:2:size(AllLicks,1)
-                                    [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l),1)));
-                                    [~,lickstop] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l+1),2)));
-                                    DummyBlock(lickstart:lickstop,10) = 1;
-                                end
-                            else
-                                DummyBlock(:,10) = 1;
-                                for l = 1:2:size(AllLicks,1)
-                                    [~,lickstart] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l),1)));
-                                    [~,lickstop] = min(abs(ts_dropped+TSadjuster-TTLs.Licks(AllLicks(l+1),2)));
-                                    DummyBlock(lickstart:lickstop,10) = 0;
-                                end
-                            end
-                        else
-                            keyboard;
-                        end
+                                
                     end
-                    
                 end
             else
                 if (n == 1) || (n == 2)
