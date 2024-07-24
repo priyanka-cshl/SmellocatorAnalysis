@@ -78,7 +78,7 @@ else
     % append another column to keep lick piezo anyway
     whichcol = find(ismember(Temp.session_data.trace_legend,'lickpiezo'));
     MyData(:,18) = MyTraces(:,whichcol);
-    DataTags(18) = {'PiezoLicks'};
+    DataTags(18) = {'LickPiezo'};
     
     if PIDflag == 2
         % replace column 10 - licks - with lick piezo

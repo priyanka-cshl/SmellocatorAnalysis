@@ -134,7 +134,7 @@ end
 
 % Load the relevant variables
 if isempty(strfind(handles.WhereSession.String,'_processed.mat'))
-    [MyData, MySettings, DataTags] = ReadSessionData(handles.WhereSession.String);
+    [MyData, MySettings, DataTags] = ReadSessionData(handles.WhereSession.String,'Fastmode',1);
     [Trials] = CorrectMatlabSampleDrops(MyData, MySettings, DataTags);
     [MyData, DataTags] = OdorLocationSanityCheck(MyData, DataTags);
     [Traces, TrialInfo] = ParseBehavior2Trials(MyData, MySettings, DataTags, Trials);
