@@ -14,6 +14,11 @@ TrialOn.behavior = MyData(find(diff(MyData(:,6))>0,5,'first'),1);
 
 if ~any((diff(TrialOn.behavior) - diff(TTLs.Trial(1:5,1))) > 0.05)
     TimestampAdjust.ClosedLoop = median(TTLs.Trial(1:5,1) - TrialOn.behavior);
+    % make sure that OEPS didn't crash midway
+    if ~any(TS>MyData(end,1)+TimestampAdjust.ClosedLoop)
+        disp('OEPS crashed mid-session - aborting patch sample drops');
+        return;
+    end
 else
     disp('could not match trial times to calculate timestampadjust');
     keyboard;
@@ -56,7 +61,7 @@ end
         idx_ephys = idx_OEPS(1):idx_OEPS(2);
         ts_OEPS   = TS(idx_ephys);
         % Lever, RE, Thermistor, Piezo
-        Traces_OEPS = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples([43 45 42 44],idx_ephys)';
+        Traces_OEPS = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples([43 45 41 44],idx_ephys)';
         Traces_OEPS = 2.5 + (double(Traces_OEPS)/12800);
         
         % 4. interpolate to get traces at behavior resolution
@@ -78,6 +83,9 @@ end
         % 7. compare
         for n = 1:4
             if nanmedian(abs(Data_E(:,n)-trace_offset(n) - Data_B(:,n))) < 0.025
+                if n == 3
+                    disp('thermistor matched!');
+                end
                 % good match
                 [~,~,which_idx] = intersect(ts_dropped,ts_full);
                 DummyBlock(:,whichcolumns(n)) = Traces_interp(which_idx,n) - trace_offset(n);
@@ -152,8 +160,8 @@ end
                             end
                         else
                             disp('lick transitions do not make sense');
-                            keyboard;
-                            % DummyBlock(:,10) = 0;
+                            % keyboard;
+                            DummyBlock(:,10) = 0;
                         end
                                 
                     end

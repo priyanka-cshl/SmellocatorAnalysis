@@ -12,6 +12,14 @@ params.parse(varargin{:});
 SampleRate = params.Results.samplerate;
 plotting = params.Results.plotting;
 
+% was odorlocation info provided?
+if size(RespirationData,2) == 3
+    OdorLocations = RespirationData(:,3);
+    RespirationData(:,3) = [];
+else
+    OdorLocations = [];
+end
+
 % default settings for filtering
 fband = [0.1 30];
 Np    = 4; % filter order
@@ -102,6 +110,27 @@ while any(diff(sortlocs(:,3))==0)
     end
     sortlocs = compute_sortlocs(locs_ex,locs_in);
     close(gcf);
+end
+
+firstinhalation = find(sortlocs(:,3)==0,1,"first");
+for i = firstinhalation:2:size(sortlocs,1) % every inhalation
+    if i > 1
+        sniffstart = RespirationData(sortlocs(i-1,1),1);
+    else
+        sniffstart = NaN;
+    end
+    sniffend    = RespirationData(sortlocs(i,1),1);
+    if i < size(sortlocs,1)
+        nextsniff   = RespirationData(sortlocs(i+1,1),1);
+    else
+        nextsniff   = NaN;
+    end
+    if ~isempty(OdorLocations) && ~isnan(sniffstart)
+        thisTrialOdorLocation = median(OdorLocations(sortlocs(i-1):sortlocs(i,1)));
+        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff thisTrialOdorLocation]);
+    else
+        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff NaN]);
+    end
 end
 
 %% function definitions

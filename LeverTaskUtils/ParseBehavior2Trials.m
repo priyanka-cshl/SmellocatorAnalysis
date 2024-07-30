@@ -41,6 +41,8 @@ LickCol = find(cellfun(@isempty,regexp(DataTags,'Licks'))==0);
 RewardCol = find(cellfun(@isempty,regexp(DataTags,'Rewards'))==0);
 TZoneCol = find(cellfun(@isempty,regexp(DataTags,'InTargetZone'))==0);
 RZoneCol = find(cellfun(@isempty,regexp(DataTags,'InRewardZone'))==0);
+PiezoCol = find(cellfun(@isempty,regexp(DataTags,'LickPiezo'))==0);
+
 if ~isempty(find(cellfun(@isempty,regexp(DataTags,'thermistor'))==0))
     RespCol = find(cellfun(@isempty,regexp(DataTags,'thermistor'))==0);
 else
@@ -91,6 +93,7 @@ for thisTrial = 1:numel(TrialOn)
         Traces.Sniffs(thisTrial) = { MyData(start_idxCorrected:stop_idxCorrected, RespCol) };
         
         Traces.Licks(thisTrial) = { MyData(start_idx:stop_idx, LickCol) };
+        Traces.Piezo(thisTrial) = { MyData(start_idx:stop_idx, PiezoCol) };
         Traces.Trial(thisTrial) = { MyData(start_idx:stop_idx, TrialCol) };
         Traces.Rewards(thisTrial) = { MyData(start_idx:stop_idx, RewardCol) };
         
@@ -118,6 +121,7 @@ for thisTrial = 1:numel(TrialOn)
                Traces.Motor{thisTrial} = [Traces.Motor{thisTrial}(1:f); Inf(samples_missing,1); Traces.Motor{thisTrial}(f+1:end)];
                Traces.Sniffs{thisTrial} = [Traces.Sniffs{thisTrial}(1:f); Inf(samples_missing,1); Traces.Sniffs{thisTrial}(f+1:end)];
                Traces.Licks{thisTrial} = [Traces.Licks{thisTrial}(1:f); Inf(samples_missing,1); Traces.Licks{thisTrial}(f+1:end)];
+               Traces.Piezo{thisTrial} = [Traces.Piezo{thisTrial}(1:f); Inf(samples_missing,1); Traces.Piezo{thisTrial}(f+1:end)];
                Traces.Rewards{thisTrial} = [Traces.Rewards{thisTrial}(1:f); Inf(samples_missing,1); Traces.Rewards{thisTrial}(f+1:end)];
                % making an assumption here
                Traces.Trial{thisTrial} = [Traces.Trial{thisTrial}(1:f); zeros(samples_missing-1,1); 1; Traces.Trial{thisTrial}(f+1:end)];
@@ -328,7 +332,7 @@ for thisTrial = 1:numel(TrialOn)
                         end
                     case 1100 % block shift perturbations
                         TrialInfo.Perturbation{thisTrial,1} = 'BlockShift';
-                        TrialInfo.Perturbation(thisTrial,2) = PerturbationValue; % shift amount
+                        TrialInfo.Perturbation{thisTrial,2} = PerturbationValue; % shift amount
                     case 1400
                         if thisTrial>1
                             TrialInfo.Perturbation{thisTrial,1} = 'RuleReversal';

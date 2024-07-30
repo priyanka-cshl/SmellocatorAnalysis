@@ -7,7 +7,7 @@ function [MyData, MyParams, DataTags] = ReadSessionData(FileName, varargin)
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
-params.addParameter('PIDmode', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('PIDmode', 0, @(x) isnumeric(x));
 params.addParameter('Fastmode', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
@@ -25,7 +25,7 @@ Patchdatagaps = ~params.Results.Fastmode;
 if Patchdatagaps
     %% check if samples were dropped and pad those in from the OEPS file if possible
     drop_points = find(abs(diff(MyData(:,1)))>0.01); % indices at which timestamps were dropped
-    if ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
+    if ~isempty(drop_points) && ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
         % all timestamps were dropped at trial starts
         disp('Timestamps dropped at trial starts, finding the OEPS file to patch smaples ...');
         
