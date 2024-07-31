@@ -1,4 +1,8 @@
-function [] = PlotTrialPeriod(TrialDeets)
+function [] = PlotTrialPeriod(TrialDeets,perturbcode)
+
+if nargin<2
+    perturbcode = 0;
+end
 
 %TrialDeets = n x 3; n = no. of trials, each row = on and off indices, TZ value
 TS = TrialDeets(:,1:2)';
@@ -15,6 +19,11 @@ for x = 1:size(TrialDeets,1)
     myVertexColor(x,[2 3]) = numel(abs(myTZ(x,1)):0.0458:5);
 end
 myVertexColor = myVertexColor';
+
+if perturbcode == 2 % rule reversal
+    myVertexColor = -myVertexColor;
+end
+
 
 fill(myVertices(:,1),myVertices(:,2),[1 1 0],...
     'EdgeColor','none',...
