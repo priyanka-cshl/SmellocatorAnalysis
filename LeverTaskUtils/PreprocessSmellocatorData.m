@@ -184,11 +184,16 @@ else
     SniffTS = [];
 end
 
-% calculate the timestamp difference between Ephys and Behavior
+%% calculate the timestamp difference between Ephys and Behavior
 TrialStart_behavior = TrialInfo.SessionTimestamps(1,2);
 TrialStart_Ephys = TTLs.Trial(1,2);
-% factor to convert all behavior timestamps to match Ephys
-TimestampAdjust.ClosedLoop = TrialStart_Ephys - TrialStart_behavior; % add to behavior TS to convert to OEPS
+if ~any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TrialStart_Ephys - TrialStart_behavior))>0.04)
+    % factor to convert all behavior timestamps to match Ephys
+    TimestampAdjust.ClosedLoop = TrialStart_Ephys - TrialStart_behavior; % add to behavior TS to convert to OEPS
+else
+    disp('clock drift in ephys and behavior files');
+    keyboard;
+end
 
 [SniffTS_passive] = ReadThermistorData(TuningFile); % in behavior timestamps
 % for the passive case, convert sniff timestamps to OEPS base
