@@ -151,7 +151,14 @@ TuningAligned.EventsLegends = [];
 %% 6: Process Sniffs
 load(TrialInfo.SessionPath,'SniffTS', 'SniffTS_passive','TimestampAdjust');
 % Sniffs are in behavior timebase
+
 % use TimestampAdjust to convert to OEPS timebase
+% check that there was no clock drift
+if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+    disp('clock drift in ephys and behavior files');
+    keyboard;
+end
+
 AllSniffs = [ (SniffTS(:,1:3) + TimestampAdjust.ClosedLoop)  SniffTS(:,4); ...
     (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
 
