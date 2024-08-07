@@ -271,6 +271,9 @@ for i = 1:3
         [~, ActiveReplayFRs, PassiveReplayFRs] = ...
             AddReplay2FullSession(trialsdone, whichUnit, i, handles.ReplayAlignedSpikes, handles.ReplayEvents, handles.ReplayInfo, AlignType, ...
             handles.SortReplay.Value, 'plotevents', 0, 'psth', handles.plotPSTH.Value, 'poolTZs', handles.poolTZs.Value);
+    else
+        ActiveReplayFRs = [];
+        PassiveReplayFRs = [];
     end
     
     if any(strcmp(handles.TrialInfo.Perturbation(:,1),'Halt-Flip-Template')) || ...

@@ -27,7 +27,7 @@ if Patchdatagaps
     drop_points = find(abs(diff(MyData(:,1)))>0.01); % indices at which timestamps were dropped
     if ~isempty(drop_points) && ~any(MyData(drop_points+1,6)==0) && ~any(MyData(drop_points,6)~=0)
         % all timestamps were dropped at trial starts
-        disp('Timestamps dropped at trial starts, finding the OEPS file to patch smaples ...');
+        disp(['Timestamps dropped at ', num2str(numel(drop_points)), ' trial starts, finding the OEPS file to patch smaples ...']);
         
         % find the ephys file
         [FilePaths, MyFileName] = fileparts(FileName);
