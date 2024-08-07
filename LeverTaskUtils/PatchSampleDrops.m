@@ -61,12 +61,19 @@ end
         idx_ephys = idx_OEPS(1):idx_OEPS(2);
         ts_OEPS   = TS(idx_ephys);
         % Lever, RE, Thermistor, Piezo
-        Traces_OEPS = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples([43 45 41 44],idx_ephys)';
-        Traces_OEPS = 2.5 + (double(Traces_OEPS)/12800);
+        OEPSchanIDs = [43 45 41 44];
+        Traces_OEPS_raw = session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(OEPSchanIDs,idx_ephys)';
+        Traces_OEPS = []; 
+        for ch = 1:numel(OEPSchanIDs)
+            % convert to volts
+            VoltMultiplier = session.recordNodes{1}.recordings{1}.info.continuous.channels(OEPSchanIDs(ch)).bit_volts;
+            Traces_OEPS(:,ch) = double(Traces_OEPS_raw(:,ch))*VoltMultiplier;
+        end
+        %Traces_OEPS = 2.5 + (double(Traces_OEPS)/12800);
         
         % 4. interpolate to get traces at behavior resolution
         % Vq = interp1(X,V,Xq)
-        Traces_interp = interp1( (ts_OEPS-ts_OEPS(1)), (Traces_OEPS), (ts_full-ts_full(1)) );
+        Traces_interp = interp1( (ts_OEPS-ts_OEPS(1)), Traces_OEPS, (ts_full-ts_full(1)) );
         
         % 5. get behavior traces to confirm the match
         whichcolumns = [4 5 15 18]; % Lever, RE, Thermistor, Piezo
