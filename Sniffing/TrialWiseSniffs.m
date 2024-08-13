@@ -16,21 +16,21 @@ for trialID = 1:numel(TrialInfo.Odor)
         if isnan(thisTrialSniffs(1,1))
             [~,f] = min(sum(abs(SniffTimeStamps(:,2:3) - thisTrialSniffs(1,2:3)),2));
             if ~isempty(f)
-                thisTrialSniffs(1,:) = SniffTimeStamps(f,1:4);
+                thisTrialSniffs(1,:) = SniffTimeStamps(f,1:5);
             end
         end
         % if the last sniff in Allsniffs was truncated
         if isnan(SniffTimeStamps(end,3))
             [~,f] = min(sum(abs(thisTrialSniffs(:,1:2) - SniffTimeStamps(end,1:2)),2));
             if ~isempty(f)
-                SniffTimeStamps(end,1:4) = thisTrialSniffs(f,1:4);
+                SniffTimeStamps(end,1:5) = thisTrialSniffs(f,5);
             end
         end
         % flag overlapping sniffs
         %f = find(ismember(SniffTimeStamps(:,1:4),thisTrialSniffs(1,1:4),'rows'));
         f = find(SniffTimeStamps(:,1)>=thisTrialSniffs(1,1)-0.005);
         if ~isempty(f)
-            SniffTimeStamps(f:end,6) = -SniffTimeStamps(f:end,6);
+            SniffTimeStamps(f:end,7) = -SniffTimeStamps(f:end,7);
         end
     end
     
@@ -40,11 +40,11 @@ for trialID = 1:numel(TrialInfo.Odor)
     thisTrialOdorStart = thisTrialStartStop(1) + thisTrialOdorStart; 
     thisTrialOdorStop  = thisTrialStartStop(2);
     
-    thisTrialSniffs(:,5) = -1; % mark all as being trialOFF
+    thisTrialSniffs(:,6) = -1; % mark all as being trialOFF
     % pull up all inhalations that happened after OdorStart
-    thisTrialSniffs(find(thisTrialSniffs(:,1)>=thisTrialOdorStart),5) = TrialInfo.Odor(trialID);
+    thisTrialSniffs(find(thisTrialSniffs(:,1)>=thisTrialOdorStart),6) = TrialInfo.Odor(trialID);
     % pull down any inhalations that happend after OdorEnd
-    thisTrialSniffs(find(thisTrialSniffs(:,1)>=thisTrialStartStop(2)),5) = -1;
+    thisTrialSniffs(find(thisTrialSniffs(:,1)>=thisTrialStartStop(2)),6) = -1;
 
     SniffTimeStamps = vertcat(SniffTimeStamps, ...
         [thisTrialSniffs (trialID + 0*thisTrialSniffs(:,1))]);
