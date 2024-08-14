@@ -5,12 +5,14 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('samplerate', 500, @(x) isnumeric(x));
+params.addParameter('SDfactor', 2.5, @(x) isnumeric(x));
 params.addParameter('plotting', 0, @(x) islogical(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 SampleRate = params.Results.samplerate;
 plotting = params.Results.plotting;
+SDfactor = params.Results.SDfactor;
 
 % was odorlocation info provided?
 if size(RespirationData,2) == 3
@@ -40,7 +42,7 @@ TH_filt = filtfilt(b,a,RespirationData(:,2));
 RespirationData(:,3) = TH_filt;
 
 %% detect inflexion points
-peakprom = std(TH_filt)/2.5;
+peakprom = std(TH_filt)/SDfactor;
 % inhalation start?
 [pks_ex,locs_ex] = findpeaks(TH_filt,'MinPeakProminence',peakprom);
 % inhalation end
