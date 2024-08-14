@@ -1,4 +1,4 @@
-function [SniffTS] = ProcessThermistorData(RespirationData,varargin)
+function [SniffTS,SniffExtra] = ProcessThermistorData(RespirationData,varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -84,7 +84,7 @@ if plotting
     plot(RespirationData(locs_in,1),-pks_in,'.r');
 end
 
-SniffTS = [];
+SniffTS = []; SniffExtra = [];
 % sanity checks - missed peaks or double peaks
 sortlocs = compute_sortlocs(locs_ex,locs_in);
 
@@ -135,6 +135,7 @@ for i = firstinhalation:2:size(sortlocs,1) % every inhalation
     else
         SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff NaN NaN]);
     end
+    SniffExtra  = vertcat(SniffExtra, [sortlocs(i-1,1) sortlocs(i,1) sortlocs(i+1,1)]);
 end
 
 %% function definitions
