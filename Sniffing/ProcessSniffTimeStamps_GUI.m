@@ -273,7 +273,7 @@ set(handles.peaksNew, ...
 set(handles.valleysNew, ...
     'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
     'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
-
+delete(roi);
 guidata(hObject, handles);
 
 
@@ -311,8 +311,11 @@ function WindowSize_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of WindowSize as text
 %        str2double(get(hObject,'String')) returns contents of WindowSize as a double
-
-
+currlims = get(handles.SniffingFiltered,'XLim');
+newLims = currlims(1) + [0 str2double(handles.WindowSize.String)];
+set(handles.SniffingRaw,'XLim',newLims);
+set(handles.SniffingFiltered,'XLim',newLims);
+guidata(hObject, handles);
 
 
 % --- Executes on button press in pushbutton5.
@@ -371,6 +374,11 @@ roi = drawrectangle;
 
 keyboard;
 
+function [] = collatesniffs()
+goodnewsniffs = handles.SniffsTSnew(~isnan(handles.SniffsTSnew(:,8)),:);
+goodnewsniffs(:,9) = -goodnewsniffs(:,9);
+pooledsniffs = vertcat(handles.SniffsTS,goodnewsniffs);
+pooledsniffs = sortrows(pooledsniffs,1);
 
 % --- Executes on slider movement.
 function Scroller_Callback(hObject, eventdata, handles)
@@ -396,7 +404,7 @@ function NextStretch_Callback(hObject, eventdata, handles)
 newLims = get(handles.SniffingFiltered,'XLim') + 0.9*str2double(handles.WindowSize.String);
 set(handles.SniffingRaw,'XLim',newLims);
 set(handles.SniffingFiltered,'XLim',newLims);
-
+handles.Scroller.Value = newLims(1)/(handles.SessionLength - str2double(handles.WindowSize.String));
 % Update handles structure
 guidata(hObject, handles);
 
