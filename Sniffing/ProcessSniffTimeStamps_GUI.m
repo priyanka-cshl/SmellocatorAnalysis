@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI
 
-% Last Modified by GUIDE v2.5 14-Aug-2024 17:31:12
+% Last Modified by GUIDE v2.5 14-Aug-2024 21:23:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -62,6 +62,22 @@ handles.SniffTrace.Timestamps   = [];
 handles.OdorLocationTrace       = [];
 handles.SniffsTS                = [];
 handles.SessionLength           = [];
+
+% plots
+axes(handles.SniffingRaw);
+hold on;
+handles.rawTrace    = plot(nan,nan,'color',Plot_Colors('b'));
+handles.peaksRaw    = plot(nan,nan,'ok','MarkerSize',4); 
+handles.valleysRaw  = plot(nan,nan,'or','MarkerSize',4);
+
+axes(handles.SniffingFiltered);
+hold on;
+handles.filtTrace    = plot(nan,nan,'color',Plot_Colors('b'));
+handles.peaksFilt    = plot(nan,nan,'ok','MarkerSize',4); 
+handles.valleysFilt  = plot(nan,nan,'or','MarkerSize',4);
+handles.peaksNew     = plot(nan,nan,'og','MarkerSize',6); 
+handles.valleysNew   = plot(nan,nan,'om','MarkerSize',6); 
+
 
 % For loading the processed session
 [Paths] = WhichComputer();
@@ -147,23 +163,18 @@ for n = 1:size(handles.SniffsTS,1)
 end
 
 % plot both filtered and raw traces, and detcted timestamps
-%set(handles.SniffingFiltered, 'nextplot', 'add');
 axes(handles.SniffingFiltered);
-set(handles.SniffingFiltered, 'ButtonDownFcn', {@Click2Callback, handles, hObject})
-hold all
-plot(handles.SniffTrace.Timestamps,handles.SniffTrace.Filtered,'color',Plot_Colors('b'));
+set(handles.filtTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Filtered);
 zoom off
-%hold on
 % overlay detected timestamps on the plot
-plot(handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),handles.SniffTrace.Filtered(handles.SniffsTS(:,8)),'ok');
+set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(:,8)));
+set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(:,9)));
 
-plot(handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),handles.SniffTrace.Filtered(handles.SniffsTS(:,9)),'or'); %,% ...
-    %'ButtonDownFcn', {@Click2Callback, handles, hObject});
 set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)], ...
     'YTick', []);
 currlims = get(gca,'YLim');
-% Update handles structure
-guidata(hObject, handles);
 
 % Trial times
 Xvals = [TrialInfo.SessionTimestamps(:,1) TrialInfo.SessionTimestamps(:,1) nan(size(TrialInfo.SessionTimestamps,1),1)]';
@@ -177,21 +188,95 @@ plot(Xvals(:),YVals(:),'-.','color',Plot_Colors('pl'));
 set(gca,'YLim',currlims);
 
 axes(handles.SniffingRaw);
+set(handles.rawTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Raw);
 zoom off
-hold off
-plot(handles.SniffTrace.Timestamps,handles.SniffTrace.Raw,'color',Plot_Colors('b'));
-hold on
 % overlay detected timestamps on the plot
-plot(handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),handles.SniffTrace.Raw(handles.SniffsTS(:,8)),'ok');
-plot(handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),handles.SniffTrace.Raw(handles.SniffsTS(:,9)),'or');
+set(handles.peaksRaw,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),...
+    'YData',handles.SniffTrace.Raw(handles.SniffsTS(:,8)));
+set(handles.valleysRaw,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),...
+    'YData',handles.SniffTrace.Raw(handles.SniffsTS(:,9)));
 set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)], ...
      'YTick', [],  'XTick', []);
-
 
 axes(handles.SniffingFiltered);
 
 % Update handles structure
 guidata(hObject, handles);
+
+
+
+% --- Executes on button press in RefindPeaks.
+function RefindPeaks_Callback(hObject, eventdata, handles)
+% hObject    handle to RefindPeaks (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+sdnew = 2*str2double(handles.SDfactor.String);
+
+% re-detect peaks and valleys with lower peak prominence
+load(handles.WhereSession.String,'Traces','TrialInfo');
+Traces.OdorLocation     = Traces.Motor;
+[SniffTimeStamps] = ...
+    TrialWiseSniffs(TrialInfo,Traces,'SDfactor',sdnew); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
+% remove overlapping sniffs
+handles.SniffsTSnew = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
+
+% find trace indices that correspond to detected sniff timestamps
+for n = 1:size(handles.SniffsTSnew,1)
+    
+    % was this already detected
+    f = find(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(n,1))<0.004,1,'first');
+    if ~isempty(f) & abs(handles.SniffsTS(f,2)-handles.SniffsTSnew(n,2))<0.004
+           handles.SniffsTSnew(n,8:9) = NaN;
+    else
+        % inhalation start
+        [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,1)));
+        if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,1)) < 0.004
+            handles.SniffsTSnew(n,8) = idx;
+        end
+        % inhalation end
+        [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,2)));
+        if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,2)) < 0.004
+            handles.SniffsTSnew(n,9) = idx;
+        end
+    end
+end
+
+% now i can plot all new detections
+newdetections = find(~isnan(handles.SniffsTSnew(:,9)));
+set(handles.peaksNew, ...
+    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,8)));
+set(handles.valleysNew, ...
+    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
+
+uiwait;
+guidata(hObject, handles);
+
+
+% --- Executes on button press in RemovePoints.
+function RemovePoints_Callback(hObject, eventdata, handles)
+% hObject    handle to RemovePoints (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+roi = drawrectangle;
+peaks_to_delete = intersect(...
+                    find(handles.SniffsTSnew(:,1) >= roi.Position(1)), ...
+                        find(handles.SniffsTSnew <= (roi.Position(1) + roi.Position(3)) ) );
+                    
+handles.SniffsTSnew(peaks_to_delete,8:9) = NaN;
+newdetections = find(~isnan(handles.SniffsTSnew(:,9)));
+set(handles.peaksNew, ...
+    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,8)));
+set(handles.valleysNew, ...
+    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
+
+guidata(hObject, handles);
+
+
 
 
 % --- Executes on button press in ZoomON.
@@ -217,22 +302,6 @@ function Flag_Stretch_Callback(hObject, eventdata, handles)
 % hObject    handle to Flag_Stretch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% --- Executes on slider movement.
-function Scroller_Callback(hObject, eventdata, handles)
-% hObject    handle to Scroller (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-newLims = handles.Scroller.Value * handles.SessionLength + ...
-    [0 str2double(handles.WindowSize.String)];
-set(handles.SniffingRaw,'XLim',newLims);
-set(handles.SniffingFiltered,'XLim',newLims);
-
-% Update handles structure
-guidata(hObject, handles);
 
 
 function WindowSize_Callback(hObject, eventdata, handles)
@@ -289,46 +358,6 @@ end
 uiwait(handles.figure1);
 guidata(hObject, handles);
 
-% --- Executes on button press in AddPeaks.
-function AddPeaks_Callback(hObject, eventdata, handles)
-% hObject    handle to AddPeaks (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-axes(handles.SniffingFiltered);
-zoom off
-[x,y] = ginput;
-% for every chosen peak
-for n = 1:numel(x)
-    % find the trace idx
-    [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(n)));
-    % take a window 30 ms on either side
-    [valleyval,valleyidx] = max(handles.SniffTrace.Filtered(idx+[-15:1:15]));
-    plot(valleyidx,valleyval,'og');
-end
-keyboard;
-guidata(hObject, handles);
-
-% --- Executes on button press in RemovePoints.
-function RemovePoints_Callback(hObject, eventdata, handles)
-% hObject    handle to RemovePoints (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-axes(handles.SniffingFiltered);
-zoom off
-[x,y] = ginput;
-% for every chosen valley
-for n = 1:numel(x)
-    [~,idx] = min(abs(handles.SniffsTS(:,1) - x(n)));
-
-
-
-    % find the trace idx
-    [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(n)));
-    % take a window 30 ms on either side
-    [valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
-    plot(valleyidx,valleyval,'og');
-end
-keyboard;
 
 
 % --- Executes on button press in RedoStretch.
@@ -337,4 +366,73 @@ function RedoStretch_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 roi = drawrectangle;
+[~,idx1] = min(abs(handles.SniffTrace.Timestamps - roi.Position(1)));
+[~,idx2] = min(abs(handles.SniffTrace.Timestamps - roi.Position(1) - roi.Position(3)));
+
 keyboard;
+
+
+% --- Executes on slider movement.
+function Scroller_Callback(hObject, eventdata, handles)
+% hObject    handle to Scroller (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+newLims = handles.Scroller.Value * handles.SessionLength + ...
+    [0 str2double(handles.WindowSize.String)];
+set(handles.SniffingRaw,'XLim',newLims);
+set(handles.SniffingFiltered,'XLim',newLims);
+
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes on button press in NextStretch.
+function NextStretch_Callback(hObject, eventdata, handles)
+% hObject    handle to NextStretch (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+newLims = get(handles.SniffingFiltered,'XLim') + 0.9*str2double(handles.WindowSize.String);
+set(handles.SniffingRaw,'XLim',newLims);
+set(handles.SniffingFiltered,'XLim',newLims);
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in PreviousStretch.
+function PreviousStretch_Callback(hObject, eventdata, handles)
+% hObject    handle to PreviousStretch (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+newLims = get(handles.SniffingFiltered,'XLim') - 0.9*str2double(handles.WindowSize.String);
+set(handles.SniffingRaw,'XLim',newLims);
+set(handles.SniffingFiltered,'XLim',newLims);
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in KeepNewSD.
+function KeepNewSD_Callback(hObject, eventdata, handles)
+% hObject    handle to KeepNewSD (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+uiresume;
+handles.SDfactor.String = num2str(2*str2double(handles.SDfactor.String));
+guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of KeepNewSD
+
+
+% --- Executes on button press in KeepOldSD.
+function KeepOldSD_Callback(hObject, eventdata, handles)
+% hObject    handle to KeepOldSD (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.peaksNew, 'XData',[], 'YData',[]);
+set(handles.valleysNew,  'XData',[], 'YData',[]);
+
+uiresume;
+guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of KeepOldSD

@@ -1,6 +1,17 @@
 %% mini function to recalculate sniff TS in behavior time base - trial by trial
 
-function [SniffTimeStamps] = TrialWiseSniffs(TrialInfo,Traces)
+function [SniffTimeStamps] = TrialWiseSniffs(TrialInfo,Traces,varargin)
+
+%% parse input arguments
+narginchk(1,inf)
+params = inputParser;
+params.CaseSensitive = false;
+params.addParameter('SDfactor', 2.5, @(x) isnumeric(x));
+
+% extract values from the inputParser
+params.parse(varargin{:});
+SDfactor = params.Results.SDfactor;
+
 %% sniff peak-valley detection
 SniffTimeStamps = [];
 for trialID = 1:numel(TrialInfo.Odor)
@@ -8,7 +19,7 @@ for trialID = 1:numel(TrialInfo.Odor)
     TraceTimeStamps = Traces.Timestamps{trialID};
     Thermistor      = Traces.Sniffs{trialID};
     OdorLocation    = Traces.OdorLocation{trialID};
-    thisTrialSniffs = ProcessThermistorData([TraceTimeStamps Thermistor OdorLocation]);
+    thisTrialSniffs = ProcessThermistorData([TraceTimeStamps Thermistor OdorLocation],'SDfactor',SDfactor);
 
     % apppend to AllSniffs and also handle end cases
     if trialID > 1
@@ -23,7 +34,7 @@ for trialID = 1:numel(TrialInfo.Odor)
         if isnan(SniffTimeStamps(end,3))
             [~,f] = min(sum(abs(thisTrialSniffs(:,1:2) - SniffTimeStamps(end,1:2)),2));
             if ~isempty(f)
-                SniffTimeStamps(end,1:5) = thisTrialSniffs(f,5);
+                SniffTimeStamps(end,1:5) = thisTrialSniffs(f,1:5);
             end
         end
         % flag overlapping sniffs

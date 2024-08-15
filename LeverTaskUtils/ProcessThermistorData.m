@@ -118,14 +118,21 @@ firstinhalation = find(sortlocs(:,3)==0,1,"first");
 for i = firstinhalation:2:size(sortlocs,1) % every inhalation
     if i > 1
         sniffstart = RespirationData(sortlocs(i-1,1),1);
+        sniffstartidx = sortlocs(i-1,1);
     else
         sniffstart = NaN;
+        sniffstartidx = NaN;
     end
+    
     sniffend    = RespirationData(sortlocs(i,1),1);
+    sniffendidx = sortlocs(i,1);
+    
     if i < size(sortlocs,1)
         nextsniff   = RespirationData(sortlocs(i+1,1),1);
+        nextsniffidx = sortlocs(i+1,1);
     else
         nextsniff   = NaN;
+        nextsniffidx = NaN;
     end
     if ~isempty(OdorLocations) && ~isnan(sniffstart)
         thisTrialOdorLocation = median(OdorLocations(sortlocs(i-1,1):sortlocs(i,1)));
@@ -135,7 +142,7 @@ for i = firstinhalation:2:size(sortlocs,1) % every inhalation
     else
         SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff NaN NaN]);
     end
-    SniffExtra  = vertcat(SniffExtra, [sortlocs(i-1,1) sortlocs(i,1) sortlocs(i+1,1)]);
+    SniffExtra  = vertcat(SniffExtra, [sniffstartidx sniffendidx nextsniffidx]);
 end
 
 %% function definitions
