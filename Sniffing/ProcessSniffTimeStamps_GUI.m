@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI
 
-% Last Modified by GUIDE v2.5 16-Aug-2024 04:51:38
+% Last Modified by GUIDE v2.5 16-Aug-2024 15:42:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -255,7 +255,7 @@ set(handles.valleysNew, ...
     'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
 
 % collate the list and make sure peaks fall in order
-[handles] = collatesniffs(handles);
+[handles] = collatesniffs(handles,0);
 
 % redraw
 set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)),...
@@ -270,6 +270,109 @@ guidata(hObject, handles);
 uiwait;
 guidata(hObject, handles);
 
+
+function [handles] = collatesniffs(handles,whichmode)
+
+% SniffTSnew has new peaks/valleys detected with the new lower user
+% selected threshold
+% many of these peaks/valleys are redundant with those detected with the
+% standard threshold (2.5 SD)
+% redundant new detections are flagged by swapping col 8,9 values with nan
+newsniffs = handles.SniffsTSnew(~isnan(handles.SniffsTSnew(:,8)),:);
+% swap col 8,9 (trace indices) to -ve to know in the pooled set which
+% sniffs came for new detections
+newsniffs(:,8:9) = -newsniffs(:,8:9);
+% pool old sniffs and new detections
+pooledsniffs = vertcat(handles.SniffsTS,newsniffs);
+pooledsniffs = sortrows(pooledsniffs,1);
+
+% for every new detection - reconcile with previous detections
+while any(pooledsniffs(:,9)<0)
+    f = find(pooledsniffs(:,9)<0,1,'first');
+    
+%     newLims = pooledsniffs(f,1) + [-floor(str2double(handles.WindowSize.String)/2) ceil(str2double(handles.WindowSize.String)/2)];
+%     set(handles.SniffingRaw,'XLim',newLims);
+%     set(handles.SniffingFiltered,'XLim',newLims);
+%     handles.Scroller.Value = pooledsniffs(f,1)/(handles.SessionLength - str2double(handles.WindowSize.String));
+    
+    if pooledsniffs(f,1)>pooledsniffs(f-1,2) & pooledsniffs(f,1)<pooledsniffs(f-1,3)
+        % new sniff start and end falls within a previous sniff 
+        k = find(abs(pooledsniffs(f:end,3)-pooledsniffs(f-1,3))<0.01); % previous sniffs end must match another sniff in the new pooled set
+        if ~isempty(k)
+            k = k + f - 1;
+            pooledsniffs(f-1,3) = pooledsniffs(f,1); % change the sniff end for the previous sniff
+            pooledsniffs(f:k,9) = -pooledsniffs(f:k,9); % un-negate col 9 for new detections that can be reconciled 
+        else
+            keyboard;
+        end
+    elseif pooledsniffs(f,1)>pooledsniffs(f-1,2) & pooledsniffs(f,1)==pooledsniffs(f-1,3)
+        % if the new detected sniff overlaps perfect with previous sniff end 
+        % pooledsniffs(f-1,3) = pooledsniffs(f,1); % superfluous
+        pooledsniffs(f,9) = -pooledsniffs(f,9);        
+        k = find(abs(pooledsniffs(f+1:end,1)-pooledsniffs(f-1,3))<0.01); % previous sniffs end must match another sniff in the non-pooled set
+        if ~isempty(k)
+            k = k + f + 1 - 1;
+            keyboard;
+            pooledsniffs(k,8:9) = -abs(pooledsniffs(k,8:9)); 
+        else
+            %keyboard;
+        end
+    elseif abs(pooledsniffs(f,1)-pooledsniffs(f-1,1))<0.01
+        % just high overlap but not an exact match
+        k = find(abs(pooledsniffs(f:end,3)-pooledsniffs(f-1,3))<0.01); % find matching ends
+        if ~isempty(k)
+            k = k + f - 1;
+            m = find(handles.SniffsTS(:,1)==pooledsniffs(f-1,1));
+            pooledsniffs(f:k,9) = -pooledsniffs(f:k,9);
+            pooledsniffs(f-1,:) = [];
+            handles.SniffsTS(m,8) = -abs(handles.SniffsTS(m,8));
+            
+%             % overlay detected timestamps on the plot
+%             set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)),...
+%             'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)));
+%             set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)),...
+%             'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)));
+            
+            
+        else
+            keyboard;
+        end
+    else
+        keyboard;
+    end
+end
+
+if whichmode
+    % for saving
+    % sanity check 1: any duplicates?
+    if any(abs(diff(pooledsniffs(:,1)))<0.01)
+        keyboard;
+    end
+    % sanity check 2: any gaps?
+    if any(abs(pooledsniffs(1:end-1,3)-pooledsniffs(2:end,1))>0.01)
+        keyboard;
+    end
+
+    % remove negative indices
+    pooledsniffs(:,8:9) = abs(pooledsniffs(:,8:9));
+
+    % update plot
+    set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(pooledsniffs(:,8)),...
+        'YData',handles.SniffTrace.Filtered(pooledsniffs(:,8)));
+    set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(pooledsniffs(:,9)),...
+        'YData',handles.SniffTrace.Filtered(pooledsniffs(:,9)));
+
+    set(handles.peaksNew, 'XData',[], 'YData',[]);
+    set(handles.valleysNew,  'XData',[], 'YData',[]);
+
+    % append timestamps to processed file
+    SniffDetectionThreshold = str2double(handles.SDfactor.String);
+    CuratedSniffTimestamps = pooledsniffs;
+
+    save(handles.WhereSession.String,'SniffDetectionThreshold','CuratedSniffTimestamps','-append');
+    
+
+end
 
 % --- Executes on button press in RemovePoints.
 function RemovePoints_Callback(hObject, eventdata, handles)
@@ -362,6 +465,8 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%% Collate the list and append to processed file
+
 
 % --- Executes during object deletion, before destroying properties.
 function SniffingFiltered_DeleteFcn(hObject, eventdata, handles)
@@ -412,56 +517,7 @@ roi = drawrectangle;
 
 keyboard;
 
-function [handles] = collatesniffs(handles)
-goodnewsniffs = handles.SniffsTSnew(~isnan(handles.SniffsTSnew(:,8)),:);
-goodnewsniffs(:,8:9) = -goodnewsniffs(:,8:9);
-pooledsniffs = vertcat(handles.SniffsTS,goodnewsniffs);
-pooledsniffs = sortrows(pooledsniffs,1);
-while any(pooledsniffs(:,9)<0)
-    f = find(pooledsniffs(:,9)<0,1,'first');
-    
-%     newLims = pooledsniffs(f,1) + [-floor(str2double(handles.WindowSize.String)/2) ceil(str2double(handles.WindowSize.String)/2)];
-%     set(handles.SniffingRaw,'XLim',newLims);
-%     set(handles.SniffingFiltered,'XLim',newLims);
-    %handles.Scroller.Value = pooledsniffs(f,1)/(handles.SessionLength - str2double(handles.WindowSize.String));
-    
-    if pooledsniffs(f,1)>pooledsniffs(f-1,2) & pooledsniffs(f,1)<pooledsniffs(f-1,3)
-        k = find(abs(pooledsniffs(f:end,3)-pooledsniffs(f-1,3))<0.01);
-        if ~isempty(k)
-            k = k + f - 1;
-            pooledsniffs(f-1,3) = pooledsniffs(f,1);
-            pooledsniffs(f:k,9) = -pooledsniffs(f:k,9);
-        else
-            keyboard;
-        end
-    elseif pooledsniffs(f,1)>pooledsniffs(f-1,2) & pooledsniffs(f,1)==pooledsniffs(f-1,3)
-        pooledsniffs(f-1,3) = pooledsniffs(f,1);
-        pooledsniffs(f,9) = -pooledsniffs(f,9);        
-    elseif abs(pooledsniffs(f,1)-pooledsniffs(f-1,1))<0.01
-        k = find(abs(pooledsniffs(f:end,3)-pooledsniffs(f-1,3))<0.01);
-        if ~isempty(k)
-            k = k + f - 1;
-            m = find(handles.SniffsTS(:,1)==pooledsniffs(f-1,1));
-            pooledsniffs(f:k,9) = -pooledsniffs(f:k,9);
-            pooledsniffs(f-1,:) = [];
-            handles.SniffsTS(m,8) = -handles.SniffsTS(m,8);
-            
-%             % overlay detected timestamps on the plot
-%             set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)),...
-%             'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)));
-%             set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)),...
-%             'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)));
-            
-            
-        else
-            keyboard;
-        end
-    else
-        keyboard;
-    end
-    
-        
-end
+
 
 % --- Executes on slider movement.
 function Scroller_Callback(hObject, eventdata, handles)
@@ -532,3 +588,11 @@ handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
 uiresume;
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of KeepOldSD
+
+
+% --- Executes on button press in SaveSniffs.
+function SaveSniffs_Callback(hObject, eventdata, handles)
+% hObject    handle to SaveSniffs (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[handles] = collatesniffs(handles,1);
