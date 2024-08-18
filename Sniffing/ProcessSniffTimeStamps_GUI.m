@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI
 
-% Last Modified by GUIDE v2.5 16-Aug-2024 15:42:37
+% Last Modified by GUIDE v2.5 16-Aug-2024 20:49:47
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -219,6 +219,8 @@ sdnew = 2*str2double(handles.SDfactor.String);
 % re-detect peaks and valleys with lower peak prominence
 load(handles.WhereSession.String,'Traces','TrialInfo');
 Traces.OdorLocation     = Traces.Motor;
+
+
 [SniffTimeStamps] = ...
     TrialWiseSniffs(TrialInfo,Traces,'SDfactor',sdnew); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
 % remove overlapping sniffs
@@ -370,7 +372,6 @@ if whichmode
     CuratedSniffTimestamps = pooledsniffs;
 
     save(handles.WhereSession.String,'SniffDetectionThreshold','CuratedSniffTimestamps','-append');
-    
 
 end
 
@@ -438,13 +439,6 @@ axes(handles.SniffingFiltered);
 zoom off
 guidata(hObject, handles);
 
-% --- Executes on button press in Flag_Stretch.
-function Flag_Stretch_Callback(hObject, eventdata, handles)
-% hObject    handle to Flag_Stretch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
 function WindowSize_Callback(hObject, eventdata, handles)
 % hObject    handle to WindowSize (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -459,64 +453,32 @@ set(handles.SniffingFiltered,'XLim',newLims);
 guidata(hObject, handles);
 
 
-% --- Executes on button press in pushbutton5.
-function pushbutton5_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton5 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-%% Collate the list and append to processed file
-
-
-% --- Executes during object deletion, before destroying properties.
-function SniffingFiltered_DeleteFcn(hObject, eventdata, handles)
-% hObject    handle to SniffingFiltered (see GCBO)
+% --- Executes on button press in ClearSession.
+function ClearSession_Callback(hObject, eventdata, handles)
+% hObject    handle to ClearSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on mouse press over axes background.
-function SniffingFiltered_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to SniffingFiltered (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-coordinates = round(get(gca,'CurrentPoint'));
-
-
-% --- Executes on button press in AddValleys.
-function AddValleys_Callback(hObject, eventdata, handles)
-% hObject    handle to AddValleys (see GCBO)
+% --- Executes on button press in AddSniff.
+function AddSniff_Callback(hObject, eventdata, handles)
+% hObject    handle to AddSniff (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 axes(handles.SniffingFiltered);
 zoom off
-[x,y] = ginput;
-% for every chosen valley
-newTS = [];
-for n = 1:numel(x)
-    % find the trace idx
-    [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(n)));
-    % take a window 30 ms on either side
-    [valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
-    plot(handles.SniffTrace.Timestamps(idx+valleyidx-15),valleyval,'og');
-    handles.newValleys(n,:) = [handles.SniffTrace.Timestamps(idx+valleyidx-15) valleyval];
-end
-uiwait(handles.figure1);
+[x,y] = ginput(2); % select a pair of peak and valley
+
+[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+% take a window 30 ms on either side
+[peakval,peakidx] = max(handles.SniffTrace.Filtered(idx+[-15:1:15]));
+handles.newSniff(n,1) = handles.SniffTrace.Timestamps(idx+peakidx-15);
+
+[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(2)));
+% take a window 30 ms on either side
+[valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
+handles.newSniff(n,2) = handles.SniffTrace.Timestamps(idx+valleyidx-15);
 guidata(hObject, handles);
-
-
-
-% --- Executes on button press in RedoStretch.
-function RedoStretch_Callback(hObject, eventdata, handles)
-% hObject    handle to RedoStretch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-roi = drawrectangle;
-[~,idx1] = min(abs(handles.SniffTrace.Timestamps - roi.Position(1)));
-[~,idx2] = min(abs(handles.SniffTrace.Timestamps - roi.Position(1) - roi.Position(3)));
-
-keyboard;
-
 
 
 % --- Executes on slider movement.
@@ -584,7 +546,6 @@ set(handles.valleysNew,  'XData',[], 'YData',[]);
 handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8) = -handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8);
 handles.KeepNewSD.BackgroundColor = [0.94 0.94 0.94];
 handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
-
 uiresume;
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of KeepOldSD
