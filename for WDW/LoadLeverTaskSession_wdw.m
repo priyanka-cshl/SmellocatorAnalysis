@@ -81,11 +81,18 @@ TracesOut.SniffsFiltered{1}     = FilterThermistor(TracesOut.Sniffs{1});
 % add a digital sniff trace
 load(WhereSession,'CuratedSniffTimestamps');
 if exist('CuratedSniffTimestamps','var')
+    if size(CuratedSniffTimestamps,2)<10
+        CuratedSniffTimestamps(:,10) = 0;
+    end
     LocationSniffs = TracesOut.SniffsFiltered{1}*nan;
     DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
     for n = 1:size(CuratedSniffTimestamps)
         idx = CuratedSniffTimestamps(n,8:9);
-        DigitalSniffs(idx(1):idx(2)) = 1;
+        if CuratedSniffTimestamps(n,10) == -1 % these sniffs are in a bad stretch of thermistor data
+            DigitalSniffs(idx(1):idx(2)) = -1;
+        else
+            DigitalSniffs(idx(1):idx(2)) = 1;
+        end
         if ~any(isnan(CuratedSniffTimestamps(:,4)))
             location = CuratedSniffTimestamps(n,4);
             LocationSniffs(idx(1):idx(2)) = location;
