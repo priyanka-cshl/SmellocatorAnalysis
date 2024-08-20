@@ -50,7 +50,7 @@ else % new GUI
 end
 
 
-timestamps = timestamps - offset;
+%timestamps = timestamps - offset;
 
 %% Get various events
 TTLTypes = unique(data);
@@ -100,13 +100,49 @@ end
 stimfile_token = [regexprep(stimfile_token(3:13),'-',''),'*.txt'];
 
 if ~isempty(dir(fullfile(myOEPSDir,stimfile_token)))
+    stimfile = dir(fullfile(myOEPSDir,stimfile_token));
 elseif ~isempty(dir(fullfile(Paths.CID.PhotonCerberStimFiles,stimfile_token(1:6),stimfile_token)))
     stimfile = dir(fullfile(Paths.CID.PhotonCerberStimFiles,stimfile_token(1:6),stimfile_token));
     % copy to local path
     copyfile(fullfile(stimfile.folder,stimfile.name),myOEPSDir);
-
+    stimfile = dir(fullfile(myOEPSDir,stimfile_token));
 else
+    stimfile = [];
     disp('no stim file located');
+end
+
+if ~isempty(stimfile)
+    % read the sequence of stimuli and settings - add the relevant info to
+    % the TTLs struct directly
+    fid = fopen(fullfile(stimfile.folder,stimfile.name)); 
+    stimlist = fscanf(fid,'%d'); 
+    fclose(fid);
+    stimsettings = stimlist(1:6);
+    stimlist(1:6,:) = []; % ? pre stim post iti #reps
+    trialduration = sum(stimsettings(2:4)/1000);
+    stimlist = reshape(stimlist,[],stimsettings(6)); % cols are repeats, rows are stim identities
+    conc_used = [10^-4 3*10^-3 6*10^-3 10^-2];
+
+    % first trial seems crap
+    TTLs.Trial(find(TTLs.Trial(:,3)<trialduration),:) = []; 
+
+    count = 0;
+    for rep = 1:size(stimlist,2)
+        for stim = 1:size(stimlist,1)
+            count = count + 1;
+            TTLs.Trial(count,4) = mod(stimlist(stim,rep),5);
+            TTLs.Trial(count,5) = conc_used(ceil(stimlist(stim,rep)/5));
+            TTLs.Trial(count,6) = rep;
+            % find the odor valve open and close timestamps that belong to
+            % this trial
+            f = intersect(find(TTLs.Odor(:,1)>=TTLs.Trial(count,1)),find(TTLs.Odor(:,2)<=TTLs.Trial(count,2)));
+            if ~isempty(f)
+                TTLs.Trial(count,7:9) = TTLs.Odor(f,:);
+            else
+                keyboard;
+            end
+        end
+    end
 end
 
 %% mismatch between behavior and oeps trials on first trial
