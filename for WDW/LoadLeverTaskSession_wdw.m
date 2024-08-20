@@ -75,11 +75,39 @@ for j = 1:size(whichTraces,2)
         Traces.(whichTraces{j}){whichTrials(end)}(end-traceOverlap+1:end,1)]};
 end
 
+% Sniffing specifc
+% add a filtered sniff trace
+TracesOut.SniffsFiltered{1}     = FilterThermistor(TracesOut.Sniffs{1});
+% add a digital sniff trace
+load(WhereSession,'CuratedSniffTimestamps');
+if exist('CuratedSniffTimestamps','var')
+    LocationSniffs = TracesOut.SniffsFiltered{1}*nan;
+    DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
+    for n = 1:size(CuratedSniffTimestamps)
+        idx = CuratedSniffTimestamps(n,8:9);
+        DigitalSniffs(idx(1):idx(2)) = 1;
+        if ~any(isnan(CuratedSniffTimestamps(:,4)))
+            location = CuratedSniffTimestamps(n,4);
+            LocationSniffs(idx(1):idx(2)) = location;
+        end
+    end
+end
+
+TracesOut.SniffsDigitized{1} = DigitalSniffs;
+TracesOut.SniffsLocationed{1} = LocationSniffs;
+
 % create a corresponding timestamp vector
 Timestamps = TracesOut.Timestamps{1}';
 
 % snity check for timestamp drops
 if any(round(diff(Timestamps),3,'decimal')~=0.002)
+    keyboard;
+end
+
+% sanity check for clock drift
+% check that there was no clock drift
+if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+    disp('clock drift in ephys and behavior files');
     keyboard;
 end
 
@@ -90,7 +118,6 @@ TracesOut.Timestamps{1} = Timestamps + TimestampAdjust.ClosedLoop;
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
 
 %% Organize data for Wolf separately
-
 path = fileparts(fileparts(fileparts(WhereSession)));
 if ~exist(fullfile(path,'WDW'),'dir')
     mkdir(fullfile(path,'WDW'));

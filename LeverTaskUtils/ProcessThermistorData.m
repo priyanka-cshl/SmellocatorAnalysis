@@ -1,16 +1,18 @@
-function [SniffTS] = ProcessThermistorData(RespirationData,varargin)
+function [SniffTS,SniffExtra] = ProcessThermistorData(RespirationData,varargin)
 
 %% parse input arguments
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('samplerate', 500, @(x) isnumeric(x));
+params.addParameter('SDfactor', 2.5, @(x) isnumeric(x));
 params.addParameter('plotting', 0, @(x) islogical(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 SampleRate = params.Results.samplerate;
 plotting = params.Results.plotting;
+SDfactor = params.Results.SDfactor;
 
 % was odorlocation info provided?
 if size(RespirationData,2) == 3
@@ -40,7 +42,7 @@ TH_filt = filtfilt(b,a,RespirationData(:,2));
 RespirationData(:,3) = TH_filt;
 
 %% detect inflexion points
-peakprom = std(TH_filt)/2.5;
+peakprom = std(TH_filt)/SDfactor;
 % inhalation start?
 [pks_ex,locs_ex] = findpeaks(TH_filt,'MinPeakProminence',peakprom);
 % inhalation end
@@ -82,7 +84,7 @@ if plotting
     plot(RespirationData(locs_in,1),-pks_in,'.r');
 end
 
-SniffTS = [];
+SniffTS = []; SniffExtra = [];
 % sanity checks - missed peaks or double peaks
 sortlocs = compute_sortlocs(locs_ex,locs_in);
 
@@ -116,21 +118,31 @@ firstinhalation = find(sortlocs(:,3)==0,1,"first");
 for i = firstinhalation:2:size(sortlocs,1) % every inhalation
     if i > 1
         sniffstart = RespirationData(sortlocs(i-1,1),1);
+        sniffstartidx = sortlocs(i-1,1);
     else
         sniffstart = NaN;
+        sniffstartidx = NaN;
     end
+    
     sniffend    = RespirationData(sortlocs(i,1),1);
+    sniffendidx = sortlocs(i,1);
+    
     if i < size(sortlocs,1)
         nextsniff   = RespirationData(sortlocs(i+1,1),1);
+        nextsniffidx = sortlocs(i+1,1);
     else
         nextsniff   = NaN;
+        nextsniffidx = NaN;
     end
     if ~isempty(OdorLocations) && ~isnan(sniffstart)
-        thisTrialOdorLocation = median(OdorLocations(sortlocs(i-1):sortlocs(i,1)));
-        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff thisTrialOdorLocation]);
+        thisTrialOdorLocation = median(OdorLocations(sortlocs(i-1,1):sortlocs(i,1)));
+        thisSniffSlope = RespirationData(sortlocs(i-1,1),3) - RespirationData(sortlocs(i,1),3);
+        thisSniffSlope = thisSniffSlope/(sniffend - sniffstart);
+        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff thisTrialOdorLocation thisSniffSlope]);
     else
-        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff NaN]);
+        SniffTS     = vertcat(SniffTS, [sniffstart sniffend nextsniff NaN NaN]);
     end
+    SniffExtra  = vertcat(SniffExtra, [sniffstartidx sniffendidx nextsniffidx]);
 end
 
 %% function definitions

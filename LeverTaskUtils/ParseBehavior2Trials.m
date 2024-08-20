@@ -71,8 +71,8 @@ for thisTrial = 1:numel(TrialOn)
         start_idx = TrialOn(thisTrial) - startoffset*SampleRate; % 1 sec preceding trial start
         start_idxCorrected = start_idx + thisTrialOffset;
         if thisTrial == 1 % exception handler for the first trial
-            start_idx = max(1,start_idx);
-            start_idxCorrected = max(1,start_idxCorrected);
+            start_idx = 1; %max(1,start_idx);
+            start_idxCorrected = 1; %max(1,start_idxCorrected);
             LastTrialIdx = start_idx;
         end
         

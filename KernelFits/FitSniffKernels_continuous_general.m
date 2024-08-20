@@ -103,7 +103,8 @@ end
 tic
 telapsed = [];
 for thisunit = 1:numel(MyUnits)
-    
+    disp(thisunit);         
+
     tstart = tic;
 
     unitid = MyUnits(thisunit);
@@ -136,7 +137,6 @@ for thisunit = 1:numel(MyUnits)
     end
 
     telapsed(thisunit) = toc(tstart);
-
 end
 
 toc;
