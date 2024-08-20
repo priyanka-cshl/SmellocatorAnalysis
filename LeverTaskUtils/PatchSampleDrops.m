@@ -24,6 +24,9 @@ else
     keyboard;
 end
 
+%% settings for voltage conversion
+whichvolttype = min(session.recordNodes{1}.recordings{1}.continuous('Acquisition_Board-100.Rhythm Data').samples(43,:)) > 0;
+
 %%
 drop_point = find(abs(diff(MyData(:,1)))>0.01, 1, 'first'); % first indices at which timestamps were dropped
 while ~isempty(drop_point)
@@ -67,7 +70,11 @@ end
         for ch = 1:numel(OEPSchanIDs)
             % convert to volts
             VoltMultiplier = session.recordNodes{1}.recordings{1}.info.continuous.channels(OEPSchanIDs(ch)).bit_volts;
-            Traces_OEPS(:,ch) = double(Traces_OEPS_raw(:,ch))*VoltMultiplier;
+            if whichvolttype
+                Traces_OEPS(:,ch) = double(Traces_OEPS_raw(:,ch))*VoltMultiplier;
+            else
+                Traces_OEPS(:,ch) = double(Traces_OEPS_raw(:,ch))*(VoltMultiplier/2) + 2.5;
+            end
         end
         %Traces_OEPS = 2.5 + (double(Traces_OEPS)/12800);
         
