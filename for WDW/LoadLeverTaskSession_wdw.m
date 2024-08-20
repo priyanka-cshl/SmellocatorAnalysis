@@ -6,10 +6,10 @@
 % WhereSession = fullfile(SessionPath,WhichSession);
 
 WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q4/Q4_20221109_r0_processed.mat';
-WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q9/Q9_20221116_r0_processed.mat';
 WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/O3/O3_20210929_r0_processed.mat';
 WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q3/Q3_20221019_r0_processed.mat';
 WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/S12/S12_20230731_r0_processed.mat';
+WhereSession = '/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/Q9/Q9_20221116_r0_processed.mat';
 
 %% Load the relevant variables
 load(WhereSession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
@@ -81,11 +81,18 @@ TracesOut.SniffsFiltered{1}     = FilterThermistor(TracesOut.Sniffs{1});
 % add a digital sniff trace
 load(WhereSession,'CuratedSniffTimestamps');
 if exist('CuratedSniffTimestamps','var')
+    if size(CuratedSniffTimestamps,2) < 10
+        CuratedSniffTimestamps(:,10) = 0;
+    end
     LocationSniffs = TracesOut.SniffsFiltered{1}*nan;
     DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
     for n = 1:size(CuratedSniffTimestamps)
         idx = CuratedSniffTimestamps(n,8:9);
-        DigitalSniffs(idx(1):idx(2)) = 1;
+        if CuratedSniffTimestamps(n,10) == -1
+            DigitalSniffs(idx(1):idx(2)) = -1;
+        else
+            DigitalSniffs(idx(1):idx(2)) = 1;
+        end
         if ~any(isnan(CuratedSniffTimestamps(:,4)))
             location = CuratedSniffTimestamps(n,4);
             LocationSniffs(idx(1):idx(2)) = location;
