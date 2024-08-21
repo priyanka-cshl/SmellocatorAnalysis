@@ -1,14 +1,14 @@
-function [TTLs,ReplayTTLs,EphysTuningTrials,SniffData] = GetOepsTTLsAndRespiration_CID(myOEPSDir, varargin)
+function [TTLs,ReplayTTLs,EphysTuningTrials,SniffData] = GetOepsTTLsAndRespiration_CID(myOEPSDir, mousename) %, varargin)
 
-%% parse input arguments
-narginchk(1,inf)
-params = inputParser;
-params.CaseSensitive = false;
-params.addParameter('ADC', true, @(x) islogical(x) || x==0 || x==1);
-
-% extract values from the inputParser
-params.parse(varargin{:});
-GetAux = params.Results.ADC;
+% %% parse input arguments
+% narginchk(1,inf)
+% params = inputParser;
+% params.CaseSensitive = false;
+% params.addParameter('ADC', true, @(x) islogical(x) || x==0 || x==1);
+% 
+% % extract values from the inputParser
+% params.parse(varargin{:});
+% GetAux = params.Results.ADC;
 
 %% defaults
 Paths = WhichComputer();
@@ -152,7 +152,7 @@ if ~any(TTLs.Trial(:,7)==0)
 end
 
 SniffData = [];
-if GetAux
+%if GetAux
     %% Get analog/digital AuxData from Oeps files - for extracting sniffing
     % for reading the aux channels
     % check if there are ADC files
@@ -198,9 +198,21 @@ if GetAux
     end
 
     % if respiration file was found - filter and detect peaks and valleys?
-    [SniffsFiltered] = FilterThermistor(SniffData(:,2));
-    plot(SniffData(:,1),SniffsFiltered,'r');
+    [SniffData(:,3)] = FilterThermistor(SniffData(:,2));
+    plot(SniffData(:,1),SniffData(:,3),'r');
 
+%end
+
+% save 
+if nargin < 2
+    [~,mousename] = fileparts(fileparts(fileparts(myOEPSDir)));
 end
+savedir = fullfile(Paths.CID.Processed,mousename);
+if ~exist(savedir,'dir')
+    mkdir(savedir);
+    fileattrib(savedir, '+w','a');
+end
+[~,filepath] = fileparts(myOEPSDir);
+save(fullfile(savedir,[filepath,'_cid-processed.mat']),'TTLs','SniffData');
 
 end

@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI
 
-% Last Modified by GUIDE v2.5 20-Aug-2024 03:05:59
+% Last Modified by GUIDE v2.5 21-Aug-2024 15:59:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,6 +66,7 @@ handles.KeepNewSD.BackgroundColor = [0.94 0.94 0.94];
 handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
 handles.lastdeleted.String = '';
 handles.new_detections.Data(:,1) = [];
+handles.datamode = 'smellocator';
 
 % plots
 axes(handles.SniffingRaw);
@@ -94,15 +95,15 @@ if ~isempty(varargin)
         handles.WhereSession.String = fullfile(Paths.ProcessedSessions,MouseName,varargin{1});
     end
 else
-    handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20211005_r0_processed.mat');
+    handles.WhereSession.String = ''; %fullfile(Paths.ProcessedSessions,'O3/O3_20211005_r0_processed.mat');
 end
 
 % Update handles structure
 guidata(hObject, handles);
 
-if exist(handles.WhereSession.String)==2
+%if exist(handles.WhereSession.String)==2
     LoadSession_Callback(hObject, eventdata, handles);
-end
+%end
 
 % UIWAIT makes ProcessSniffTimeStamps_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -120,7 +121,7 @@ varargout{1} = handles.output;
 
 
 % --- Executes on button press in LoadSession.
-function LoadSession_Callback(hObject, eventdata, handles)
+function LoadSessionOld_Callback(hObject, eventdata, handles)
 % hObject    handle to LoadSession (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -208,6 +209,137 @@ axes(handles.SniffingFiltered);
 % Update handles structure
 guidata(hObject, handles);
 
+% --- Executes on button press in LoadSession.
+function LoadSession_Callback(hObject, eventdata, handles)
+% hObject    handle to LoadSession (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% check that a valid session is specified
+if isempty(handles.WhereSession.String)
+    [Paths] = WhichComputer();
+        [WhichSession, SessionPath] = uigetfile(...
+                                fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat'),...
+                                'Select Behavior or Recording Session');
+    handles.WhereSession.String = fullfile(SessionPath,WhichSession);
+end
+
+if exist(handles.WhereSession.String)==2
+    % get data mode
+    if ~isempty(strfind(handles.WhereSession.String,'_processed'))
+        handles.datamode = 'smellocator';
+    elseif ~isempty(strfind(handles.WhereSession.String,'_cid-processed'))
+        handles.datamode = 'cid';
+    else
+        disp('unknown data format');
+        return;
+    end
+else
+    disp('invalid data file');
+    return;
+end
+
+switch handles.datamode
+    case 'cid'
+        % data from the concentration - identity experiments
+        % load the sniff traces
+        load(handles.WhereSession.String,'SniffData','TTLs');
+        handles.SessionLength = SniffData(end,1);
+        
+        % make equivalent long traces for plotting
+        handles.SniffTrace.Timestamps   = SniffData(:,1);
+        handles.OdorLocationTrace       = [];
+        handles.SniffTrace.Raw          = SniffData(:,3); % filtered MFS trace
+        handles.SniffTrace.Filtered     = cumsum(SniffData(:,3)); % expected thermistor trace
+        
+        % detect sniff timestamps on the expected thermistor trace
+        %handles.SDfactor.String = '10';
+        [handles.SniffsTS, SniffIndices] = ProcessThermistorData([SniffData(:,1) handles.SniffTrace.Filtered]);
+        handles.SniffsTS(:,8:9) = SniffIndices(:,1:2);
+        handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
+        handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+
+    case 'smellocator'
+        % data from the lever task - reprocessing and curating sniffs
+        % load the relevant data
+        load(handles.WhereSession.String,'Traces','TrialInfo','SampleRate');
+        handles.SessionLength = ceil(Traces.Timestamps{end}(end));
+        
+        % reprocess sniff traces on a trialwise basis
+        Traces.OdorLocation     = Traces.Motor;
+        [SniffTimeStamps] = ...
+            TrialWiseSniffs(TrialInfo,Traces); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
+        % remove overlapping sniffs
+        handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
+
+        % Make long concatenated traces for plotting
+        [TracesOut, whichtraces] = ConcatenateTraces2Mat(Traces);
+        handles.SniffTrace.Timestamps   = TracesOut(:,find(strcmp(whichtraces,'Timestamps')));
+        handles.OdorLocationTrace       = TracesOut(:,find(strcmp(whichtraces,'Motor')));
+        handles.SniffTrace.Raw          = TracesOut(:,find(strcmp(whichtraces,'Sniffs')));
+        handles.SniffTrace.Filtered     = FilterThermistor(handles.SniffTrace.Raw);
+
+        % find trace indices that correspond to detected sniff timestamps
+        for n = 1:size(handles.SniffsTS,1)
+            % inhalation start
+            [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTS(n,1)));
+            if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTS(n,1)) < 0.004
+                handles.SniffsTS(n,8) = idx;
+            end
+            % inhalation end
+            [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTS(n,2)));
+            if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTS(n,2)) < 0.004
+                handles.SniffsTS(n,9) = idx;
+            end
+        end
+end
+
+handles.SessionDuration.String = num2str(handles.SessionLength);
+
+% plot both filtered and raw traces, and detcted timestamps
+axes(handles.SniffingFiltered);
+set(handles.filtTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Filtered);
+zoom off
+% overlay detected timestamps on the plot
+set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(:,8)));
+set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),...
+    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(:,9)));
+
+set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)], ...
+    'YTick', []);
+currlims = get(gca,'YLim');
+
+% Trial times
+Xvals = [TTLs.Trial(:,1) TTLs.Trial(:,1) nan(size(TTLs.Trial,1),1)]';
+YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
+plot(Xvals(:),YVals(:),'--','color',Plot_Colors('pd'));
+
+Xvals = [TTLs.Trial(:,2) TTLs.Trial(:,2) nan(size(TTLs.Trial,1),1)]';
+YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
+plot(Xvals(:),YVals(:),'-.','color',Plot_Colors('pl'));
+
+set(gca,'YLim',currlims);
+
+axes(handles.SniffingRaw);
+set(handles.rawTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Raw);
+zoom off
+% overlay detected timestamps on the plot
+set(handles.peaksRaw,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,8)),...
+    'YData',handles.SniffTrace.Raw(handles.SniffsTS(:,8)));
+set(handles.valleysRaw,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),...
+    'YData',handles.SniffTrace.Raw(handles.SniffsTS(:,9)));
+set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)], ...
+     'YTick', [],  'XTick', []);
+
+if strcmp(handles.datamode,'cid')
+    line(handles.SniffTrace.Timestamps([1 end]),[0 0],'color','k','Linestyle',':');
+end
+
+axes(handles.SniffingFiltered);
+
+% Update handles structure
+guidata(hObject, handles);
 
 
 % --- Executes on button press in RefindPeaks.
@@ -217,61 +349,65 @@ function RefindPeaks_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 sdnew = 2*str2double(handles.SDfactor.String);
 
-% re-detect peaks and valleys with lower peak prominence
-load(handles.WhereSession.String,'Traces','TrialInfo');
-Traces.OdorLocation     = Traces.Motor;
+switch handles.datamode
+    case 'cid'
+        % re-detect peaks and valleys with lower peak prominence
+        [handles.SniffsTSnew, sniffindices] = ProcessThermistorData([handles.SniffTrace.Timestamps handles.SniffTrace.Filtered],'SDfactor',sdnew);
+        handles.SniffsTSnew(:,8:9) = sniffindices(:,1:2);
+        handles.SniffsTSnew(find(isnan(handles.SniffsTSnew(:,8))),:) = [];
+        handles.SniffsTSnew(find(handles.SniffsTSnew(:,8)<=0),:) = [];
 
+        % find trace indices that correspond to detected sniff timestamps
+        for n = 1:size(handles.SniffsTSnew,1) % every new sniff detected
 
-[SniffTimeStamps] = ...
-    TrialWiseSniffs(TrialInfo,Traces,'SDfactor',sdnew); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
-% remove overlapping sniffs
-handles.SniffsTSnew = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
-
-% find trace indices that correspond to detected sniff timestamps
-for n = 1:size(handles.SniffsTSnew,1)
-    
-    % was this already detected
-    f = find(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(n,1))<0.004,1,'first');
-    if ~isempty(f) & abs(handles.SniffsTS(f,2)-handles.SniffsTSnew(n,2))<0.004
-           handles.SniffsTSnew(n,8:9) = NaN;
-    else
-        % inhalation start
-        [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,1)));
-        if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,1)) < 0.004
-            handles.SniffsTSnew(n,8) = idx;
+            % was this already detected
+            f = find(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(n,1))<0.004,1,'first');
+            if ~isempty(f) & abs(handles.SniffsTS(f,2)-handles.SniffsTSnew(n,2))<0.004
+                handles.SniffsTSnew(n,8:9) = NaN;
+            end
         end
-        % inhalation end
-        [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,2)));
-        if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,2)) < 0.004
-            handles.SniffsTSnew(n,9) = idx;
+    case 'smellocator'
+        % re-detect peaks and valleys with lower peak prominence
+        load(handles.WhereSession.String,'Traces','TrialInfo');
+        Traces.OdorLocation     = Traces.Motor;
+        [SniffTimeStamps] = ...
+            TrialWiseSniffs(TrialInfo,Traces,'SDfactor',sdnew); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
+        % remove overlapping sniffs
+        handles.SniffsTSnew = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
+
+        % find trace indices that correspond to detected sniff timestamps
+        for n = 1:size(handles.SniffsTSnew,1)
+
+            % was this already detected
+            f = find(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(n,1))<0.004,1,'first');
+            if ~isempty(f) & abs(handles.SniffsTS(f,2)-handles.SniffsTSnew(n,2))<0.004
+                handles.SniffsTSnew(n,8:9) = NaN;
+            else
+                % inhalation start
+                [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,1)));
+                if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,1)) < 0.004
+                    handles.SniffsTSnew(n,8) = idx;
+                end
+                % inhalation end
+                [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTSnew(n,2)));
+                if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTSnew(n,2)) < 0.004
+                    handles.SniffsTSnew(n,9) = idx;
+                end
+            end
         end
-    end
 end
 
-% % now i can plot all new detections
-% newdetections = find(~isnan(handles.SniffsTSnew(:,9)));
-% set(handles.peaksNew, ...
-%     'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
-%     'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,8)));
-% set(handles.valleysNew, ...
-%     'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
-%     'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
+
 
 % collate the list and make sure peaks fall in order
 [handles] = collatesniffs(handles,0);
+% update plots
 UpdatePeakValleyPlots(hObject, eventdata, handles);
-% redraw
-% set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)),...
-%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),8)));
-% set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)),...
-%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(find(handles.SniffsTS(:,8)>=0),9)));
-
 handles.KeepNewSD.BackgroundColor = [0 0.94 0];
 handles.KeepOldSD.BackgroundColor = [0 0.94 0];
 guidata(hObject, handles);
-
-uiwait;
-guidata(hObject, handles);
+%uiwait;
+%guidata(hObject, handles);
 
 
 function [handles] = collatesniffs(handles,whichmode)
@@ -292,7 +428,9 @@ pooledsniffs = sortrows(pooledsniffs,1);
 % for every new detection - reconcile with previous detections
 while any(pooledsniffs(:,9)<0)
     f = find(pooledsniffs(:,9)<0,1,'first');
-    
+    if numel(f)<2
+        break;
+    end
 %     newLims = pooledsniffs(f,1) + [-floor(str2double(handles.WindowSize.String)/2) ceil(str2double(handles.WindowSize.String)/2)];
 %     set(handles.SniffingRaw,'XLim',newLims);
 %     set(handles.SniffingFiltered,'XLim',newLims);
@@ -430,14 +568,24 @@ set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(old
 set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,9)));
 % new detections
-newdetections = find(handles.SniffsTSnew(:,9)>0);
-handles.new_detections.Data = round(handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),3,'decimals');
-set(handles.peaksNew, ...
-    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
-    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,8)));
-set(handles.valleysNew, ...
-    'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
-    'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
+if ~isempty(handles.SniffsTSnew)
+    newdetections = find(handles.SniffsTSnew(:,9)>0);
+    handles.new_detections.Data = round(handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),3,'decimals');
+    set(handles.peaksNew, ...
+        'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
+        'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,8)));
+    set(handles.valleysNew, ...
+        'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
+        'YData',handles.SniffTrace.Filtered(handles.SniffsTSnew(newdetections,9)));
+else
+    handles.new_detections.Data = [];
+    set(handles.peaksNew, ...
+        'XData',[],...
+        'YData',[]);
+    set(handles.valleysNew, ...
+        'XData',[],...
+        'YData',[]);
+end
 guidata(hObject, handles);
 
 % --- Executes on button press in RemovePoints.
@@ -487,6 +635,52 @@ if ~isempty(handles.lastdeleted.String)
     guidata(hObject, handles);
 end
 
+% --- Executes on button press in ModifyPoint.
+function ModifyPoint_Callback(hObject, eventdata, handles)
+% hObject    handle to ModifyPoint (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% user selects which point to edit
+roi = drawrectangle;
+peaks_to_delete = intersect(...
+                    find(handles.SniffsTSnew(:,1) >= roi.Position(1)), ...
+                        find(handles.SniffsTSnew(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+
+valleys_to_delete = intersect(...
+                    find(handles.SniffsTSnew(:,2) >= roi.Position(1)), ...
+                        find(handles.SniffsTSnew(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+
+if ~isempty(peaks_to_delete) & ~isempty(valleys_to_delete)
+    warndlg('please select only one peak or valley!','Warning');
+    return;
+elseif ~isempty(valleys_to_delete)
+    ispeak = 0;
+    sniff_to_edit = [valleys_to_delete 2];
+elseif ~isempty(peaks_to_delete)
+    ispeak = 1;
+    sniff_to_edit = [peaks_to_delete 1];
+end
+delete(roi);
+
+% user selects a new point
+[x] = ginput(1);
+[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+
+if ispeak
+    if handles.SniffsTSnew(sniff_to_edit(1)-1,3) == handles.SniffsTSnew(sniff_to_edit(1),1)
+        % also edit previous sniff end
+        handles.SniffsTSnew(sniff_to_edit(1)-1,3) = x(1);
+    end
+    handles.SniffsTSnew(sniff_to_edit(1),1) = x(1);
+    handles.SniffsTSnew(sniff_to_edit(1),8) = idx;
+
+else
+    handles.SniffsTSnew(sniff_to_edit(1),2) = x(1);
+    handles.SniffsTSnew(sniff_to_edit(1),9) = idx;
+end
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+guidata(hObject, handles);
 
 % --- Executes on button press in ZoomON.
 function ZoomON_Callback(hObject, eventdata, handles)
@@ -597,7 +791,7 @@ function KeepNewSD_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.KeepNewSD.BackgroundColor = [0.94 0.94 0.94];
 handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
-uiresume;
+%uiresume;
 handles.SDfactor.String = num2str(2*str2double(handles.SDfactor.String));
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of KeepNewSD
@@ -615,7 +809,7 @@ handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8) = -handles.SniffsTS(find(handl
 UpdatePeakValleyPlots(hObject, eventdata, handles); 
 handles.KeepNewSD.BackgroundColor = [0.94 0.94 0.94];
 handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
-uiresume;
+%uiresume;
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of KeepOldSD
 
@@ -660,3 +854,6 @@ handles.rawTrace.YData(indices_to_delete) = nan;
 % set(handles.rawTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Raw);
 delete(roi);
 guidata(hObject, handles);
+
+
+
