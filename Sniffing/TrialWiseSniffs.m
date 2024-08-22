@@ -46,8 +46,15 @@ for trialID = 1:numel(TrialInfo.Odor)
     end
     
     % add trialstate? -1 - air off, 0,1,2,3 - air, odor1, odor2, odor3
-    thisTrialStartStop = TrialInfo.SessionTimestamps(trialID,1:2);
-    thisTrialOdorStart = TrialInfo.OdorStart(trialID,2); % in seconds before trial start
+    if isfield(TrialInfo,'SessionTimestamps')
+        thisTrialStartStop = TrialInfo.SessionTimestamps(trialID,1:2);
+        thisTrialOdorStart = TrialInfo.OdorStart(trialID,2); % in seconds before trial start
+    else
+        thisTrialStartStop = [find(diff(Traces.TrialState{trialID})>0,1,'first') find(diff(Traces.TrialState{trialID})<0,1,'last')];
+        thisTrialStartStop = Traces.Timestamps{trialID}(thisTrialStartStop);
+        thisTrialOdorStart = TrialInfo.OdorStart(trialID,1); % in seconds before trial start
+    end
+    
     thisTrialOdorStart = thisTrialStartStop(1) + thisTrialOdorStart; 
     thisTrialOdorStop  = thisTrialStartStop(2);
     

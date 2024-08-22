@@ -1,5 +1,13 @@
 % load the data
-load('/mnt/grid-hs/mdussauz/CID/Processed/E6/2022-06-10_11-40-39_cid-processed.mat');
+% load('/mnt/grid-hs/mdussauz/CID/Processed/E6/2022-06-10_11-40-39_cid-processed.mat');
+% FigPath = '/home/priyanka/Desktop/cid/E6/20220610';
+
+% load('/mnt/grid-hs/mdussauz/CID/Processed/E3/2022-06-14_11-36-14_cid-processed.mat');
+% FigPath = '/home/priyanka/Desktop/cid/E3/20220614';
+
+load('/mnt/grid-hs/mdussauz/CID/Processed/E2/2022-06-11_13-57-38_cid-processed.mat');
+FigPath = '/home/priyanka/Desktop/cid/E2/20220611';
+
 
 TTLs.Trial((TTLs.Trial(:,4)==0),4) =  max(TTLs.Trial(:,4)) + 1;
 nStim = unique(TTLs.Trial(:,4));
@@ -7,7 +15,6 @@ nTypes = unique(TTLs.Trial(:,5));
 nreps = max(TTLs.Trial(:,6));
 nUnits = size(SingleUnits,2);
 savefigs = 1;
-FigPath = '/home/priyanka/Desktop/cid/E6/20220610';
 mycolors = brewermap(10,'YlOrRd');
 mycolors(1:2,:) = [];
 

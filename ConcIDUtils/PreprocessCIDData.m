@@ -88,9 +88,8 @@ if exist('CuratedSniffTimestamps','var')
             DigitalSniffs(idx(1):idx(2)) = 1;
         end
     end
+    TracesOut.SniffsDigitized{1} = DigitalSniffs;
 end
-
-TracesOut.SniffsDigitized{1} = DigitalSniffs;
 
 %% Get spikes - label spikes by trials
 SingleUnits = GetSingleUnits(MyFilePath);

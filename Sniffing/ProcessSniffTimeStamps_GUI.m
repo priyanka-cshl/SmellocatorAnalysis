@@ -177,7 +177,9 @@ switch handles.datamode
         handles.SessionLength = ceil(Traces.Timestamps{end}(end));
         
         % reprocess sniff traces on a trialwise basis
-        Traces.OdorLocation     = Traces.Motor;
+        if isfield(Traces,'Motor')
+            Traces.OdorLocation     = Traces.Motor;
+        end
         [SniffTimeStamps] = ...
             TrialWiseSniffs(TrialInfo,Traces); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
         % remove overlapping sniffs
@@ -221,15 +223,16 @@ set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize
     'YTick', []);
 currlims = get(gca,'YLim');
 
-% Trial times
-Xvals = [TTLs.Trial(:,1) TTLs.Trial(:,1) nan(size(TTLs.Trial,1),1)]';
-YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
-plot(Xvals(:),YVals(:),'--','color',Plot_Colors('pd'));
+if exist('TTLs','var')
+    % Trial times
+    Xvals = [TTLs.Trial(:,1) TTLs.Trial(:,1) nan(size(TTLs.Trial,1),1)]';
+    YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
+    plot(Xvals(:),YVals(:),'--','color',Plot_Colors('pd'));
 
-Xvals = [TTLs.Trial(:,2) TTLs.Trial(:,2) nan(size(TTLs.Trial,1),1)]';
-YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
-plot(Xvals(:),YVals(:),'-.','color',Plot_Colors('pl'));
-
+    Xvals = [TTLs.Trial(:,2) TTLs.Trial(:,2) nan(size(TTLs.Trial,1),1)]';
+    YVals = repmat([2*currlims NaN],size(TTLs.Trial,1),1)';
+    plot(Xvals(:),YVals(:),'-.','color',Plot_Colors('pl'));
+end
 set(gca,'YLim',currlims);
 
 axes(handles.SniffingRaw);
