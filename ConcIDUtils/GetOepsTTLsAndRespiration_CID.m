@@ -198,7 +198,7 @@ SniffData = [];
     end
 
     % if respiration file was found - filter and detect peaks and valleys?
-    [SniffData(:,3)] = FilterThermistor(SniffData(:,2));
+    [SniffData(:,3)] = FilterMassFlowSensor(SniffData(:,2));
     plot(SniffData(:,1),SniffData(:,3),'r');
 
 %end
