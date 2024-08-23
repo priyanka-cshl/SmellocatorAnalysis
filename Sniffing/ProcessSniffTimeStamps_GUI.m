@@ -331,10 +331,14 @@ function [handles] = collatesniffs(handles,whichmode)
 % many of these peaks/valleys are redundant with those detected with the
 % standard threshold (2.5 SD)
 % redundant new detections are flagged by swapping col 8,9 values with nan
-newsniffs = handles.SniffsTSnew(~isnan(handles.SniffsTSnew(:,8)),:);
-% swap col 8,9 (trace indices) to -ve to know in the pooled set which
-% sniffs came for new detections
-newsniffs(:,8:9) = -newsniffs(:,8:9);
+if isfield(handles,'SniffsTSnew')
+    newsniffs = handles.SniffsTSnew(~isnan(handles.SniffsTSnew(:,8)),:);
+    % swap col 8,9 (trace indices) to -ve to know in the pooled set which
+    % sniffs came for new detections
+    newsniffs(:,8:9) = -newsniffs(:,8:9);
+else
+    newsniffs = [];
+end
 % pool old sniffs and new detections
 pooledsniffs = vertcat(handles.SniffsTS,newsniffs);
 pooledsniffs = sortrows(pooledsniffs,1);
@@ -412,7 +416,8 @@ if whichmode
     end
     
     % sanity check 2: any gaps?
-    while any(abs(pooledsniffs(1:end-1,3)-pooledsniffs(2:end,1))>0.01)
+    ignoreme = 0;
+    while any(abs(pooledsniffs(1:end-1,3)-pooledsniffs(2:end,1))>0.01) & ~ignoreme
         f = find(abs(pooledsniffs(1:end-1,3)-pooledsniffs(2:end,1))>0.01,1,'first');
         if pooledsniffs(f+1,1)<pooledsniffs(f,3) & pooledsniffs(f+1,1)>pooledsniffs(f,2) & pooledsniffs(f,3)==pooledsniffs(f+1,3)
             pooledsniffs(f,3) = pooledsniffs(f+1,1);
@@ -721,13 +726,29 @@ function ModifyPoint_Callback(hObject, eventdata, handles)
 
 % user selects which point to edit
 roi = drawrectangle;
+SniffTag = 'SniffsTSnew';
+
 peaks_to_delete = intersect(...
-                    find(handles.SniffsTSnew(:,1) >= roi.Position(1)), ...
-                        find(handles.SniffsTSnew(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+                    find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+peaks_to_delete = intersect(peaks_to_delete,find(~isnan(handles.(SniffTag)(:,8))));
 
 valleys_to_delete = intersect(...
-                    find(handles.SniffsTSnew(:,2) >= roi.Position(1)), ...
-                        find(handles.SniffsTSnew(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+                    find(handles.(SniffTag)(:,2) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+valleys_to_delete = intersect(valleys_to_delete,find(~isnan(handles.(SniffTag)(:,8))));
+
+if isempty([peaks_to_delete; valleys_to_delete])
+    % try originally detected sniffs
+    SniffTag = 'SniffsTS';
+    peaks_to_delete = intersect(...
+        find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+        find(handles.(SniffTag)(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+
+    valleys_to_delete = intersect(...
+        find(handles.(SniffTag)(:,2) >= roi.Position(1)), ...
+        find(handles.(SniffTag)(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+end
 
 if ~isempty(peaks_to_delete) & ~isempty(valleys_to_delete)
     warndlg('please select only one peak or valley!','Warning');
@@ -746,17 +767,18 @@ delete(roi);
 [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
 
 if ispeak
-    if handles.SniffsTSnew(sniff_to_edit(1)-1,3) == handles.SniffsTSnew(sniff_to_edit(1),1)
+    if handles.(SniffTag)(sniff_to_edit(1)-1,3) == handles.(SniffTag)(sniff_to_edit(1),1)
         % also edit previous sniff end
-        handles.SniffsTSnew(sniff_to_edit(1)-1,3) = x(1);
+        handles.(SniffTag)(sniff_to_edit(1)-1,3) = x(1);
     end
-    handles.SniffsTSnew(sniff_to_edit(1),1) = x(1);
-    handles.SniffsTSnew(sniff_to_edit(1),8) = idx;
+    handles.(SniffTag)(sniff_to_edit(1),1) = x(1);
+    handles.(SniffTag)(sniff_to_edit(1),8) = idx;
 
 else
-    handles.SniffsTSnew(sniff_to_edit(1),2) = x(1);
-    handles.SniffsTSnew(sniff_to_edit(1),9) = idx;
+    handles.(SniffTag)(sniff_to_edit(1),2) = x(1);
+    handles.(SniffTag)(sniff_to_edit(1),9) = idx;
 end
+
 UpdatePeakValleyPlots(hObject, eventdata, handles);
 guidata(hObject, handles);
 

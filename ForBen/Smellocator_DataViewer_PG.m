@@ -238,6 +238,40 @@ end
 % create a corresponding timestamp vector
 Timestamps = TracesOut(:,find(strcmp(whichTraces,'Timestamps')));
 
+% Sniffing specifc
+% add a filtered sniff trace
+TracesOut(:,9)     = FilterThermistor(TracesOut(:,2));
+whichTraces{9,1}   = 'SniffsFiltered';
+
+% add a digital sniff trace
+load(handles.WhereSession.String,'CuratedSniffTimestamps');
+if exist('CuratedSniffTimestamps','var')
+    if size(CuratedSniffTimestamps,2) < 10
+        CuratedSniffTimestamps(:,10) = 0;
+    end
+    LocationSniffs = TracesOut(:,9)*nan;
+    DigitalSniffs = TracesOut(:,9)*0;
+    for n = 1:size(CuratedSniffTimestamps)
+        idx = CuratedSniffTimestamps(n,8:9);
+        if CuratedSniffTimestamps(n,10) == -1
+            DigitalSniffs(idx(1):idx(2)) = -1;
+        else
+            DigitalSniffs(idx(1):idx(2)) = 1;
+        end
+        if ~any(isnan(CuratedSniffTimestamps(:,4)))
+            location = CuratedSniffTimestamps(n,4);
+            LocationSniffs(idx(1):idx(2)) = location;
+        end
+    end
+
+    TracesOut(:,10)     = DigitalSniffs;
+    whichTraces{10,1}   = 'SniffsDigitized';
+    TracesOut(:,11)     = LocationSniffs;
+    whichTraces{11,1}   = 'SniffsLocationed';
+    TracesOut(:,12)     = TracesOut(:,1); % Lever
+    TracesOut(find(~TracesOut(:,10)),12) = nan;
+end
+
 %% Calculate Trial On-Off timestamps
 TrialColumn = TracesOut(:,find(strcmp(whichTraces,'TrialState')));
 TrialColumn(TrialColumn~=0) = 1; % make logical
@@ -298,12 +332,16 @@ tick_y = repmat( [0; 5; NaN],...
 set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 
 % plot Licks
-handles.lick_plot = plot(NaN, NaN, 'color',handles.plotcolors.licks,'Linewidth',1.25);
-tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'Licks')))==1)) + 1);
+handles.lick_plot = plot(NaN, NaN, 'color',handles.plotcolors.licks,'Linewidth',0.25);
+if ~isempty(find(strcmp(whichTraces,'LicksBinary')))
+    tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'LicksBinary')))==1)) + 1);
+elseif ~isempty(find(strcmp(whichTraces,'Licks')))
+    tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'Licks')))==1)) + 1);
+end
 tick_x = [tick_timestamps'; tick_timestamps'; ...
     NaN(1,numel(tick_timestamps))]; % creates timestamp1 timestamp1 NaN timestamp2 timestamp2..
 tick_x = tick_x(:);
-tick_y = repmat( [5.2; 5.5; NaN],...
+tick_y = repmat( [0; 5.5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
 set(handles.lick_plot,'XData',tick_x,'YData',tick_y);
 
@@ -334,6 +372,12 @@ if ~isempty(handles.RespSegmentsPath.String)
     gatedLever(find(TracesOut(:,10)~=1)) = NaN;
     handles.lever_plot_gated = plot(Timestamps, ...
         gatedLever, ...
+        'color',handles.plotcolors.licks,'Linewidth',2);
+end
+
+if size(TracesOut,2) == 12
+        handles.lever_plot_gated = plot(Timestamps, ...
+        TracesOut(:,12), ...
         'color',handles.plotcolors.licks,'Linewidth',2);
 end
 
