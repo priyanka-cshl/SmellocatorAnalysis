@@ -32,7 +32,7 @@ gui_State = struct('gui_Name',       mfilename, ...
                    'gui_OutputFcn',  @ProcessSniffTimeStamps_GUI_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
-if nargin && ischar(varargin{1})
+if nargin && ischar(varargin{1}) && isempty(strfind(varargin{1},'.mat'))
     gui_State.gui_Callback = str2func(varargin{1});
 end
 
@@ -283,7 +283,9 @@ switch handles.datamode
     case 'smellocator'
         % re-detect peaks and valleys with lower peak prominence
         load(handles.WhereSession.String,'Traces','TrialInfo');
-        Traces.OdorLocation     = Traces.Motor;
+        if ~isfield(Traces,'OdorLocation')
+            Traces.OdorLocation     = Traces.Motor;
+        end
         [SniffTimeStamps] = ...
             TrialWiseSniffs(TrialInfo,Traces,'SDfactor',sdnew); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
         % remove overlapping sniffs
@@ -429,6 +431,7 @@ if whichmode
             pooledsniffs(f+[1:2],:) = [];
         else
             keyboard;
+            % pooledsniffs(f,3) = pooledsniffs(f+1,1);
         end
     end
 

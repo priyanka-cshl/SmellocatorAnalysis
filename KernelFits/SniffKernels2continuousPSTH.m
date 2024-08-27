@@ -33,4 +33,8 @@ if strcmp(convmode, 'full')
 %     zdata(:,end-bins2del+2:end) = [];
 end
 
+% ignore datapoints during perturbation
+perturbationbins = find(regressors(7,:));
+zdata(:,perturbationbins) = 0;
+
 end

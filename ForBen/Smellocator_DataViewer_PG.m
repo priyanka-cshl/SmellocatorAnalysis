@@ -32,7 +32,7 @@ gui_State = struct('gui_Name',       mfilename, ...
     'gui_OutputFcn',  @Smellocator_DataViewer_PG_OutputFcn, ...
     'gui_LayoutFcn',  [] , ...
     'gui_Callback',   []);
-if nargin && ischar(varargin{1})
+if nargin && ischar(varargin{1}) && isempty(strfind(varargin{1},'.mat'))
     gui_State.gui_Callback = str2func(varargin{1});
 end
 
@@ -289,6 +289,10 @@ end
 TrialIndices = [TrialOn TrialOff];
 TrialTimeStamps = [Timestamps(TrialOn,1) Timestamps(TrialOff,1)];
 
+if size(TrialTimeStamps,1) == size(TrialInfo.OdorStart,1)
+    TrialTimeStamps(:,1) = TrialTimeStamps(:,1) + TrialInfo.OdorStart(:,1);
+end
+
 handles.SessionLength.String = TrialTimeStamps(end,2);
 
 %% plot odor boxes on the behavior plot
@@ -343,10 +347,12 @@ tick_x = [tick_timestamps'; tick_timestamps'; ...
 tick_x = tick_x(:);
 tick_y = repmat( [0; 5.5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
-set(handles.lick_plot,'XData',tick_x,'YData',tick_y);
 
-set(gca,'YLim', [0 7], 'YTick', [],...
-    'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+if handles.PlotLicks.Value
+    set(handles.lick_plot,'XData',tick_x,'YData',tick_y);
+    set(gca,'YLim', [0 7], 'YTick', [],...
+        'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+end
 
 % plot respiration
 handles.SniffData = TracesOut(:,find(strcmp(whichTraces,'Sniffs')));
