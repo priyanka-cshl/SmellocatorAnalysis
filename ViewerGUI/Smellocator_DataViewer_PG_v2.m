@@ -22,7 +22,7 @@ function varargout = Smellocator_DataViewer_PG_v2(varargin)
 
 % Edit the above text to modify the response to help Smellocator_DataViewer_PG_v2
 
-% Last Modified by GUIDE v2.5 28-Aug-2024 09:48:39
+% Last Modified by GUIDE v2.5 28-Aug-2024 15:58:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -52,7 +52,7 @@ handles.output = hObject;
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
 handles.TimeWindow.String = '20';
-handles.RespirationScaling.Data = [6 0.5];
+handles.PlotScaling.Data(1,:) = [6 0.5];
 if ~isempty(varargin)
     handles.WhereSession.String = varargin{1};
 else
@@ -67,8 +67,11 @@ handles.plotcolors.Odor3    = [0.8706    0.9216    0.9804];
 handles.plotcolors.Odor4    = [0.93    0.84    0.84];
 handles.plotcolors.TZ       = [1 1 0];
 handles.plotcolors.resp     = [52 101 164]./256;
-handles.plotcolors.licks    = [239 41 41]./256;
+handles.plotcolors.licks    = [199 21 133]./256; %[239 41 41]./256;
+handles.plotcolors.red      = [239 41 41]./256;
 handles.plotcolors.rewards  = [0 139 139]./256;
+handles.plotcolors.LeverSeg = [173 127 168]./256; %[0 0 0];
+
 handles.OdorLocationMapping = [ ...
     0.6471    0.0000    0.1490
     0.6707    0.0081    0.1416
@@ -210,13 +213,15 @@ whichTraces{9,1}   = 'SniffsFiltered';
 % add a digital sniff trace
 load(handles.WhereSession.String,'CuratedSniffTimestamps');
 if exist('CuratedSniffTimestamps','var')
+
     if size(CuratedSniffTimestamps,2) < 10
         CuratedSniffTimestamps(:,10) = 0;
     end
-    LocationSniffs = TracesOut(:,9)*nan;
-    DigitalSniffs = TracesOut(:,9)*0;
-    for n = 1:size(CuratedSniffTimestamps)
-        idx = CuratedSniffTimestamps(n,8:9);
+    LocationSniffs  = TracesOut(:,9)*nan;
+    DigitalSniffs   = TracesOut(:,9)*0;
+    SegmentedLever  = zeros(size(CuratedSniffTimestamps,1)-1,8);
+    for n = 1:size(CuratedSniffTimestamps,1)-1
+        idx = CuratedSniffTimestamps(n,8:9); % trace indices of inhalation start and end
         if CuratedSniffTimestamps(n,10) == -1
             DigitalSniffs(idx(1):idx(2)) = -1;
         else
@@ -226,6 +231,11 @@ if exist('CuratedSniffTimestamps','var')
             location = CuratedSniffTimestamps(n,4);
             LocationSniffs(idx(1):idx(2)) = location;
         end
+        SegmentedLever(n,1:4) = [CuratedSniffTimestamps(n,1:2) TracesOut(idx,1)']; % ts and lever values at inhalation start and end
+        SegmentedLever(n,5:6) = [mean(CuratedSniffTimestamps(n,1:2)) mean(TracesOut(idx(1):idx(2),1))]; % mean ts and lever value at inhalation
+        idx(3) = CuratedSniffTimestamps(n+1,8); % next sniff start
+        SegmentedLever(n,7) = mean([CuratedSniffTimestamps(n,2) CuratedSniffTimestamps(n+1,1)]) ;
+        SegmentedLever(n,8) = mean(TracesOut(idx(2):idx(3),1)); % mean ts and lever value at 'rest of sniff'
     end
 
     TracesOut(:,10)     = DigitalSniffs;
@@ -234,6 +244,9 @@ if exist('CuratedSniffTimestamps','var')
     whichTraces{11,1}   = 'SniffsLocationed';
     TracesOut(:,12)     = TracesOut(:,1); % Lever
     TracesOut(find(~TracesOut(:,10)),12) = nan;
+    whichTraces{12,1}   = 'LeverGated';
+
+
 end
 
 %% Calculate Trial On-Off timestamps
@@ -286,9 +299,30 @@ handles.TargetZonePlot.Vertices = [ ...
     TZList(:)];
 handles.TargetZonePlot.Faces = reshape(1:2*numel(TrialTS),4,size(TrialTS,2))';
 
-% plot the lever trace on top
-plot(Timestamps, TracesOut(:,find(strcmp(whichTraces,'Lever'))),'k','Linewidth',2);
+%% plotting lever traces
+handles.lever_full = plot(NaN, NaN, 'color','k','Linewidth',2);
+set(handles.lever_full, 'XData', Timestamps, 'YData', TracesOut(:,find(strcmp(whichTraces,'Lever'))) );
 
+if size(TracesOut,2) == 12
+    handles.lever_plot_gated = plot(Timestamps, ...
+        TracesOut(:,12), ...
+        'color',handles.plotcolors.licks,'Linewidth',2);
+end
+
+% segmented lever traces
+handles.SegmentedLever1 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
+handles.SegmentedLever2 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
+handles.SegmentedLever3 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
+if exist('SegmentedLever','var')
+    set(handles.SegmentedLever1, 'XData', reshape(SegmentedLever(:,1:2)',2*size(SegmentedLever,1),[]), ...
+        'YData', reshape(SegmentedLever(:,3:4)',2*size(SegmentedLever,1),[]) );
+    set(handles.SegmentedLever2, 'XData', SegmentedLever(:,5), 'YData', SegmentedLever(:,6) );
+    set(handles.SegmentedLever3, 'XData', reshape(SegmentedLever(:,[5 7])',2*size(SegmentedLever,1),[]), ...
+        'YData', reshape(SegmentedLever(:,[6 8])',2*size(SegmentedLever,1),[]) );
+end
+WhichLeverTraces_Callback(hObject, eventdata, handles);
+
+%%
 % plot Rewards
 handles.reward_plot = plot(NaN, NaN, 'color',handles.plotcolors.rewards,'Linewidth',1.25);
 tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'Rewards')))==1)) + 1);
@@ -300,7 +334,7 @@ tick_y = repmat( [0; 5; NaN],...
 set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 
 % plot Licks
-handles.lick_plot = plot(NaN, NaN, 'color',handles.plotcolors.licks,'Linewidth',0.25);
+handles.lick_plot = plot(NaN, NaN, 'color',handles.plotcolors.red,'Linewidth',0.25);
 if ~isempty(find(strcmp(whichTraces,'LicksBinary')))
     tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'LicksBinary')))==1)) + 1);
 elseif ~isempty(find(strcmp(whichTraces,'Licks')))
@@ -311,12 +345,19 @@ tick_x = [tick_timestamps'; tick_timestamps'; ...
 tick_x = tick_x(:);
 tick_y = repmat( [0; 5.5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
+set(handles.lick_plot,'XData',tick_x,'YData',tick_y);
 
-if handles.PlotLicks.Value
-    set(handles.lick_plot,'XData',tick_x,'YData',tick_y);
-    set(gca,'YLim', [0 7], 'YTick', [],...
-        'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+% plot piezo licks
+if ~isempty(find(strcmp(whichTraces,'LicksPiezo')))
+    handles.LickData = TracesOut(:,find(strcmp(whichTraces,'LicksPiezo')));
+else
+    handles.LickData = nan*Timestamps;
 end
+handles.lickpiezo_plot = plot(Timestamps, ...
+    handles.PlotScaling.Data(2,1) + handles.PlotScaling.Data(2,2)*handles.LickData, ...
+    'color',handles.plotcolors.licks,'Linewidth',0.25);
+
+PlotLicks_Callback(hObject, eventdata, handles);
 
 % plot respiration
 handles.SniffData = TracesOut(:,find(strcmp(whichTraces,'Sniffs')));
@@ -324,14 +365,13 @@ handles.SniffData(handles.SniffData==Inf) = NaN;
 handles.SniffData = handles.SniffData - mean(handles.SniffData,'omitnan');
 
 handles.respiration_plot = plot(Timestamps, ...
-    handles.RespirationScaling.Data(1) + handles.RespirationScaling.Data(2)*handles.SniffData, ...
+    handles.PlotScaling.Data(1,1) + handles.PlotScaling.Data(1,2)*handles.SniffData, ...
     'color',handles.plotcolors.resp,'Linewidth',2);
 
-if size(TracesOut,2) == 12
-        handles.lever_plot_gated = plot(Timestamps, ...
-        TracesOut(:,12), ...
-        'color',handles.plotcolors.licks,'Linewidth',2);
-end
+
+
+set(gca,'YLim', [-0.5 7], 'YTick', [],...
+    'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 
 %% update the motor plot
 axes(handles.MotorPlot);
@@ -375,7 +415,35 @@ guidata(hObject, handles);
 function TimeWindow_Callback(hObject, eventdata, handles)
 Scroller_Callback(hObject, eventdata, handles);
 
-% --- Executes when entered data in editable cell(s) in RespirationScaling.
-function RespirationScaling_CellEditCallback(hObject, eventdata, handles)
-handles.respiration_plot.YData = handles.RespirationScaling.Data(1) + handles.RespirationScaling.Data(2)*handles.SniffData';
+% --- Executes when entered data in editable cell(s) in PlotScaling.
+function PlotScaling_CellEditCallback(hObject, eventdata, handles)
+handles.respiration_plot.YData = handles.PlotScaling.Data(1) + handles.PlotScaling.Data(2)*handles.SniffData';
 guidata(hObject, handles);
+
+
+% --- Executes on button press in PlotLicks.
+function PlotLicks_Callback(hObject, eventdata, handles)
+% hObject    handle to PlotLicks (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+mylinestyle = {'none'; '-'};
+handles.lick_plot.LineStyle = mylinestyle{handles.PlotLicks.Value+1};
+handles.lickpiezo_plot.LineStyle = handles.lick_plot.LineStyle;
+guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of PlotLicks
+
+
+% --- Executes on selection change in WhichLeverTraces.
+function WhichLeverTraces_Callback(hObject, eventdata, handles)
+% hObject    handle to WhichLeverTraces (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+mylinestyle = {'none'; '-'};
+handles.lever_full.LineStyle = mylinestyle{ismember(1,handles.WhichLeverTraces.Value) + 1};
+handles.lever_plot_gated.LineStyle = handles.lever_full.LineStyle;
+for x = 1:3
+    handles.(['SegmentedLever',num2str(x)]).LineStyle = mylinestyle{ismember(x+1,handles.WhichLeverTraces.Value) + 1};
+end
+guidata(hObject, handles);
+% Hints: contents = cellstr(get(hObject,'String')) returns WhichLeverTraces contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from WhichLeverTraces
