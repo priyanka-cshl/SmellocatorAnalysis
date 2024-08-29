@@ -1,4 +1,4 @@
-function [handles] = AlignVideoAndTraces240319(slowby, write_video)
+function [handles] = AlignVideoAndTraces240320(slowby, write_video)
 
 if nargin<1
     slowby = 1;
@@ -90,7 +90,7 @@ if write_video
     %writerObj = VideoWriter('test_video','MPEG-4'); % VideoWriter('test_video','avi'); %
     %writerObj = VideoWriter('test_video_slow10.avi');
     %writerObj = VideoWriter(['N8_withPassiveReplay_slow',num2str(slowby),'.avi']);
-    writerObj = VideoWriter(['N8_withPassiveReplay_slow',num2str(slowby)],'MPEG-4');
+    writerObj = VideoWriter(['N8_Smellocator',num2str(slowby)],'MPEG-4');
     writerObj.FrameRate = framerate/slowby;
     open(writerObj);
 end
@@ -212,7 +212,7 @@ toplim      = handles.TZLims.Position(2) + handles.TZLims.Position(4) + bufferma
 R           = [leftlim bottomlim (rightlim - leftlim) (toplim - bottomlim)];
 figsize = get(gcf,'Position');
 Rpix        = round(R.*([figsize(3) figsize(4) figsize(3) figsize(4)]));
-
+halfpix     = round(R.*([figsize(3) figsize(4) figsize(3)/2 figsize(4)]));
 trialcount = 0;
 trialphase = -1; % ITI
 
@@ -312,7 +312,8 @@ for i = 1:frames_to_show
     end
         
     if write_video
-        myframe = getframe(h,Rpix);
+        %myframe = getframe(h,Rpix);
+        myframe = getframe(h,halfpix);
         %for foo = 1:slowby
             writeVideo(writerObj,myframe);
         %end
