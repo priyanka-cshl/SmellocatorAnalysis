@@ -22,7 +22,7 @@ function varargout = Smellocator_DataViewer_PG_v2(varargin)
 
 % Edit the above text to modify the response to help Smellocator_DataViewer_PG_v2
 
-% Last Modified by GUIDE v2.5 28-Aug-2024 15:58:31
+% Last Modified by GUIDE v2.5 05-Sep-2024 15:21:50
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -194,82 +194,11 @@ if isempty(handles.WhereSession.String)
     return;
 end
 
-% Load the relevant variables
-load(handles.WhereSession.String, 'Traces', 'TrialInfo', 'TargetZones', ...
-    'startoffset', 'SampleRate');
+[TracesOut, whichTraces, SegmentedLever, thisSniffParams, TrialTimeStamps, TrialIndices, ...
+    TrialInfo, SampleRate, TargetZones] = ...
+            LoadProcessedLeverSession(handles.WhereSession.String);
 
 handles.SampleRate = SampleRate;
-
-%%
-[TracesOut, whichTraces] = ConcatenateTraces2Matrix(Traces, 1:length(TrialInfo.TrialID), SampleRate*startoffset);
-% create a corresponding timestamp vector
-Timestamps = TracesOut(:,find(strcmp(whichTraces,'Timestamps')));
-
-% Sniffing specifc
-% add a filtered sniff trace
-TracesOut(:,9)     = FilterThermistor(TracesOut(:,2));
-whichTraces{9,1}   = 'SniffsFiltered';
-
-% add a digital sniff trace
-load(handles.WhereSession.String,'CuratedSniffTimestamps');
-if exist('CuratedSniffTimestamps','var')
-
-    if size(CuratedSniffTimestamps,2) < 10
-        CuratedSniffTimestamps(:,10) = 0;
-    end
-    LocationSniffs  = TracesOut(:,9)*nan;
-    DigitalSniffs   = TracesOut(:,9)*0;
-    SegmentedLever  = zeros(size(CuratedSniffTimestamps,1)-1,8);
-    for n = 1:size(CuratedSniffTimestamps,1)-1
-        idx = CuratedSniffTimestamps(n,8:9); % trace indices of inhalation start and end
-        if CuratedSniffTimestamps(n,10) == -1
-            DigitalSniffs(idx(1):idx(2)) = -1;
-        else
-            DigitalSniffs(idx(1):idx(2)) = 1;
-        end
-        if ~any(isnan(CuratedSniffTimestamps(:,4)))
-            location = CuratedSniffTimestamps(n,4);
-            LocationSniffs(idx(1):idx(2)) = location;
-        end
-        SegmentedLever(n,1:4) = [CuratedSniffTimestamps(n,1:2) TracesOut(idx,1)']; % ts and lever values at inhalation start and end
-        SegmentedLever(n,5:6) = [mean(CuratedSniffTimestamps(n,1:2)) mean(TracesOut(idx(1):idx(2),1))]; % mean ts and lever value at inhalation
-        idx(3) = CuratedSniffTimestamps(n+1,8); % next sniff start
-        SegmentedLever(n,7) = mean([CuratedSniffTimestamps(n,2) CuratedSniffTimestamps(n+1,1)]) ;
-        SegmentedLever(n,8) = mean(TracesOut(idx(2):idx(3),1)); % mean ts and lever value at 'rest of sniff'
-    end
-
-    TracesOut(:,10)     = DigitalSniffs;
-    whichTraces{10,1}   = 'SniffsDigitized';
-    TracesOut(:,11)     = LocationSniffs;
-    whichTraces{11,1}   = 'SniffsLocationed';
-    TracesOut(:,12)     = TracesOut(:,1); % Lever
-    TracesOut(find(~TracesOut(:,10)),12) = nan;
-    whichTraces{12,1}   = 'LeverGated';
-
-
-end
-
-%% Calculate Trial On-Off timestamps
-TrialColumn = TracesOut(:,find(strcmp(whichTraces,'TrialState')));
-TrialColumn(TrialColumn~=0) = 1; % make logical
-TrialOn = find(diff([0; TrialColumn])>0);
-TrialOff =  find(diff(TrialColumn)<0)+1;
-
-% account for cases where acquisition started/ended in between a trial
-while TrialOn(1)>TrialOff(1)
-    TrialOff(1,:) = [];
-end
-while TrialOn(end)>TrialOff(end)
-    TrialOn(end,:) = [];
-end
-
-TrialIndices = [TrialOn TrialOff];
-TrialTimeStamps = [Timestamps(TrialOn,1) Timestamps(TrialOff,1)];
-
-if size(TrialTimeStamps,1) == size(TrialInfo.OdorStart,1)
-    TrialTimeStamps(:,1) = TrialTimeStamps(:,1) + TrialInfo.OdorStart(:,1);
-end
-
 handles.SessionLength.String = TrialTimeStamps(end,2);
 
 %% plot odor boxes on the behavior plot
@@ -288,7 +217,7 @@ for i = 1:4
     end
 end
 
-% plot the target zone
+%% plot the target zone
 handles.TargetZonePlot = fill(NaN,NaN,handles.plotcolors.TZ,'FaceAlpha',0.2);
 hold on;
 handles.TargetZonePlot.EdgeColor = 'none';
@@ -300,6 +229,7 @@ handles.TargetZonePlot.Vertices = [ ...
 handles.TargetZonePlot.Faces = reshape(1:2*numel(TrialTS),4,size(TrialTS,2))';
 
 %% plotting lever traces
+Timestamps = TracesOut(:,find(strcmp(whichTraces,'Timestamps')));
 handles.lever_full = plot(NaN, NaN, 'color','k','Linewidth',2);
 set(handles.lever_full, 'XData', Timestamps, 'YData', TracesOut(:,find(strcmp(whichTraces,'Lever'))) );
 
@@ -322,8 +252,7 @@ if exist('SegmentedLever','var')
 end
 WhichLeverTraces_Callback(hObject, eventdata, handles);
 
-%%
-% plot Rewards
+%% plot Rewards
 handles.reward_plot = plot(NaN, NaN, 'color',handles.plotcolors.rewards,'Linewidth',1.25);
 tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'Rewards')))==1)) + 1);
 tick_x = [tick_timestamps'; tick_timestamps'; ...
@@ -333,7 +262,7 @@ tick_y = repmat( [0; 5; NaN],...
     numel(tick_timestamps),1); % creates y1 y2 NaN y1 timestamp2..
 set(handles.reward_plot,'XData',tick_x,'YData',tick_y);
 
-% plot Licks
+%% plot Licks
 handles.lick_plot = plot(NaN, NaN, 'color',handles.plotcolors.red,'Linewidth',0.25);
 if ~isempty(find(strcmp(whichTraces,'LicksBinary')))
     tick_timestamps =  Timestamps(find(diff(TracesOut(:,find(strcmp(whichTraces,'LicksBinary')))==1)) + 1);
@@ -359,7 +288,7 @@ handles.lickpiezo_plot = plot(Timestamps, ...
 
 PlotLicks_Callback(hObject, eventdata, handles);
 
-% plot respiration
+%% plot respiration
 handles.SniffData = TracesOut(:,find(strcmp(whichTraces,'Sniffs')));
 handles.SniffData(handles.SniffData==Inf) = NaN;
 handles.SniffData = handles.SniffData - mean(handles.SniffData,'omitnan');
@@ -368,10 +297,77 @@ handles.respiration_plot = plot(Timestamps, ...
     handles.PlotScaling.Data(1,1) + handles.PlotScaling.Data(1,2)*handles.SniffData, ...
     'color',handles.plotcolors.resp,'Linewidth',2);
 
-
-
+%% set plot lims
 set(gca,'YLim', [-0.5 7], 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+
+%% update analysis plot
+axes(handles.analysisplot);
+hold off
+
+% plot odor boxes
+for i = 1:4
+    handles.(['TrialBox',num2str(i),'Plot']) = fill(NaN,NaN,handles.plotcolors.(['Odor',num2str(i)]));
+    hold on;
+    handles.(['TrialBox',num2str(i),'Plot']).EdgeColor = 'none';
+    ValveTS = TrialTimeStamps((TrialInfo.Odor==i),1:2)';
+    if ~isempty(ValveTS)
+        handles.(['TrialBox',num2str(i),'Plot']).Vertices = [ ...
+            reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
+            repmat([-5 5 5 -5]',size(ValveTS,2),1)];
+        handles.(['TrialBox',num2str(i),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
+    end
+end
+
+%% which stat - displacement or angle
+if handles.WhichStat.Value < 3
+    coloffset = 0;
+    ylims = [-5 5];
+else
+    ylims = [-90 90];
+end
+
+if mod(handles.WhichStat.Value,2)
+    % plot odor location in current sniff w.r.t. lever displacement/angle
+    x_vals = thisSniffParams(:,1);
+else
+    % plot odor location in prev sniff w.r.t. lever displacement/angle
+    x_vals = thisSniffParams(:,12);
+end
+
+% rescale to be plotted on the time axis
+x_vals = x_vals/120; % becomes from -1 to 1
+x_vals = x_vals + thisSniffParams(:,11);
+
+unique_X = unique(thisSniffParams(:,11));
+nTrials = numel(unique_X);
+
+% plot TZ
+handles.TargetZone2Plot = fill(NaN,NaN,handles.plotcolors.TZ,'FaceAlpha',0.2);
+%hold on;
+handles.TargetZone2Plot.EdgeColor = 'none';
+
+TZ_x    = (unique_X + [-8 8]/120)'; 
+TZList  = (repmat([ylims fliplr(ylims)],nTrials,1))';
+%TZList =  TargetZones(TrialInfo.TargetZoneType,[3 1 1 3])';
+handles.TargetZone2Plot.Vertices = [ ...
+    reshape([TZ_x(:) TZ_x(:)]', 2*numel(TZ_x), []) , ...
+    TZList(:)];
+handles.TargetZone2Plot.Faces = reshape(1:2*numel(TZ_x),4,size(TZ_x,2))';
+
+% plot(reshape(repmat(unique_X,1,3)',3*nTrials,1), reshape(repmat([-5 5 nan],nTrials,1)',3*nTrials,1), ':k'); 
+% hold on
+line([0 TrialTimeStamps(end,2)], [0 0], 'LineStyle',':', 'color','k');
+
+% plot analysed segments
+%y_vals = thisSniffParams(:,4);
+%plot(x_vals,y_vals,'or');
+handles.scatter1 = plot(x_vals,thisSniffParams(:,2 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.licks);
+handles.scatter2 = plot(x_vals,thisSniffParams(:,3 + coloffset),'ok');
+handles.scatter3 = plot(x_vals,thisSniffParams(:,4 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.rewards);
+set(gca,'YLim', ylims, 'YTick', [],...
+    'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
+ScatterOptions_Callback(hObject, eventdata, handles);
 
 %% update the motor plot
 axes(handles.MotorPlot);
@@ -393,9 +389,10 @@ set(handles.MotorTrajectoryPlot, 'AlphaData', alphamask');
 set(gca, 'YTick', [], 'XTick', [], ...
     'TickDir','out','XLim', [0 SampleRate*str2double(handles.TimeWindow.String)]);
 
+%%
 Scroller_Callback(hObject, eventdata, handles);
 
-% Update handles structure
+%% Update handles structure
 guidata(hObject, handles);
 
 % --- Executes on button press in NewSession.
@@ -408,6 +405,7 @@ newLims = handles.Scroller.Value * str2double(handles.SessionLength.String) + ..
     [0 str2double(handles.TimeWindow.String)];
 set(handles.BehaviorPlot,'XLim',newLims);
 set(handles.MotorPlot,'XLim',handles.SampleRate*newLims);
+set(handles.analysisplot,'XLim',newLims);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -447,3 +445,24 @@ end
 guidata(hObject, handles);
 % Hints: contents = cellstr(get(hObject,'String')) returns WhichLeverTraces contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from WhichLeverTraces
+
+
+% --- Executes on selection change in ScatterOptions.
+function ScatterOptions_Callback(hObject, eventdata, handles)
+% hObject    handle to ScatterOptions (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+markerstyle = {'none'; 'o'};
+handles.scatter1.Marker = markerstyle{ismember(1,handles.ScatterOptions.Value) + 1};
+handles.scatter2.Marker = markerstyle{ismember(2,handles.ScatterOptions.Value) + 1};
+handles.scatter3.Marker = markerstyle{ismember(3,handles.ScatterOptions.Value) + 1};
+
+
+% --- Executes on selection change in WhichStat.
+function WhichStat_Callback(hObject, eventdata, handles)
+% hObject    handle to WhichStat (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns WhichStat contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from WhichStat
