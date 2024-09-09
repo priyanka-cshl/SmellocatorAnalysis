@@ -1,5 +1,5 @@
 
-function [TracesOut, whichTraces, SegmentedLever, thisSniffParams, TrialTimeStamps, TrialIndices, TrialInfo, SampleRate, TargetZones] = ...
+function [TracesOut, whichTraces, SegmentedLever, thisSniffParams, TrialTimeStamps, TrialIndices, startspositive, TrialInfo, SampleRate, TargetZones] = ...
             LoadProcessedLeverSession(WhereSession)
 
 % WhereSession = '/home/priyanka/Dropbox/Smellocator_Behavior_2/Q5/Q5_20221028_r0_processed.mat';
@@ -31,6 +31,8 @@ end
 
 TrialIndices = [TrialOn TrialOff];
 TrialTimeStamps = [Timestamps(TrialOn,1) Timestamps(TrialOff,1)];
+
+startspositive = median(TracesOut(TrialIndices(:,1)+1,5))>0;
 
 if size(TrialTimeStamps,1) == size(TrialInfo.OdorStart,1)
     

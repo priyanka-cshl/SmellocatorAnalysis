@@ -194,7 +194,7 @@ if isempty(handles.WhereSession.String)
     return;
 end
 
-[TracesOut, whichTraces, SegmentedLever, thisSniffParams, TrialTimeStamps, TrialIndices, ...
+[TracesOut, whichTraces, SegmentedLever, thisSniffParams, TrialTimeStamps, TrialIndices, startspositive, ...
     TrialInfo, SampleRate, TargetZones] = ...
             LoadProcessedLeverSession(handles.WhereSession.String);
 
@@ -333,6 +333,10 @@ if mod(handles.WhichStat.Value,2)
 else
     % plot odor location in prev sniff w.r.t. lever displacement/angle
     x_vals = thisSniffParams(:,12);
+end
+
+if ~startspositive
+    x_vals = -x_vals;
 end
 
 % rescale to be plotted on the time axis
