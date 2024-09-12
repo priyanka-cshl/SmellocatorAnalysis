@@ -240,9 +240,9 @@ if size(TracesOut,2) == 12
 end
 
 % segmented lever traces
-handles.SegmentedLever1 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
-handles.SegmentedLever2 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
-handles.SegmentedLever3 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg);
+handles.SegmentedLever1 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg, 'LineWidth',2);
+handles.SegmentedLever2 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg, 'LineWidth',2);
+handles.SegmentedLever3 = plot(NaN, NaN, 'color', handles.plotcolors.LeverSeg, 'LineWidth',2);
 if exist('SegmentedLever','var')
     set(handles.SegmentedLever1, 'XData', reshape(SegmentedLever(:,1:2)',2*size(SegmentedLever,1),[]), ...
         'YData', reshape(SegmentedLever(:,3:4)',2*size(SegmentedLever,1),[]) );
@@ -366,9 +366,9 @@ line([0 TrialTimeStamps(end,2)], [0 0], 'LineStyle',':', 'color','k');
 % plot analysed segments
 %y_vals = thisSniffParams(:,4);
 %plot(x_vals,y_vals,'or');
-handles.scatter1 = plot(x_vals,thisSniffParams(:,2 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.licks);
-handles.scatter2 = plot(x_vals,thisSniffParams(:,3 + coloffset),'ok');
-handles.scatter3 = plot(x_vals,thisSniffParams(:,4 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.rewards);
+handles.scatter1 = plot(x_vals,thisSniffParams(:,2 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.licks,'LineWidth',1);
+handles.scatter2 = plot(x_vals,thisSniffParams(:,3 + coloffset),'o','MarkerEdgeColor',handles.plotcolors.rewards,'LineWidth',1);
+handles.scatter3 = plot(x_vals,thisSniffParams(:,4 + coloffset),'ok','LineWidth',1);
 set(gca,'YLim', ylims, 'YTick', [],...
     'XTick', [], 'XLim', [0 str2double(handles.TimeWindow.String)]);
 ScatterOptions_Callback(hObject, eventdata, handles);
