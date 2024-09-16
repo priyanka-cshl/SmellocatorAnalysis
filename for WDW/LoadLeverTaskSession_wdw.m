@@ -21,7 +21,7 @@ end
 load(WhereSession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
     'startoffset', 'errorflags', 'SampleRate', ...
     'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', ...
-    'TimestampAdjust');
+    'TimestampAdjust', 'FileLocations');
 
 %% flag perturbation trials
 if any(~cellfun(@isempty, TrialInfo.Perturbation(:,1)))
@@ -140,6 +140,11 @@ end
 %% Get the timestamp for Closed Loop End
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
 
+%% for passive tuning part of the session
+keyboard;
+MakePassiveSessionTraces(WhereSession);
+
+%%
 if savemode
     %% Organize data for Wolf separately
     path = fileparts(fileparts(fileparts(WhereSession)));
