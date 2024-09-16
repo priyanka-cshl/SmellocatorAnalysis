@@ -117,15 +117,25 @@ if any(round(diff(Timestamps),3,'decimal')~=0.002)
     keyboard;
 end
 
+% calculate time adjustment
+ephys = TTLs.Trial(1:numel(TrialInfo.Odor),2);
+%behavior = TrialInfo.SessionTimestamps(:,2);
+behavior = Timestamps(find((diff(abs(TracesOut.Trial{1})))==-1))';
+myfit = fit(behavior,ephys-behavior,'poly1');
+
+TimestampAdjust.ClosedLoop(2) = myfit.p2; 
+TimestampAdjust.ClosedLoop(1) = myfit.p1; 
+
+% if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+% TracesOut.Timestamps{1} = Timestamps + TimestampAdjust.ClosedLoop;
 % sanity check for clock drift
-% check that there was no clock drift
-if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+if ~any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (behavior + TimestampAdjust.ClosedLoop(2)))>0.04)
+    % convert the behavior timestamps to OEPS base
+    TracesOut.Timestamps{1} = Timestamps + Timestamps*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2);
+else
     disp('clock drift in ephys and behavior files');
     keyboard;
 end
-
-% convert the behavior timestamps to OEPS base
-TracesOut.Timestamps{1} = Timestamps + TimestampAdjust.ClosedLoop;
 
 %% Get the timestamp for Closed Loop End
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
