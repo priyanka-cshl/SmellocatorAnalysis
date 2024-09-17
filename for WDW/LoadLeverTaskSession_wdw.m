@@ -137,6 +137,35 @@ else
     keyboard;
 end
 
+%% tally valve timings with ephys TTLs
+for x = 1:3
+    odorvector = TracesOut.Odor{1};
+    odorvector(odorvector~=x) = 0;
+    odorTS = TracesOut.Timestamps{1}(find(diff(odorvector)));
+    odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
+
+    if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),1))>0.005) || ...
+       any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),2))>0.005)
+       keyboard;
+    end
+end
+
+% for the manifold air
+manifoldVector = TracesOut.Odor{1};
+manifoldVector(manifoldVector>0) = 1;
+ManifoldIdx = find(diff(manifoldVector));
+ManifoldIdx = reshape(ManifoldIdx,2,floor(numel(ManifoldIdx)/2))';
+odorTS = TracesOut.Timestamps{1}(ManifoldIdx);
+if ~any(abs(odorTS(:,1)-TTLs.AirManifold(1:size(odorTS,1),1))>0.005)
+    for n = 1:size(ManifoldIdx,1)
+        [~,idx] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(n,2)));
+        manifoldVector(ManifoldIdx(n,1):idx) = 1;
+    end
+    TracesOut.Manifold{1} = manifoldVector;
+else
+    keyboard;
+end
+
 %% Get the timestamp for Closed Loop End
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
 

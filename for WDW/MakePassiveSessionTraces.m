@@ -84,7 +84,7 @@ if ITIAirState
                     [~,idx1] = min(abs(timestamps-TuningTTLs(t,4))); % odor start
                     [~,idx2] = min(abs(timestamps-TuningTTLs(t,6))); % odor end
                     OdorVector(idx1:idx2) = TuningTTLs(t,5); % odor identity
-                    TrialVector(idx1:idx2) = -4;
+                    TrialVector(idx1:idx2) = -4; % passive tuning
 %                     if ~ITIAirState
 %                         % also flag time when manifold air actually turned on
 %                         keyboard;
@@ -94,34 +94,95 @@ if ITIAirState
                     % it is already set to 4 as default;
                     [~,idx1] = min(abs(timestamps-TuningTTLs(t,1))); % trial start
                     [~,idx2] = min(abs(timestamps-TuningTTLs(t,2))); % trial end
-                    TrialVector(idx1:idx2) = -4;
+                    TrialVector(idx1:idx2) = -4; % passive tuning
                 end
             end
         else
             % get the TTL timings from replay TTLs
-            keyboard;
             whichReplay = find(ReplayTTLs.TrialID==TuningTTLs(t,8));
-            % manifold is turning off 1 second after trial off! :(
-    
+            ValveTS = ReplayTTLs.OdorValve{whichReplay}(:,1:2) + TuningTTLs(t,1);
+            for n = 1:size(ValveTS,1) % every subtrial
+                [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
+                [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
+                OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
+                TrialVector(idx1:idx2) = -3; % replays
+            end
         end
     end
 
 end
 
-
-% make a timestamp trace
 PassiveOut.Timestamps{1} = timestamps;
-%PassiveOut.Lever =
-%     whichTraces{1} = 'Lever'; whichTraces{2} = 'Motor'; whichTraces{3} = 'Sniffs';
-%     whichTraces{4} = 'Trial'; whichTraces{5} = 'Odor';
-%     whichTraces{6} = 'Rewards'; whichTraces{7} = 'Timestamps';
+PassiveOut.Odor{1} = OdorVector;
+PassiveOut.Trial{1} = TrialVector;
 
+%% tally valve timings with ephys TTLs
+for x = 1:3
+    odorvector = PassiveOut.Odor{1};
+    odorvector(odorvector~=x) = 0;
+    odorTS = PassiveOut.Timestamps{1}(find(diff(odorvector)));
+    odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
 
-% check that there was no clock drift
-if any(abs(TuningTTLs(:,2) - (ts(:,2) + TimestampAdjust.Passive))>0.04)
-    disp('clock drift in ephys and behavior files');
-    keyboard;
+    [~,t1] = min(abs(TTLs.(['Odor',num2str(x)])(:,1)-odorTS(1,1)));  
+    t2 = t1 + size(odorTS,1) - 1;
+
+    if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005) || ...
+       any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)  
+        keyboard;
+    end
 end
 
+% for the manifold air
+manifoldVector = 0*PassiveOut.Odor{1};
+manifoldVector(manifoldVector==4) = 0;
+t1 = min(find(TTLs.AirManifold(:,1)>=timestamps(1),1,'first'), ...
+    find(TTLs.AirManifold(:,2)>=timestamps(1),1,'first'));
+t2 = size(TTLs.AirManifold,1);
+ValveTS = TTLs.AirManifold(t1:t2,:);
+
+for n = 1:size(ValveTS,1) % every transition
+    [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % start
+    [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % end
+    manifoldVector(idx1:idx2) = 1;
+end
+PassiveOut.Manifold{1} = manifoldVector;
+
+%% other traces
+PassiveOut.Lever{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'lever_DAC')));
+PassiveOut.Motor{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'stimulus_location_scaled')));
+PassiveOut.Rewards{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'rewards')));
+PassiveOut.Sniffs{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'thermistor')));
+
+%% sniffs
+% add a filtered sniff trace
+PassiveOut.SniffsFiltered{1}     = FilterThermistor(PassiveOut.Sniffs{1});
+% add a digital sniff trace
+load(WhereSession,'CuratedPassiveSniffTimestamps');
+if ~exist('CuratedPassiveSniffTimestamps','var')
+    ProcessSniffTimeStamps_GUI(PassiveOut,WhereSession);
+else
+    if size(CuratedPassiveSniffTimestamps,2) < 10
+        CuratedPassiveSniffTimestamps(:,10) = 0;
+    end
+    LocationSniffs = PassiveOut.SniffsFiltered{1}*nan;
+    DigitalSniffs = PassiveOut.SniffsFiltered{1}*0;
+    for n = 1:size(CuratedPassiveSniffTimestamps)
+        idx = CuratedPassiveSniffTimestamps(n,8:9);
+        if CuratedPassiveSniffTimestamps(n,10) == -1
+            DigitalSniffs(idx(1):idx(2)) = -1;
+        else
+            DigitalSniffs(idx(1):idx(2)) = 1;
+        end
+        if ~any(isnan(CuratedPassiveSniffTimestamps(:,4)))
+            location = CuratedPassiveSniffTimestamps(n,4);
+            LocationSniffs(idx(1):idx(2)) = location;
+        end
+    end
+
+    PassiveOut.SniffsDigitized{1} = DigitalSniffs;
+    PassiveOut.SniffsLocationed{1} = LocationSniffs;
+end
+
+%% flagging transient passive perturbations
 
 end

@@ -67,6 +67,7 @@ handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
 handles.lastdeleted.String = '';
 handles.new_detections.Data(:,1) = [];
 handles.datamode = 'smellocator';
+handles.ProcessedSession = '';
 
 % plots
 axes(handles.SniffingRaw);
@@ -88,7 +89,13 @@ handles.valleysNew   = plot(nan,nan,'om','MarkerSize',6);
 [Paths] = WhichComputer();
 
 if ~isempty(varargin)
-    if exist(varargin{1}) == 2
+    if isstruct(varargin{1})
+        handles.WhereSession.String = 'direct traces';
+        handles.SniffTrace.Timestamps   = varargin{1}.Timestamps{1};
+        handles.OdorLocationTrace       = varargin{1}.Motor{1};
+        handles.SniffTrace.Raw          = varargin{1}.Sniffs{1};
+        handles.ProcessedSession        = varargin{2};
+    elseif exist(varargin{1}) == 2
         handles.WhereSession.String = varargin{1};
     else
         MouseName = regexprep(varargin{1},'_(\w+)_processed.mat','');
@@ -144,6 +151,8 @@ if exist(handles.WhereSession.String)==2
         disp('unknown data format');
         return;
     end
+elseif strcmp(handles.WhereSession.String,'direct traces')
+    handles.datamode = 'smellocator_raw';
 else
     disp('invalid data file');
     return;
@@ -205,6 +214,41 @@ switch handles.datamode
                 handles.SniffsTS(n,9) = idx;
             end
         end
+
+    case 'smellocator_raw'
+        % fake a Traces struct
+        Traces.Timestamps{1} = handles.SniffTrace.Timestamps;
+        Traces.Sniffs{1} = handles.SniffTrace.Raw;
+        Traces.OdorLocation{1} = handles.OdorLocationTrace;
+
+        % fake a trialinfo struct
+        TrialInfo.Odor = 1;
+        TrialInfo.SessionTimestamps = Traces.Timestamps{1}([1 end])';
+        TrialInfo.OdorStart = [0 0];
+        
+        [SniffTimeStamps] = ...
+            TrialWiseSniffs(TrialInfo,Traces); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
+        % remove overlapping sniffs
+        handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
+
+        % Make long concatenated traces for plotting
+        handles.SniffTrace.Filtered     = FilterThermistor(handles.SniffTrace.Raw);
+
+        % find trace indices that correspond to detected sniff timestamps
+        for n = 1:size(handles.SniffsTS,1)
+            % inhalation start
+            [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTS(n,1)));
+            if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTS(n,1)) < 0.004
+                handles.SniffsTS(n,8) = idx;
+            end
+            % inhalation end
+            [~,idx] = min(abs(handles.SniffTrace.Timestamps - handles.SniffsTS(n,2)));
+            if abs(handles.SniffTrace.Timestamps(idx) - handles.SniffsTS(n,2)) < 0.004
+                handles.SniffsTS(n,9) = idx;
+            end
+        end
+
+        handles.SessionLength = TrialInfo.SessionTimestamps(2);
 end
 
 handles.SessionDuration.String = num2str(handles.SessionLength);
@@ -489,10 +533,17 @@ if whichmode
     set(handles.valleysNew,  'XData',[], 'YData',[]);
 
     % append timestamps to processed file
-    SniffDetectionThreshold = str2double(handles.SDfactor.String);
-    CuratedSniffTimestamps = pooledsniffs;
+    if strcmp(handles.datamode,'smellocator_raw')
+        PassiveSniffDetectionThreshold = str2double(handles.SDfactor.String);
+        CuratedPassiveSniffTimestamps = pooledsniffs;
 
-    save(handles.WhereSession.String,'SniffDetectionThreshold','CuratedSniffTimestamps','-append');
+        save(handles.ProcessedSession,'PassiveSniffDetectionThreshold','CuratedPassiveSniffTimestamps','-append');
+    else
+        SniffDetectionThreshold = str2double(handles.SDfactor.String);
+        CuratedSniffTimestamps = pooledsniffs;
+
+        save(handles.WhereSession.String,'SniffDetectionThreshold','CuratedSniffTimestamps','-append');
+    end
     disp('saved sniffs!')
 end
 
