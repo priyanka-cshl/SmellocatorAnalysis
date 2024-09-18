@@ -171,7 +171,7 @@ SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.Closed
 
 %% for passive tuning part of the session
 keyboard;
-MakePassiveSessionTraces(WhereSession);
+PassiveOut = MakePassiveSessionTraces(WhereSession);
 
 %%
 if savemode
@@ -183,7 +183,7 @@ if savemode
     [~,filename] = fileparts(WhereSession);
     filename = [filename,'.mat'];
     savepath = '/home/priyanka/Desktop';
-    save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits');
+    save(fullfile(savepath,'forWDW',filename),'TracesOut','PassiveOut','SingleUnits');
 end
 
 end

@@ -40,6 +40,28 @@ TimestampAdjust.Passive(1) = myfit.p1;
 % make an adjusted timestamps vector
 timestamps = session_data.timestamps + session_data.timestamps*TimestampAdjust.Passive(1) + TimestampAdjust.Passive(2);
 
+%% for flagging transient passive perturbations
+TemplateTrials = cell2mat(cellfun(@(x) ~isempty(strfind(x,'Template')), foo , 'UniformOutput', false));
+PerturbedTrials = intersect(find(TemplateTrials),find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Template')));
+% do a diff on this to find template starts and ends
+Templates = find(diff(TemplateTrials));
+Templates = reshape(Templates,2,numel(Templates)/2)';
+Templates(:,1) = Templates(:,1) + 1;
+for n = 1:size(Templates,1)
+    odorseq = TrialInfo.Odor(Templates(n,1):Templates(n,2));
+    perturbedTrial = find(PerturbedTrials>=Templates(n,1) & PerturbedTrials<=Templates(n,2));
+    if ~isempty(perturbedTrial)
+        Templates(n,3) = PerturbedTrials(perturbedTrial);
+    else
+        Templates(n,3) = nan;
+    end
+    Templates(n,3+[1:numel(odorseq)]) = odorseq;
+end
+
+if size(unique(Templates(:,3:end),'rows'),1) ~= size(Templates,1)
+    keyboard;
+end
+
 %% construct the Trial and Odor vectors
 % was the air On or Off during ITI?
 f = find(strcmp(session_data.legends,'ITIAirState'));
@@ -100,12 +122,28 @@ if ITIAirState
         else
             % get the TTL timings from replay TTLs
             whichReplay = find(ReplayTTLs.TrialID==TuningTTLs(t,8));
+            % to find which subtrial is a transient perturbation
+            % first find which template this matches to
+            odorseq = ReplayTTLs.OdorValve{whichReplay};
+            odorseq(odorseq(:,1)<0,:) = [];
+            whichTemplate = find(ismember(odorseq(:,4)',Templates(:,3:end),'rows'));
+            perturbedSubtrial = 0;
+            if isempty(whichTemplate)
+               if ~isnan(Templates(whichTemplate,3))
+                   perturbedSubtrial = Templates(whichTemplate,3) - Templates(whichTemplate,1) + 1;
+               end
+            end
+
             ValveTS = ReplayTTLs.OdorValve{whichReplay}(:,1:2) + TuningTTLs(t,1);
             for n = 1:size(ValveTS,1) % every subtrial
                 [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
                 [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
                 OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
-                TrialVector(idx1:idx2) = -3; % replays
+                if n == perturbedSubtrial
+                    TrialVector(idx1:idx2) = -2; % perturbation-replay    
+                else
+                    TrialVector(idx1:idx2) = -3; % replays
+                end
             end
         end
     end
@@ -182,7 +220,5 @@ else
     PassiveOut.SniffsDigitized{1} = DigitalSniffs;
     PassiveOut.SniffsLocationed{1} = LocationSniffs;
 end
-
-%% flagging transient passive perturbations
 
 end
