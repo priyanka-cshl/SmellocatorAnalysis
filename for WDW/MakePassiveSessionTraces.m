@@ -1,7 +1,7 @@
 function [PassiveOut] = MakePassiveSessionTraces(WhereSession)
 
 %% Load the relevant variables for the clsed loop processed file
-load(WhereSession, 'FileLocations', 'TuningTTLs', 'TTLs', 'ReplayTTLs');
+load(WhereSession, 'FileLocations', 'TuningTTLs', 'TTLs', 'ReplayTTLs', 'TrialInfo');
 % load the actual tuning .mat file
 load(FileLocations.Tuning); % loads session_data
 
@@ -41,7 +41,7 @@ TimestampAdjust.Passive(1) = myfit.p1;
 timestamps = session_data.timestamps + session_data.timestamps*TimestampAdjust.Passive(1) + TimestampAdjust.Passive(2);
 
 %% for flagging transient passive perturbations
-TemplateTrials = cell2mat(cellfun(@(x) ~isempty(strfind(x,'Template')), foo , 'UniformOutput', false));
+TemplateTrials = cell2mat(cellfun(@(x) ~isempty(strfind(x,'Template')), TrialInfo.Perturbation(:,1) , 'UniformOutput', false));
 PerturbedTrials = intersect(find(TemplateTrials),find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Template')));
 % do a diff on this to find template starts and ends
 Templates = find(diff(TemplateTrials));
@@ -126,9 +126,9 @@ if ITIAirState
             % first find which template this matches to
             odorseq = ReplayTTLs.OdorValve{whichReplay};
             odorseq(odorseq(:,1)<0,:) = [];
-            whichTemplate = find(ismember(odorseq(:,4)',Templates(:,3:end),'rows'));
+            whichTemplate = find(ismember(odorseq(:,4)',Templates(:,4:end),'rows'));
             perturbedSubtrial = 0;
-            if isempty(whichTemplate)
+            if ~isempty(whichTemplate)
                if ~isnan(Templates(whichTemplate,3))
                    perturbedSubtrial = Templates(whichTemplate,3) - Templates(whichTemplate,1) + 1;
                end
@@ -150,6 +150,7 @@ if ITIAirState
 
 end
 
+%%
 PassiveOut.Timestamps{1} = timestamps;
 PassiveOut.Odor{1} = OdorVector;
 PassiveOut.Trial{1} = TrialVector;
@@ -184,6 +185,60 @@ for n = 1:size(ValveTS,1) % every transition
     manifoldVector(idx1:idx2) = 1;
 end
 PassiveOut.Manifold{1} = manifoldVector;
+
+%% check manifold and air valve correspondence
+OdorVector = PassiveOut.Odor{1};
+OdorVector(OdorVector==4) = 0;
+PassiveOut.Odor{1} = OdorVector;
+
+AirVector = ~PassiveOut.Odor{1}; % all periods when none of the odor ports are on
+AirIdx = find(diff(AirVector));
+AirTS  = PassiveOut.Timestamps{1}(AirIdx);
+
+if AirVector(1) == 1
+    AirTS = vertcat(nan,AirTS);
+end
+if mod(numel(AirTS),2)
+    AirTS = vertcat(AirTS,nan);
+end
+AirTS = reshape(AirTS,2,[])';
+AirVector = (~AirVector)*1;
+
+[~,t1] = min(abs(TTLs.Air(:,2)-AirTS(1,2)));  
+    t2 = t1 + size(AirTS,1) - 1;
+
+if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
+        ~any(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005)
+    % check the first transition 
+    if isnan(AirTS(1,1)) && ~isnan(TTLs.Air(t1,1)) && abs(AirTS(1,2)-TTLs.Air(t1,2))<0.005
+        if PassiveOut.Timestamps{1}(1)<=TTLs.Air(t1,1)
+            keyboard;
+            [~,idx] = min(abs(PassiveOut.Timestamps{1}-AirTS(1,2)));
+            AirVector(1:idx) = -1; % assume all odors are off
+            idx = find(PassiveOut.Timestamps{1}<=TTLs.Air(1,2),1,'first');
+            if ~isempty(idx)
+                AirVector(1:idx+1) = 0;
+            end
+        end
+    else
+        keyboard;
+    end
+    
+    % check the last transition
+    if abs(AirTS(end,1)-TTLs.Air(t2,1))<0.005
+        [~,idx] = min(abs(PassiveOut.Timestamps{1}-AirTS(end,1)));
+        AirVector(idx+1:end) = 0; % assume Air stayed on
+        idx = find(PassiveOut.Timestamps{1}>=TTLs.Air(t2,2),1,'first');
+        if ~isempty(idx)
+            AirVector(idx:end) = -1; % assume Air stayed on
+        end
+    else
+        keyboard;
+    end
+else
+    keyboard;
+end
+PassiveOut.Odor{1} = AirVector;
 
 %% other traces
 PassiveOut.Lever{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'lever_DAC')));

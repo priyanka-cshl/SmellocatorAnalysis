@@ -131,13 +131,13 @@ TimestampAdjust.ClosedLoop(1) = myfit.p1;
 % sanity check for clock drift
 if ~any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (behavior + TimestampAdjust.ClosedLoop(2)))>0.04)
     % convert the behavior timestamps to OEPS base
-    TracesOut.Timestamps{1} = Timestamps + Timestamps*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2);
+    TracesOut.Timestamps{1} = (Timestamps + Timestamps*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))';
 else
     disp('clock drift in ephys and behavior files');
     keyboard;
 end
 
-%% tally valve timings with ephys TTLs
+%% tally odor valve timings with ephys TTLs
 for x = 1:3
     odorvector = TracesOut.Odor{1};
     odorvector(odorvector~=x) = 0;
@@ -150,7 +150,51 @@ for x = 1:3
     end
 end
 
-% for the manifold air
+%% for the manifold air and air(odor port)
+AirVector = ~TracesOut.Odor{1}; % all periods when none of the odor ports are on
+AirIdx = find(diff(AirVector));
+AirTS  = TracesOut.Timestamps{1}(AirIdx);
+
+if AirVector(1) == 1
+    AirTS = vertcat(nan,AirTS);
+end
+if mod(numel(AirTS),2)
+    AirTS = vertcat(AirTS,nan);
+end
+AirTS = reshape(AirTS,2,[])';
+AirVector = (~AirVector)*1;
+
+if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(2:(size(AirTS,1)-1),1))>0.005) && ...
+        ~any(abs(AirTS(2:end-1,2)-TTLs.Air(2:(size(AirTS,1)-1),2))>0.005)
+    % check the first transition 
+    if isnan(AirTS(1,1)) && isnan(TTLs.Air(1,1))
+        if ~isequal(AirTS(1,2),TTLs.Air(1,2))
+            [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(1,2)));
+            AirVector(1:idx) = -1; % assume all odors are off
+            idx = find(TracesOut.Timestamps{1}<=TTLs.Air(1,2),1,'first');
+            if ~isempty(idx)
+                AirVector(1:idx+1) = 0;
+            end
+        end
+    elseif ~isequal(AirTS(1,1),TTLs.Air(1,1))
+        keyboard;
+    end
+    
+    % check the last transition
+    if abs(AirTS(end,1)-TTLs.Air(size(AirTS,1),1))<0.005
+        [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(end,1)));
+        AirVector(idx+1:end) = 0; % assume Air stayed on
+        idx = find(TracesOut.Timestamps{1}>=TTLs.Air(size(AirTS,1),2),1,'first');
+        if ~isempty(idx)
+            AirVector(idx:end) = -1; % assume Air stayed on
+        end
+    else
+        keyboard;
+    end
+else
+    keyboard;
+end
+
 manifoldVector = TracesOut.Odor{1};
 manifoldVector(manifoldVector>0) = 1;
 ManifoldIdx = find(diff(manifoldVector));
@@ -166,11 +210,12 @@ else
     keyboard;
 end
 
+TracesOut.Odor{1} = AirVector;
+
 %% Get the timestamp for Closed Loop End
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
 
 %% for passive tuning part of the session
-keyboard;
 PassiveOut = MakePassiveSessionTraces(WhereSession);
 
 %%
