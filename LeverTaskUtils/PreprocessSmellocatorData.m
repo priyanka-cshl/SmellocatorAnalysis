@@ -212,6 +212,6 @@ if ~exist(fileparts(savepath),'dir')
 end
 save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
                'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust');
+               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust','-append');
     
 end
