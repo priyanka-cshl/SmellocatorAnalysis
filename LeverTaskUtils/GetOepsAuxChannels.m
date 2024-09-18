@@ -70,10 +70,22 @@ Tags = {'Air', 'Odor1', 'Odor2', 'Odor3', 'Trial', 'Reward', 'AirManifold', 'Lic
 for i = 1:numel(TTLTypes)
     On = timestamps(intersect(find(info.eventId),find(data==TTLTypes(i))));
     Off = timestamps(intersect(find(~info.eventId),find(data==TTLTypes(i))));
-    % delete the first off value, if it preceeds the On
-    Off(Off<On(1)) = [];
-    On(On>Off(end)) = [];
-    
+
+    if strcmp(Tags(i),'Trial')
+        % delete the first off value, if it preceeds the On
+        Off(Off<On(1)) = [];
+        On(On>Off(end)) = [];
+    else
+        % keep track of valve states before start of the first trial and
+        % after end of the last trial
+        if Off(1)<On(1) % first off value, preceeds the first On
+            On = vertcat(nan, On);
+        end
+        if On(end)>Off(end) % last on value, exceeds the last Off
+            Off = vertcat(Off, nan);
+        end
+    end
+
     if length(On)>length(Off)
         keyboard;
         foo = [On(1:end-1) Off]';
