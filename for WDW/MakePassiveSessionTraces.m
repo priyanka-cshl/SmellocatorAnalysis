@@ -10,8 +10,52 @@ load(FileLocations.Tuning); % loads session_data
 %     'TTLs', 'ReplayTTLs',  'SingleUnits', ...
 %     'TimestampAdjust');
 
-%% Get trial On-Off times from the trial state vector
-TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
+%% are there any timestamp drops
+TS(:,1) = session_data.timestamps;
+TS(:,2) = 1:size(TS,1);
+while any(abs(diff(TS(:,1)))>0.003)
+    f = find(abs(diff(TS(:,1)))>0.003,1,'first');
+    m = round((TS(f+1,1) - TS(f,1))/0.002);
+    gap = linspace(TS(f,1),TS(f+1,1),m+1)';
+    gap(:,2) = inf;
+    TS = [TS(1:f,:); gap(2:end-1,:); TS(f+1:end,:)]; % timestamps are patched
+end
+
+if any(isinf(TS(:,2)))
+    MyTrace = TS(:,2);
+    MyTrace(~isinf(MyTrace)) = session_data.trace(MyTrace(~isinf(MyTrace)),find(strcmp(session_data.trace_legend,'lever_DAC')));
+    PassiveOut.Lever{1} = MyTrace;
+    MyTrace = TS(:,2);
+    MyTrace(~isinf(MyTrace)) = session_data.trace(MyTrace(~isinf(MyTrace)),find(strcmp(session_data.trace_legend,'stimulus_location_scaled')));
+    PassiveOut.Motor{1} = MyTrace;
+    MyTrace = TS(:,2);
+    MyTrace(~isinf(MyTrace)) = session_data.trace(MyTrace(~isinf(MyTrace)),find(strcmp(session_data.trace_legend,'rewards')));
+    PassiveOut.Rewards{1} = MyTrace;
+
+    MyTrace = TS(:,2);
+    MyTrace(~isinf(MyTrace)) = session_data.trace(MyTrace(~isinf(MyTrace)),find(strcmp(session_data.trace_legend,'thermistor')));
+    Thermistor = MyTrace;
+    while any(isinf(Thermistor))
+        x1 = find(isinf(Thermistor),1,'first') - 1;
+        x2 = x1 + find(~isinf(Thermistor(x1+1:end)),1,'first');
+        Thermistor(x1:x2) = linspace(Thermistor(x1),Thermistor(x2),(x2-x1+1));
+    end
+
+    PassiveOut.Sniffs{1} = Thermistor;
+
+    TrialVector = TS(:,2);
+    TrialVector(~isinf(TrialVector)) = session_data.trace(TrialVector(~isinf(TrialVector)),find(strcmp(session_data.trace_legend,'trial_on')));
+    TrialVector(isinf(TrialVector)) = 0;
+else
+    PassiveOut.Lever{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'lever_DAC')));
+    PassiveOut.Motor{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'stimulus_location_scaled')));
+    PassiveOut.Rewards{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'rewards')));
+    PassiveOut.Sniffs{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'thermistor')));
+    
+    %% Get trial On-Off times from the trial state vector
+    TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
+end
+OriginalTrialTrace = TrialVector;
 TrialVector(TrialVector>0) = 1;
 
 ts = find(diff(TrialVector));
@@ -38,7 +82,7 @@ TimestampAdjust.Passive(2) = myfit.p2;
 TimestampAdjust.Passive(1) = myfit.p1;
 
 % make an adjusted timestamps vector
-timestamps = session_data.timestamps + session_data.timestamps*TimestampAdjust.Passive(1) + TimestampAdjust.Passive(2);
+timestamps = TS(:,1) + TS(:,1)*TimestampAdjust.Passive(1) + TimestampAdjust.Passive(2);
 
 %% for flagging transient passive perturbations
 TemplateTrials = cell2mat(cellfun(@(x) ~isempty(strfind(x,'Template')), TrialInfo.Perturbation(:,1) , 'UniformOutput', false));
@@ -160,11 +204,26 @@ for x = 1:3
 
     [~,t1] = min(abs(TTLs.(['Odor',num2str(x)])(:,1)-odorTS(1,1)));
     t2 = t1 + size(odorTS,1) - 1;
-
-    if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005) || ...
-            any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)
-        keyboard;
+    
+    if ~any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)
+        if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005)
+            f = find(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005);
+            for n = 1:numel(f)
+                idx1 = find(PassiveOut.Timestamps{1}==odorTS(f(n),1));
+                idx2 = find(PassiveOut.Timestamps{1}==odorTS(f(n),2));
+                PassiveOut.Odor{1}(idx1+1:idx2) = 0;
+                [~,idx3] = min(abs(PassiveOut.Timestamps{1}-TTLs.(['Odor',num2str(x)])((t1-1+f(n)),1)));
+                PassiveOut.Odor{1}(idx3:idx2) = x;
+            end
+        end
+    else
+       keyboard;
     end
+
+%     if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005) || ...
+%             any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)
+%         keyboard;
+%     end
 end
 
 % for the manifold air
@@ -190,7 +249,7 @@ OdorVector(OdorVector==4) = 0;
 AirVector = ~OdorVector; % all periods when none of the odor ports are on
 %AirVector = (~AirVector)*1;
 if ~ITIAirState
-    TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
+    TrialVector = OriginalTrialTrace;
     TrialVector(TrialVector>0) = 1;
     foo = intersect(find(manifoldVector==0),find(TrialVector==0));
     AirVector(foo) = 0;
@@ -249,17 +308,21 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
     else
         keyboard;
     end
-else
+elseif ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005)
+    f = find(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005);
+    for n = 1:numel(f)
+        % trust the ephys TTL?
+        idx1 = find(PassiveOut.Timestamps{1}==AirTS(f(n),1));
+        idx2 = find(PassiveOut.Timestamps{1}==AirTS(f(n),2));
+        OdorVector(idx1:idx2) = -1; % assume that Air is off
+        [~,idx3] = min(abs(PassiveOut.Timestamps{1}-TTLs.Air(t1+f-1,2)));
+        OdorVector(idx1:idx3) = 0;
+    end
+else 
     keyboard;
 end
 
 PassiveOut.Odor{1} = OdorVector;
-
-%% other traces
-PassiveOut.Lever{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'lever_DAC')));
-PassiveOut.Motor{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'stimulus_location_scaled')));
-PassiveOut.Rewards{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'rewards')));
-PassiveOut.Sniffs{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'thermistor')));
 
 %% sniffs
 % add a filtered sniff trace
@@ -268,7 +331,11 @@ PassiveOut.SniffsFiltered{1}     = FilterThermistor(PassiveOut.Sniffs{1});
 load(WhereSession,'CuratedPassiveSniffTimestamps');
 if ~exist('CuratedPassiveSniffTimestamps','var')
     ProcessSniffTimeStamps_GUI(PassiveOut,WhereSession);
-else
+    keyboard;
+    load(WhereSession,'CuratedPassiveSniffTimestamps');
+end
+
+if exist('CuratedPassiveSniffTimestamps','var')
     if size(CuratedPassiveSniffTimestamps,2) < 10
         CuratedPassiveSniffTimestamps(:,10) = 0;
     end

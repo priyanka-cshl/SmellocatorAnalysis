@@ -174,27 +174,30 @@ end
 AirTS = reshape(AirTS,2,[])';
 AirVector = (~AirVector)*1;
 
-if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(2:(size(AirTS,1)-1),1))>0.005) && ...
-        ~any(abs(AirTS(2:end-1,2)-TTLs.Air(2:(size(AirTS,1)-1),2))>0.005)
+[~,t1] = min(abs(TTLs.Air(:,2)-AirTS(2,2)));
+t2 = t1 -1 + size(AirTS,1) - 1;
+
+if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(t1:(t2-1),1))>0.005) && ...
+        ~any(abs(AirTS(2:end-1,2)-TTLs.Air(t1:(t2-1),2))>0.005)
     % check the first transition 
-    if isnan(AirTS(1,1)) && isnan(TTLs.Air(1,1))
-        if ~isequal(AirTS(1,2),TTLs.Air(1,2))
+%     if isnan(AirTS(1,1)) && isnan(TTLs.Air(t1-1,1))
+        if ~isequal(AirTS(1,2),TTLs.Air(t1-1,2))
             [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(1,2)));
             AirVector(1:idx) = -1; % assume all odors are off
-            idx = find(TracesOut.Timestamps{1}<=TTLs.Air(1,2),1,'first');
+            idx = find(TracesOut.Timestamps{1}<=TTLs.Air(t1-1,2),1,'first');
             if ~isempty(idx)
                 AirVector(1:idx+1) = 0;
             end
         end
-    elseif ~isequal(AirTS(1,1),TTLs.Air(1,1))
-        keyboard;
-    end
+%     elseif ~isequal(AirTS(1,1),TTLs.Air(t1-1,1))
+%         keyboard;
+%     end
     
     % check the last transition
-    if abs(AirTS(end,1)-TTLs.Air(size(AirTS,1),1))<0.005
+    if abs(AirTS(end,1)-TTLs.Air(t2,1))<0.005
         [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(end,1)));
         AirVector(idx+1:end) = 0; % assume Air stayed on
-        idx = find(TracesOut.Timestamps{1}>=TTLs.Air(size(AirTS,1),2),1,'first');
+        idx = find(TracesOut.Timestamps{1}>=TTLs.Air(t2,2),1,'first');
         if ~isempty(idx)
             AirVector(idx:end) = -1; % assume Air stayed on
         end

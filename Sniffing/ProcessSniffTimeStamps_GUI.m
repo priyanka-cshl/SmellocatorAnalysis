@@ -510,16 +510,26 @@ if whichmode
     % flag any sniffs in the flagged strectch
     bad_indices = find(isnan(handles.rawTrace.YData));
     if ~isempty(bad_indices)
-        terribleTimestamps = [];
-        segments = numel(find(diff(bad_indices)>1)) + 1;
-        if segments == 1
-            terribleTimestamps(1,:) = handles.rawTrace.XData(bad_indices([1 end]));
+        segment_idx(:,1) = [bad_indices(1) bad_indices(find(diff(bad_indices)~=1)+1)];
+        segment_idx(:,2) = [bad_indices(find(diff(bad_indices)~=1)) bad_indices(end)];
+%         terribleTimestamps = [];
+%         segments = numel(find(diff(bad_indices)>1)) + 1;
+%         if segments == 1
+%             terribleTimestamps(1,:) = handles.rawTrace.XData(bad_indices([1 end]));
+%             % flag any sniffs that are in this period
+%             iffysniffs = find(pooledsniffs(:,1)>terribleTimestamps(1,1),1,'first') : ...
+%                 find(pooledsniffs(:,1)<terribleTimestamps(1,2),1,'last');
+%             pooledsniffs(iffysniffs,10) = -1;
+%         else
+%             
+%         end
+        for segment = 1:size(segment_idx,1)
+            terribleTimestamps = [];
+            terribleTimestamps(1,:) = handles.rawTrace.XData(segment_idx(segment,:));
             % flag any sniffs that are in this period
             iffysniffs = find(pooledsniffs(:,1)>terribleTimestamps(1,1),1,'first') : ...
                 find(pooledsniffs(:,1)<terribleTimestamps(1,2),1,'last');
             pooledsniffs(iffysniffs,10) = -1;
-        else
-            
         end
     end
         
