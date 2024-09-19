@@ -185,15 +185,16 @@ PassiveOut.Manifold{1} = manifoldVector;
 %% check manifold and air valve correspondence
 OdorVector = PassiveOut.Odor{1};
 OdorVector(OdorVector==4) = 0;
-PassiveOut.Odor{1} = OdorVector;
+%PassiveOut.Odor{1} = OdorVector;
 
-AirVector = ~PassiveOut.Odor{1}; % all periods when none of the odor ports are on
+AirVector = ~OdorVector; % all periods when none of the odor ports are on
 %AirVector = (~AirVector)*1;
 if ~ITIAirState
     TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
     TrialVector(TrialVector>0) = 1;
     foo = intersect(find(manifoldVector==0),find(TrialVector==0));
     AirVector(foo) = 0;
+    OdorVector(foo) = -1;
 end
 AirIdx = find(diff(AirVector));
 AirTS  = PassiveOut.Timestamps{1}(AirIdx);
@@ -227,10 +228,10 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
         if PassiveOut.Timestamps{1}(1)<=TTLs.Air(t1,1)
             keyboard;
             [~,idx] = min(abs(PassiveOut.Timestamps{1}-AirTS(1,2)));
-            AirVector(1:idx) = -1; % assume all odors are off
+            OdorVector(1:idx) = -1; % assume all odors are off
             idx = find(PassiveOut.Timestamps{1}<=TTLs.Air(1,2),1,'first');
             if ~isempty(idx)
-                AirVector(1:idx+1) = 0;
+                OdorVector(1:idx+1) = 0;
             end
         end
     else
@@ -240,10 +241,10 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
     % check the last transition
     if abs(AirTS(end,1)-TTLs.Air(t2,1))<0.005
         [~,idx] = min(abs(PassiveOut.Timestamps{1}-AirTS(end,1)));
-        AirVector(idx+1:end) = 0; % assume Air stayed on
+        OdorVector(idx+1:end) = 0; % assume Air stayed on
         idx = find(PassiveOut.Timestamps{1}>=TTLs.Air(t2,2),1,'first');
         if ~isempty(idx)
-            AirVector(idx:end) = -1; % assume Air stayed on
+            OdorVector(idx:end) = -1; % assume Air stayed off
         end
     else
         keyboard;
@@ -251,7 +252,8 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
 else
     keyboard;
 end
-PassiveOut.Odor{1} = AirVector;
+
+PassiveOut.Odor{1} = OdorVector;
 
 %% other traces
 PassiveOut.Lever{1} = session_data.trace(:,find(strcmp(session_data.trace_legend,'lever_DAC')));
