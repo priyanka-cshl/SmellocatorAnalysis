@@ -143,9 +143,19 @@ for x = 1:3
     odorvector(odorvector~=x) = 0;
     odorTS = TracesOut.Timestamps{1}(find(diff(odorvector)));
     odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
-
-    if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),1))>0.005) || ...
-       any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),2))>0.005)
+    
+    if ~any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),2))>0.005)
+        if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),1))>0.005)
+            f = find(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(1:size(odorTS,1),1))>0.005);
+            for n = 1:numel(f)
+                idx1 = find(TracesOut.Timestamps{1}==odorTS(f(n),1));
+                idx2 = find(TracesOut.Timestamps{1}==odorTS(f(n),2));
+                TracesOut.Odor{1}(idx1+1:idx2) = 0;
+                [~,idx3] = min(abs(TracesOut.Timestamps{1}-TTLs.(['Odor',num2str(x)])(f(n),1)));
+                TracesOut.Odor{1}(idx3:idx2) = x;
+            end
+        end
+    else
        keyboard;
     end
 end

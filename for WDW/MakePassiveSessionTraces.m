@@ -44,7 +44,7 @@ timestamps = session_data.timestamps + session_data.timestamps*TimestampAdjust.P
 TemplateTrials = cell2mat(cellfun(@(x) ~isempty(strfind(x,'Template')), TrialInfo.Perturbation(:,1) , 'UniformOutput', false));
 PerturbedTrials = intersect(find(TemplateTrials),find(~strcmp(TrialInfo.Perturbation(:,1),'OL-Template')));
 % do a diff on this to find template starts and ends
-Templates = find(diff(TemplateTrials));
+Templates = find(diff([TemplateTrials; 0]));
 Templates = reshape(Templates,2,numel(Templates)/2)';
 Templates(:,1) = Templates(:,1) + 1;
 for n = 1:size(Templates,1)
@@ -85,68 +85,64 @@ end
 OdorVector = (timestamps*0) + (ITIAirState*4);
 TrialVector = timestamps*0;
 
-if ITIAirState
-    % fixing trial type for trial 1
-    if isnan(TuningTTLs(1,7))
-        if any(TuningTTLs(:,7)==800)
-            if abs(TuningTTLs(1,3) - median(TuningTTLs(find(TuningTTLs(:,7)==800),3))) < 0.01
-                TuningTTLs(1,7) = 800;
-            else
-                keyboard;
-            end
+% fixing trial type for trial 1
+if isnan(TuningTTLs(1,7))
+    if any(TuningTTLs(:,7)==800)
+        if abs(TuningTTLs(1,3) - median(TuningTTLs(find(TuningTTLs(:,7)==800),3))) < 0.01
+            TuningTTLs(1,7) = 800;
         else
             keyboard;
         end
+    else
+        keyboard;
     end
+end
 
-    for t = 1:size(TuningTTLs,1) % every trial
-        if TuningTTLs(t,7) < 990 % not a replay
-            if TuningTTLs(t,7) == 800
-                if TuningTTLs(t,5) % odor ON
-                    [~,idx1] = min(abs(timestamps-TuningTTLs(t,4))); % odor start
-                    [~,idx2] = min(abs(timestamps-TuningTTLs(t,6))); % odor end
-                    OdorVector(idx1:idx2) = TuningTTLs(t,5); % odor identity
-                    TrialVector(idx1:idx2) = -4; % passive tuning
-%                     if ~ITIAirState
-%                         % also flag time when manifold air actually turned on
-%                         keyboard;
-%                     end
-                else % air trial
-                    % no need to do anything to the OdorVector -
-                    % it is already set to 4 as default;
-                    [~,idx1] = min(abs(timestamps-TuningTTLs(t,1))); % trial start
-                    [~,idx2] = min(abs(timestamps-TuningTTLs(t,2))); % trial end
-                    TrialVector(idx1:idx2) = -4; % passive tuning
-                end
+for t = 1:size(TuningTTLs,1) % every trial
+    if TuningTTLs(t,7) < 990 % not a replay
+        if TuningTTLs(t,7) == 800
+            if TuningTTLs(t,5) % odor ON
+                [~,idx1] = min(abs(timestamps-TuningTTLs(t,4))); % odor start
+                [~,idx2] = min(abs(timestamps-TuningTTLs(t,6))); % odor end
+                OdorVector(idx1:idx2) = TuningTTLs(t,5); % odor identity
+                TrialVector(idx1:idx2) = -4; % passive tuning
+            else % air trial
+                % no need to do anything to the OdorVector -
+                % it is already set to 4 as default;
+                [~,idx1] = min(abs(timestamps-TuningTTLs(t,1))); % trial start
+                [~,idx2] = min(abs(timestamps-TuningTTLs(t,2))); % trial end
+                TrialVector(idx1:idx2) = -4; % passive tuning
             end
-        else
-            % get the TTL timings from replay TTLs
-            whichReplay = find(ReplayTTLs.TrialID==TuningTTLs(t,8));
-            % to find which subtrial is a transient perturbation
-            % first find which template this matches to
-            odorseq = ReplayTTLs.OdorValve{whichReplay};
-            odorseq(odorseq(:,1)<0,:) = [];
-            whichTemplate = find(ismember(odorseq(:,4)',Templates(:,4:end),'rows'));
-            perturbedSubtrial = 0;
-            if ~isempty(whichTemplate)
-               if ~isnan(Templates(whichTemplate,3))
-                   perturbedSubtrial = Templates(whichTemplate,3) - Templates(whichTemplate,1) + 1;
-               end
+        end
+    else
+        % get the TTL timings from replay TTLs
+        whichReplay = find(ReplayTTLs.TrialID==TuningTTLs(t,8));
+        % to find which subtrial is a transient perturbation
+        % first find which template this matches to
+        odorseq = ReplayTTLs.OdorValve{whichReplay};
+        odorseq(odorseq(:,1)<0,:) = [];
+        nsub = size(odorseq,1);
+        whichTemplate = find(ismember(odorseq(:,4)',Templates(:,3+[1:nsub]),'rows'));
+        perturbedSubtrial = 0;
+        if ~isempty(whichTemplate)
+            if ~isnan(Templates(whichTemplate,3))
+                perturbedSubtrial = Templates(whichTemplate,3) - Templates(whichTemplate,1) + 1;
             end
+        end
 
-            ValveTS = ReplayTTLs.OdorValve{whichReplay}(:,1:2) + TuningTTLs(t,1);
-            for n = 1:size(ValveTS,1) % every subtrial
-                [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
-                [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
-                OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
-                if n == perturbedSubtrial
-                    TrialVector(idx1:idx2) = -2; % perturbation-replay    
-                else
-                    TrialVector(idx1:idx2) = -3; % replays
-                end
+        ValveTS = ReplayTTLs.OdorValve{whichReplay}(:,1:2) + TuningTTLs(t,1);
+        for n = 1:size(ValveTS,1) % every subtrial
+            [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
+            [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
+            OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
+            if n == perturbedSubtrial
+                TrialVector(idx1:idx2) = -2; % perturbation-replay
+            else
+                TrialVector(idx1:idx2) = -3; % replays
             end
         end
     end
+
 
 end
 
@@ -162,11 +158,11 @@ for x = 1:3
     odorTS = PassiveOut.Timestamps{1}(find(diff(odorvector)));
     odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
 
-    [~,t1] = min(abs(TTLs.(['Odor',num2str(x)])(:,1)-odorTS(1,1)));  
+    [~,t1] = min(abs(TTLs.(['Odor',num2str(x)])(:,1)-odorTS(1,1)));
     t2 = t1 + size(odorTS,1) - 1;
 
     if any(abs(odorTS(:,1)-TTLs.(['Odor',num2str(x)])(t1:t2,1))>0.005) || ...
-       any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)  
+            any(abs(odorTS(:,2)-TTLs.(['Odor',num2str(x)])(t1:t2,2))>0.005)
         keyboard;
     end
 end
@@ -192,6 +188,13 @@ OdorVector(OdorVector==4) = 0;
 PassiveOut.Odor{1} = OdorVector;
 
 AirVector = ~PassiveOut.Odor{1}; % all periods when none of the odor ports are on
+%AirVector = (~AirVector)*1;
+if ~ITIAirState
+    TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
+    TrialVector(TrialVector>0) = 1;
+    foo = intersect(find(manifoldVector==0),find(TrialVector==0));
+    AirVector(foo) = 0;
+end
 AirIdx = find(diff(AirVector));
 AirTS  = PassiveOut.Timestamps{1}(AirIdx);
 
@@ -202,14 +205,24 @@ if mod(numel(AirTS),2)
     AirTS = vertcat(AirTS,nan);
 end
 AirTS = reshape(AirTS,2,[])';
-AirVector = (~AirVector)*1;
 
-[~,t1] = min(abs(TTLs.Air(:,2)-AirTS(1,2)));  
-    t2 = t1 + size(AirTS,1) - 1;
+[~,t1] = min(abs(TTLs.Air(:,2)-AirTS(1,2)));            
+t2 = t1 + size(AirTS,1) - 1;
+
+if ~ITIAirState     
+    while any(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005)
+        f = find(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005,1,'first');
+        % is the extra transition small in duration
+        if abs(TTLs.Air(t1+f,2) - AirTS(f,2)) < 0.005 && ...
+                abs(TTLs.Air(t1+f-1,2)-TTLs.Air(t1+f-1,1))<0.005
+            TTLs.Air(t1+f-1,:) = [];
+        end
+    end
+end
 
 if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
         ~any(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005)
-    % check the first transition 
+    % check the first transition
     if isnan(AirTS(1,1)) && ~isnan(TTLs.Air(t1,1)) && abs(AirTS(1,2)-TTLs.Air(t1,2))<0.005
         if PassiveOut.Timestamps{1}(1)<=TTLs.Air(t1,1)
             keyboard;
@@ -223,7 +236,7 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
     else
         keyboard;
     end
-    
+
     % check the last transition
     if abs(AirTS(end,1)-TTLs.Air(t2,1))<0.005
         [~,idx] = min(abs(PassiveOut.Timestamps{1}-AirTS(end,1)));
