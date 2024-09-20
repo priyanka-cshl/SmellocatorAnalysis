@@ -183,10 +183,12 @@ if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(t1:(t2-1),1))>0.005) && ...
 %     if isnan(AirTS(1,1)) && isnan(TTLs.Air(t1-1,1))
         if ~isequal(AirTS(1,2),TTLs.Air(t1-1,2))
             [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(1,2)));
-            AirVector(1:idx) = -1; % assume all odors are off
+            %AirVector(1:idx) = -1; % assume all odors are off
+            TracesOut.Odor{1}(1:idx) = -1; % assume all odors are off
             idx = find(TracesOut.Timestamps{1}<=TTLs.Air(t1-1,2),1,'first');
             if ~isempty(idx)
-                AirVector(1:idx+1) = 0;
+                %AirVector(1:idx+1) = 0;
+                TracesOut.Odor{1}(1:idx+1) = 0;
             end
         end
 %     elseif ~isequal(AirTS(1,1),TTLs.Air(t1-1,1))
@@ -196,10 +198,12 @@ if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(t1:(t2-1),1))>0.005) && ...
     % check the last transition
     if abs(AirTS(end,1)-TTLs.Air(t2,1))<0.005
         [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(end,1)));
-        AirVector(idx+1:end) = 0; % assume Air stayed on
+        %AirVector(idx+1:end) = 0; % assume Air stayed on
+        TracesOut.Odor{1}(idx+1:end) = 0; % assume Air stayed on
         idx = find(TracesOut.Timestamps{1}>=TTLs.Air(t2,2),1,'first');
         if ~isempty(idx)
-            AirVector(idx:end) = -1; % assume Air stayed on
+            %AirVector(idx:end) = -1; % assume Air stayed on
+            TracesOut.Odor{1}(idx:end) = -1; % assume Air stayed on
         end
     else
         keyboard;
@@ -210,6 +214,7 @@ end
 
 manifoldVector = TracesOut.Odor{1};
 manifoldVector(manifoldVector>0) = 1;
+manifoldVector(manifoldVector<0) = 0;
 ManifoldIdx = find(diff(manifoldVector));
 ManifoldIdx = reshape(ManifoldIdx,2,floor(numel(ManifoldIdx)/2))';
 odorTS = TracesOut.Timestamps{1}(ManifoldIdx);
@@ -223,7 +228,7 @@ else
     keyboard;
 end
 
-TracesOut.Odor{1} = AirVector;
+%TracesOut.Odor{1} = AirVector;
 
 %% Get the timestamp for Closed Loop End
 SessionLength = ceil(TrialInfo.SessionTimestamps(end,2) + TimestampAdjust.ClosedLoop); % in seconds
