@@ -122,7 +122,7 @@ if ~isempty(f)
     % time of passive session start =
     % find(TTLs.AirManifold(:,1)<TuningTTLs(1,1),1,'last');
 else
-    keyboard;
+    keyboard; % ignore for O3
     ITIAirState = 0;
 end
 
@@ -137,6 +137,8 @@ if isnan(TuningTTLs(1,7))
         else
             keyboard;
         end
+    elseif abs(TuningTTLs(1,3) - median(TuningTTLs(find(TuningTTLs(:,7)<800),3))) < 0.01
+        TuningTTLs(1,7) = 299;
     else
         keyboard;
     end
@@ -156,6 +158,19 @@ for t = 1:size(TuningTTLs,1) % every trial
                 [~,idx1] = min(abs(timestamps-TuningTTLs(t,1))); % trial start
                 [~,idx2] = min(abs(timestamps-TuningTTLs(t,2))); % trial end
                 TrialVector(idx1:idx2) = -4; % passive tuning
+            end
+        elseif TuningTTLs(t,7) < 300 % discrete tuning
+            if TuningTTLs(t,5) % odor ON
+                [~,idx1] = min(abs(timestamps-TuningTTLs(t,4))); % odor start
+                [~,idx2] = min(abs(timestamps-TuningTTLs(t,6))); % odor end
+                OdorVector(idx1:idx2) = TuningTTLs(t,5); % odor identity
+                TrialVector(idx1:idx2) = -5; % discrete passive tuning
+            else % air trial
+                % no need to do anything to the OdorVector -
+                % it is already set to 4 as default;
+                [~,idx1] = min(abs(timestamps-TuningTTLs(t,1))); % trial start
+                [~,idx2] = min(abs(timestamps-TuningTTLs(t,2))); % trial end
+                TrialVector(idx1:idx2) = -5; % discrete passive tuning
             end
         end
     else
@@ -277,6 +292,12 @@ if ~ITIAirState
                 abs(TTLs.Air(t1+f-1,2)-TTLs.Air(t1+f-1,1))<0.005
             TTLs.Air(t1+f-1,:) = [];
         end
+        if f==1 && isnan(AirTS(f,1)) && TTLs.Air(t1+f-1,2) < timestamps(1) && ...
+                numel(find(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005))==1
+            t1 = t1 + 1;
+            AirTS(1,:) = [];
+        end
+
     end
 end
 
@@ -294,7 +315,7 @@ if ~any(abs(AirTS(2:end,1)-TTLs.Air(t1+1:t2,1))>0.005) && ...
             end
         end
     else
-        keyboard;
+        keyboard; % ignore for O3
     end
 
     % check the last transition

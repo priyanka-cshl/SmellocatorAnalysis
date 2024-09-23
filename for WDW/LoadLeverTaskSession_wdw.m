@@ -49,10 +49,21 @@ for i = 1:size(TrialInfo.TrialID,2)
         prevOdorTrace = Traces.Odor{i-1};
         prevOdorTrace(end+idx1:end) = TrialInfo.Odor(i,1);
         Traces.Odor{i-1} = prevOdorTrace;
+    elseif i == 1 && OdorTrace(2) > 0 && ~isempty(strfind(WhereSession,'O3_20210929'))
+        %keyboard; % for O3_0929
+        OdorTrace(OdorTrace>0) = 1;
+        OdorTrace(1:idx2) = 1;
+        OdorTrace = OdorTrace*1;
+        % don't overwrite the odor identity for the previous trial (if min ITI < 1 sec)
+        Traces.Odor{i} = Traces.Trial{i};
+        Traces.Odor{i}(idx1:end) = OdorTrace(idx1:end);
     else
         OdorTrace(OdorTrace>0) = 1;
         OdorTrace(idx1:idx2,1) = 1;
-        Traces.Odor{i} = OdorTrace*TrialInfo.Odor(i,1);
+        OdorTrace = OdorTrace*TrialInfo.Odor(i,1);
+        % don't overwrite the odor identity for the previous trial (if min ITI < 1 sec)
+        Traces.Odor{i} = Traces.Trial{i};
+        Traces.Odor{i}(idx1:end) = OdorTrace(idx1:end);
     end
 
     % Binarize TrialTrace and Flag Perturbations
@@ -184,11 +195,17 @@ if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(t1:(t2-1),1))>0.005) && ...
         if ~isequal(AirTS(1,2),TTLs.Air(t1-1,2))
             [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(1,2)));
             %AirVector(1:idx) = -1; % assume all odors are off
-            TracesOut.Odor{1}(1:idx) = -1; % assume all odors are off
-            idx = find(TracesOut.Timestamps{1}<=TTLs.Air(t1-1,2),1,'first');
-            if ~isempty(idx)
-                %AirVector(1:idx+1) = 0;
-                TracesOut.Odor{1}(1:idx+1) = 0;
+            if TracesOut.Odor{1}(1) 
+                if isempty(strfind(WhereSession,'O3_20210929'))
+                    keyboard; % ignore for O3_0929
+                end
+            else
+                TracesOut.Odor{1}(1:idx) = -1; % assume all odors are off
+                idx = find(TracesOut.Timestamps{1}<=TTLs.Air(t1-1,2),1,'first');
+                if ~isempty(idx)
+                    %AirVector(1:idx+1) = 0;
+                    TracesOut.Odor{1}(1:idx+1) = 0;
+                end
             end
         end
 %     elseif ~isequal(AirTS(1,1),TTLs.Air(t1-1,1))
@@ -216,12 +233,18 @@ manifoldVector = TracesOut.Odor{1};
 manifoldVector(manifoldVector>0) = 1;
 manifoldVector(manifoldVector<0) = 0;
 ManifoldIdx = find(diff(manifoldVector));
-ManifoldIdx = reshape(ManifoldIdx,2,floor(numel(ManifoldIdx)/2))';
 odorTS = TracesOut.Timestamps{1}(ManifoldIdx);
+if manifoldVector(1) == 1
+    odorTS = vertcat(nan,odorTS);
+    ManifoldIdx = vertcat(nan,ManifoldIdx);
+end
+odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
 if ~any(abs(odorTS(:,1)-TTLs.AirManifold(1:size(odorTS,1),1))>0.005)
-    for n = 1:size(ManifoldIdx,1)
+    for n = 1:size(odorTS,1)
         [~,idx] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(n,2)));
-        manifoldVector(ManifoldIdx(n,1):idx) = 1;
+        if ~isnan(ManifoldIdx(n,1))
+            manifoldVector(ManifoldIdx(n,1):idx) = 1;
+        end
     end
     TracesOut.Manifold{1} = manifoldVector;
 else
