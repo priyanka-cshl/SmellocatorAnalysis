@@ -57,6 +57,16 @@ for i = 1:size(TrialInfo.TrialID,2)
         % don't overwrite the odor identity for the previous trial (if min ITI < 1 sec)
         Traces.Odor{i} = Traces.Trial{i};
         Traces.Odor{i}(idx1:end) = OdorTrace(idx1:end);
+    elseif i == 1 && OdorTrace(2) > 0 && ~isempty(strfind(WhereSession,'O3_20211005'))
+        idx1 = 1;
+        %keyboard; % for O3_1005
+        OdorTrace(OdorTrace>0) = 1;
+        OdorTrace(1:idx2) = 1;
+        OdorTrace = OdorTrace*1;
+        OdorTrace(1) = 0;
+        % don't overwrite the odor identity for the previous trial (if min ITI < 1 sec)
+        Traces.Odor{i} = Traces.Trial{i};
+        Traces.Odor{i}(idx1:end) = OdorTrace(idx1:end);
     else
         OdorTrace(OdorTrace>0) = 1;
         OdorTrace(idx1:idx2,1) = 1;
@@ -71,7 +81,11 @@ for i = 1:size(TrialInfo.TrialID,2)
     TrialTrace(TrialTrace>0) = 1;
 
     if ~isempty(find(perturbedTrials==i))
-        TrialTrace = TrialTrace*-1;
+        if TrialTrace(1)
+            TrialTrace(idx1:end) = TrialTrace(idx1:end)*-1;
+        else
+            TrialTrace = TrialTrace*-1;
+        end
     end
     Traces.Trial{i} = TrialTrace;
 
@@ -145,7 +159,49 @@ if ~any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (behavior + TimestampAdjust.
     TracesOut.Timestamps{1} = (Timestamps + Timestamps*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))';
 else
     disp('clock drift in ephys and behavior files');
-    keyboard;
+    %keyboard;
+    TracesOut.Timestamps{1} = (Timestamps + Timestamps*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))';
+end
+
+% for sessions with active replay - need to patch in the odor timings from
+% the ephys TTLs
+extra_manifold = [];
+if any(strcmp(TrialInfo.Perturbation(:,1),'OL-Replay'))
+    odorvector = TracesOut.Odor{1};
+    odorvector(odorvector>0) = 1;
+    odorTS = TracesOut.Timestamps{1}(find(diff(odorvector)));
+    odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
+
+    replays = ReplayTTLs.TrialID(find(ReplayTTLs.TrialID<=size(TrialInfo.Odor,1)));
+    for n = 1:numel(replays)
+        trialTS = TTLs.Trial(replays(n),:);
+        % find the corresponding trial
+        [~,idx] = min(abs(odorTS(:,1)-trialTS(1)));
+        idx1 = find(TracesOut.Timestamps{1}==odorTS(idx,1));
+        idx2 = find(TracesOut.Timestamps{1}==odorTS(idx,2));
+        % zero it
+        TracesOut.Odor{1}(idx1:idx2) = 0;
+        %TracesOut.Trial{1}(idx1:idx2) = -1;
+        
+        whichReplay = find(ReplayTTLs.TrialID==replays(n));
+        valveTS = ReplayTTLs.OdorValve{whichReplay};
+        valveTS(:,1:2) = valveTS(:,1:2) + trialTS(1);
+        for m = 1:size(valveTS,1) % every sub trial
+            [~,idx1] = min(abs(TracesOut.Timestamps{1}-valveTS(m,1))); % trial start
+            [~,idx2] = min(abs(TracesOut.Timestamps{1}-valveTS(m,2))); % trial end
+            TracesOut.Odor{1}(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(m,4); % odor identity
+        end
+
+        % keep track of extra manifold transitions
+        whichmanifold = find(abs(TTLs.AirManifold(:,1)-trialTS(2))<0.002);
+        if ~isempty(whichmanifold)
+            extra_manifold = vertcat(extra_manifold, whichmanifold);
+            [~,idx3] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(whichmanifold,2))); % trial end
+            TracesOut.Trial{1}(idx2:idx3) = -1;
+        end
+
+
+    end
 end
 
 %% tally odor valve timings with ephys TTLs
@@ -196,7 +252,7 @@ if ~any(abs(AirTS(2:end-1,1)-TTLs.Air(t1:(t2-1),1))>0.005) && ...
             [~,idx] = min(abs(TracesOut.Timestamps{1}-AirTS(1,2)));
             %AirVector(1:idx) = -1; % assume all odors are off
             if TracesOut.Odor{1}(1) 
-                if isempty(strfind(WhereSession,'O3_20210929'))
+                if isempty(strfind(WhereSession,'O3_20210929')) & isempty(strfind(WhereSession,'O3_20211005'))
                     keyboard; % ignore for O3_0929
                 end
             else
@@ -239,11 +295,31 @@ if manifoldVector(1) == 1
     ManifoldIdx = vertcat(nan,ManifoldIdx);
 end
 odorTS = reshape(odorTS,2,floor(numel(odorTS)/2))';
+ManifoldIdx = reshape(ManifoldIdx,2,floor(numel(ManifoldIdx)/2))';
 if ~any(abs(odorTS(:,1)-TTLs.AirManifold(1:size(odorTS,1),1))>0.005)
     for n = 1:size(odorTS,1)
         [~,idx] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(n,2)));
         if ~isnan(ManifoldIdx(n,1))
             manifoldVector(ManifoldIdx(n,1):idx) = 1;
+        end
+    end
+    TracesOut.Manifold{1} = manifoldVector;
+elseif any(strcmp(TrialInfo.Perturbation(:,1),'OL-Replay')) & ~isempty(extra_manifold)
+    foo = TTLs.AirManifold;
+    foo(extra_manifold,:) = [];
+    if ~any(abs(odorTS(:,1)-foo(1:size(odorTS,1),1))>0.005)
+        for n = 1:size(odorTS,1)
+            [~,idx] = min(abs(TracesOut.Timestamps{1}-foo(n,2)));
+            if ~isnan(ManifoldIdx(n,1))
+                manifoldVector(ManifoldIdx(n,1):idx) = 1;
+            end
+        end
+        if ~isempty(extra_manifold)
+            for n = 1:numel(extra_manifold)
+                [~,idx1] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(extra_manifold(n),1)));
+                [~,idx2] = min(abs(TracesOut.Timestamps{1}-TTLs.AirManifold(extra_manifold(n),2)));
+                manifoldVector(idx1:idx2) = 1;
+            end
         end
     end
     TracesOut.Manifold{1} = manifoldVector;

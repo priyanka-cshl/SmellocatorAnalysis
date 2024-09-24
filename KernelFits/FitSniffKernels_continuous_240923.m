@@ -4,6 +4,7 @@
 % FitStyle = 'fminunc'; % 'fmincon' 'lsqcurvefit'
 % FitStyle = 'fminunc_LL';
 FitStyle = 'lsqcurvefit';
+KernelCondition = 3;
 
 %% Step 1: Data Paths
 SessionName = 'S12_20230731_r0'; 
@@ -20,7 +21,7 @@ if ~exist(SavePath,'dir')
     mkdir(SavePath);
     fileattrib(SavePath, '+w','a');
 end
-MatFile = fullfile(SavePath,[SessionName,'_',FitStyle,'_20ms_corrected.mat']);
+MatFile = fullfile(SavePath,[SessionName,'_',FitStyle,'_',num2str(KernelCondition),'_20ms_norectify.mat']);
 
 %% Loading the actual data
 % use the same rules as for preprocessing for wolf
@@ -43,8 +44,21 @@ if isfield(TracesOut,'SniffsDigitized')
     % parse sniffs into ITI, air, odor1, odor2, odor3
     %InputVector(1,:) = AllSniffs; 
     
-    InputVector(1,:) = AllSniffs.*(ManifoldState==0); % only ITI sniffs
-    InputVector(2,:) = AllSniffs.*(OdorState>=0).*(ManifoldState==1); % air sniffs
+    switch KernelCondition
+        case 1
+            % ITI for all, Air for all odor sniffs
+            InputVector(1,:) = AllSniffs; % all sniffs
+            InputVector(2,:) = AllSniffs.*(OdorState>=0).*(ManifoldState==1); % air sniffs
+        case 2
+            % ITI for ITI only, Air for all odor sniffs
+            InputVector(1,:) = AllSniffs.*(ManifoldState==0); % only ITI sniffs
+            InputVector(2,:) = AllSniffs.*(OdorState>=0).*(ManifoldState==1); % air sniffs
+        case 3
+            % ITI for ITI only, Air for air only
+            InputVector(1,:) = AllSniffs.*(ManifoldState==0); % only ITI sniffs
+            InputVector(2,:) = AllSniffs.*(OdorState==0).*(ManifoldState==1); % air sniffs
+    end
+
     InputVector(3,:) = AllSniffs.*(OdorState==1); % odor 1 sniffs
     InputVector(4,:) = AllSniffs.*(OdorState==2); % odor 2 sniffs
     InputVector(5,:) = AllSniffs.*(OdorState==3); % odor 3 sniffs
@@ -116,7 +130,7 @@ for thisunit = 1:numel(MyUnits)
             model_fit = @sniff_out; 
             lb = -100 + 0*StartingKernels; 
             ub = 100 + 0*StartingKernels;
-            %rectifyFR = 0; % false
+            rectifyFR = 0; % false
 
             [fittedkernel{thisunit},resnorm,residual,exitflag,output] = ...
                 lsqcurvefit(model_fit,StartingKernels,InputVector(1:7,:),InputVector(8,:),lb,ub,options);
@@ -144,9 +158,9 @@ function [zdata] = sniff_out(StartingKernels,xdata)
     % get psth
     [zdata] = SniffKernels2continuousPSTH(baseline,kernels,locationcoef,x_data);
     
-%     if rectifyFR
-%         zdata(zdata<0) = 0;
-%     end
+    %if rectifyFR
+        zdata(zdata<0) = 0;
+    %end
 end
 
 %% optimization function for fminunc version 

@@ -56,9 +56,15 @@ else
     TrialVector = session_data.trace(:,find(strcmp(session_data.trace_legend,'trial_on')));
 end
 OriginalTrialTrace = TrialVector;
-TrialVector(TrialVector>0) = 1;
+
+if ~isempty(strfind(WhereSession,'O3_20211005'))
+    TrialVector(TrialVector~=0) = 1;
+else
+    TrialVector(TrialVector>0) = 1;
+end
 
 ts = find(diff(TrialVector));
+
 if ~TrialVector(1)
     n = floor((length(ts)/2));
     idx = reshape(ts(1:2*n),2,n)';
@@ -66,6 +72,10 @@ if ~TrialVector(1)
     ts(:,3) = ts(:,2)-ts(:,1);
 else
     keyboard;
+end
+
+if ~isempty(strfind(WhereSession,'O3_20211005')) 
+    ts(255,:) = [];
 end
 
 % quick sanity check
@@ -193,7 +203,11 @@ for t = 1:size(TuningTTLs,1) % every trial
         for n = 1:size(ValveTS,1) % every subtrial
             [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
             [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
-            OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
+%             if ~isempty(strfind(WhereSession,'O3_20211005')) & n == 1
+%                 OdorVector(idx1:idx2) = 3; % odor identity
+%             else
+                OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
+%             end
             if n == perturbedSubtrial
                 TrialVector(idx1:idx2) = -2; % perturbation-replay
             else
