@@ -4,7 +4,7 @@ WhereSession = '/home/priyanka/Desktop/forWDW/O3_20210927_r0_processed.mat';
 %WhereSession = '/home/priyanka/Desktop/forWDW/Q4_20221109_r0_processed.mat';
 
 Paths = WhichComputer();
-WhereSession = fullfile(Paths.Wolf.processed,'forWDW','O3_20210927_r0_processed.mat');
+WhereSession = fullfile(Paths.Wolf.processed,'forWDW','O3_20211005_r0_processed.mat');
 % WhereSession = fullfile(Paths.Wolf.processed,'forWDW','Q4_20221109_r0_processed.mat');
 % WhereSession = fullfile(Paths.Wolf.processed,'forWDW','S12_20230731_r0_processed.mat');
 
@@ -35,7 +35,7 @@ for n = 1:size(Sniffidx,1)
 end
 
 %%
-thisUnitSpikes = SingleUnits(15).spikes;
+thisUnitSpikes = SingleUnits(39).spikes;
 window = [-0.1 1];
 figure;
 

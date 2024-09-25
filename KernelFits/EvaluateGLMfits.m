@@ -38,8 +38,8 @@ for whichset = 1:6
 end
 
 %% get fits from wulf
-wulfPath = fullfile(Paths.Wolf.processed,'sniffPSTHPredictions/sessions',[SessionName,'_processed'],'configs/20ms/glm_basis/active_noperturb/results.mat');
-WulfPSTHs = LoadWulfGLMOutput(wulfPath,nUnits);
+% wulfPath = fullfile(Paths.Wolf.processed,'sniffPSTHPredictions/sessions',[SessionName,'_processed'],'configs/20ms/glm_basis/active_noperturb/results.mat');
+% WulfPSTHs = LoadWulfGLMOutput(wulfPath,nUnits);
 
 %% get the timestamps from the original processed file
 WhereSession = fullfile(Paths.Wolf.processed,'forWDW',[SessionName, '_processed.mat']);
@@ -49,47 +49,67 @@ TS_temp     = TracesOut.Timestamps{1};
 TS     = TS_temp(1):PSTHbinsize/1000:TS_temp(end);
 
 %% Looking at a particular unit
-whichUnit = 58;
 window = [-0.1 1]; % in seconds
 window = window/(PSTHbinsize/1000); % in downsampled bins
-
-[CLsniffs] = PlotSniffRaster_wdw(SessionName, whichUnit);
-CLsniffs(1:5,:) = [];
-CLsniffs(end-4:end,:) = [];
-
-%% make the psths
-for sniffType = 1:5
-    whichSniffs = find(CLsniffs(:,7)==sniffType);
-    summedTrace = 0; predTrace = zeros(6,56); predictedTraces = []; 
-    for n = 1:numel(whichSniffs)
-        sniffStart = CLsniffs(whichSniffs(n),8);
-        [~,idx] = min(abs(TS-sniffStart));
-        idx = idx + window;
-        summedTrace = summedTrace + PSTHs(whichUnit,idx(1):idx(2));
-        for whichset = 1:6
-            predictedTraces(whichset,:) = PredictedPSTH{whichset}(whichUnit,idx(1):idx(2));
-        end
-        predTrace = predTrace + predictedTraces;
+CLsniffs = [];
+for whichUnit = 1:nUnits
+    %whichUnit = 58;
+    if isempty(CLsniffs) % only do this once
+        [CLsniffs] = PlotSniffRaster_wdw(SessionName, whichUnit);
+        CLsniffs(1:5,:) = [];
+        CLsniffs(end-4:end,:) = [];
     end
-    summedTrace = summedTrace/n;
-    predTrace   = predTrace/n;
-    SniffPSTH{sniffType} = summedTrace;
-    ExpectedPSTH{sniffType} = predTrace;
+
+    %% make the psths
+    for sniffType = 1:5
+        whichSniffs = find(CLsniffs(:,7)==sniffType);
+        summedTrace = 0; predTrace = zeros(6,diff(window)+1); predictedTraces = [];
+        for n = 1:numel(whichSniffs)
+            sniffStart = CLsniffs(whichSniffs(n),8);
+            [~,idx] = min(abs(TS-sniffStart));
+            idx = idx + window;
+            summedTrace = summedTrace + PSTHs(whichUnit,idx(1):idx(2));
+            for whichset = 1:6
+                predictedTraces(whichset,:) = PredictedPSTH{whichset}(whichUnit,idx(1):idx(2));
+            end
+            predTrace = predTrace + predictedTraces;
+        end
+        summedTrace = summedTrace/n;
+        predTrace   = predTrace/n;
+        SniffPSTH{whichUnit}{sniffType} = summedTrace;
+        ExpectedPSTH{whichUnit}{sniffType} = predTrace;
+
+        for whichset = 1:6
+            mycorr = corrcoef(summedTrace,predTrace(whichset,:));
+            PSTHcorrs{whichUnit}{sniffType}(whichset) = mycorr(1,2);
+        end
+    end
+    
+    
+    %% 
+
+    %%
+%     figure;
+%     for sniffType = 1:5
+%         subplot(1,5,sniffType);
+%         plot(sgolayfilt(SniffPSTH{sniffType},1,3),'k');
+%         hold on
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(1,:),1,3),'r');
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(2,:),1,3),'g');
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(3,:),1,3),'b');
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(4,:),1,3),':r');
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(5,:),1,3),':g');
+%         plot(sgolayfilt(ExpectedPSTH{sniffType}(6,:),1,3),':b');
+%         %plot(sgolayfilt(ExpectedPSTH{sniffType}',1,3));
+%     end
+end
+%%
+
+%% comparing R2 for psth
+for sniffType = 1:5
+    M(:,:,sniffType) = cell2mat(cellfun(@(x) x{sniffType}, PSTHcorrs, 'UniformOutput', false)'); 
+    subplot(1,5,sniffType);
+    errorbar(1:6,mean(M(:,:,sniffType)),std(M(:,:,sniffType)));
 end
 
-%%
-figure;
-for sniffType = 1:5
-    subplot(1,5,sniffType);
-    plot(sgolayfilt(SniffPSTH{sniffType},1,3),'k');
-    hold on
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(1,:),1,3),'r');
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(2,:),1,3),'g');
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(3,:),1,3),'b');
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(4,:),1,3),':r');
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(5,:),1,3),':g');
-    plot(sgolayfilt(ExpectedPSTH{sniffType}(6,:),1,3),':b');
-    %plot(sgolayfilt(ExpectedPSTH{sniffType}',1,3));
-end
-%%
 
