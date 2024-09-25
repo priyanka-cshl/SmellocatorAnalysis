@@ -138,6 +138,7 @@ end
 
 OdorVector = (timestamps*0) + (ITIAirState*4);
 TrialVector = timestamps*0;
+ReplayVector = TrialVector;
 
 % fixing trial type for trial 1
 if isnan(TuningTTLs(1,7))
@@ -191,7 +192,7 @@ for t = 1:size(TuningTTLs,1) % every trial
         odorseq = ReplayTTLs.OdorValve{whichReplay};
         odorseq(odorseq(:,1)<0,:) = [];
         nsub = size(odorseq,1);
-        whichTemplate = find(ismember(odorseq(:,4)',Templates(:,3+[1:nsub]),'rows'));
+        whichTemplate = find(ismember(Templates(:,3+[1:nsub]),odorseq(:,4)','rows'));
         perturbedSubtrial = 0;
         if ~isempty(whichTemplate)
             if ~isnan(Templates(whichTemplate,3))
@@ -203,17 +204,46 @@ for t = 1:size(TuningTTLs,1) % every trial
         for n = 1:size(ValveTS,1) % every subtrial
             [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
             [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
-%             if ~isempty(strfind(WhereSession,'O3_20211005')) & n == 1
-%                 OdorVector(idx1:idx2) = 3; % odor identity
-%             else
-                OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
-%             end
+            OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
             if n == perturbedSubtrial
                 TrialVector(idx1:idx2) = -2; % perturbation-replay
+                ReplayVector(idx1:idx2) = - (Templates(whichTemplate,3) + 0.1);
             else
                 TrialVector(idx1:idx2) = -3; % replays
+                ReplayVector(idx1:idx2) = - (Templates(whichTemplate,1) + n - 1);
             end
         end
+        
+        if ~isempty(strfind(WhereSession,'O3_20211005')) 
+            missedTTLs = [];
+            for o = 1:3
+                temp = TTLs.(['Odor',num2str(o)]);
+                extraTTLs = temp(((temp(:,1)>TuningTTLs(t-1,2))&(temp(:,1)<TuningTTLs(t,1))),:);
+                if ~isempty(extraTTLs)
+                    extraTTLs(:,end+1) = o;
+                    missedTTLs = vertcat(missedTTLs,extraTTLs);
+                end
+            end
+            if ~isempty(missedTTLs)
+                missedTTLs = sortrows(missedTTLs,1);
+
+                isTemplate = find(ismember(Templates(:,3+[1:nsub]),missedTTLs(:,4)','rows'));
+
+                for q = 1:size(missedTTLs,1) % every missed trial
+                    [~,idx1] = min(abs(timestamps-missedTTLs(q,1))); % trial start
+                    [~,idx2] = min(abs(timestamps-missedTTLs(q,2))); % trial end
+                    OdorVector(idx1:idx2) = missedTTLs(q,4); % odor identity
+                    TrialVector(idx1:idx2) = -3.5; % replays that got missed
+                    if ~isempty(isTemplate)
+                        ReplayVector(idx1:idx2) = - (Templates(isTemplate,1) + q - 1);
+                    end
+                end
+                [~,idx1] = min(abs(timestamps-missedTTLs(1,1))); % trial start
+                [~,idx2] = min(abs(timestamps-missedTTLs(end,2))); % trial end
+                OriginalTrialTrace(idx1:idx2) = -3.5;      
+            end
+        end
+
     end
 
 
@@ -223,6 +253,7 @@ end
 PassiveOut.Timestamps{1} = timestamps;
 PassiveOut.Odor{1} = OdorVector;
 PassiveOut.Trial{1} = TrialVector;
+PassiveOut.Replay{1} = ReplayVector;
 
 %% tally valve timings with ephys TTLs
 for x = 1:3
@@ -306,12 +337,18 @@ if ~ITIAirState
                 abs(TTLs.Air(t1+f-1,2)-TTLs.Air(t1+f-1,1))<0.005
             TTLs.Air(t1+f-1,:) = [];
         end
-        if f==1 && isnan(AirTS(f,1)) && TTLs.Air(t1+f-1,2) < timestamps(1) && ...
-                numel(find(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005))==1
+        if f==1 && isnan(AirTS(f,1)) && TTLs.Air(t1+f-1,2) < timestamps(1) ...
+                && numel(find(abs(AirTS(1:end-1,2)-TTLs.Air(t1:t2-1,2))>0.005))==1
             t1 = t1 + 1;
             AirTS(1,:) = [];
+        elseif f==1 && isnan(AirTS(f,1)) && TTLs.Air(t1+f-1,2) < timestamps(1) ...
+                && ~isempty(strfind(WhereSession,'O3_20211005'))
+            %t1 = t1 + 1;
+            AirTS(f,2) = TTLs.Air(t1+f-1,2);
+        elseif f > 1 && ~isempty(strfind(WhereSession,'O3_20211005')) ...
+                && TuningTTLs(find(TuningTTLs(:,1)>TTLs.Air(t1+f-1,2),1,'first'),3)>2
+            AirTS(f,2) = TTLs.Air(t1+f-1,2);
         end
-
     end
 end
 
