@@ -4,10 +4,12 @@
 % FitStyle = 'fminunc'; % 'fmincon' 'lsqcurvefit'
 % FitStyle = 'fminunc_LL';
 FitStyle = 'lsqcurvefit';
-KernelCondition = 3;
+%KernelCondition = 3;
 
 %% Step 1: Data Paths
-SessionName = 'S12_20230731_r0'; 
+%SessionName = 'S12_20230731_r0'; 
+%SessionName = 'O3_20210927_r0';
+SessionName = 'O3_20211005_r0';
 MyUnits = []; % just a hack for processing all units
 
 % MySession = fullfile('/mnt/grid-hs/mdussauz/Smellocator/Processed/Behavior/', ...
@@ -159,7 +161,7 @@ function [zdata] = sniff_out(StartingKernels,xdata)
     [zdata] = SniffKernels2continuousPSTH(baseline,kernels,locationcoef,x_data);
     
     %if rectifyFR
-        zdata(zdata<0) = 0;
+        %zdata(zdata<0) = 0;
     %end
 end
 
