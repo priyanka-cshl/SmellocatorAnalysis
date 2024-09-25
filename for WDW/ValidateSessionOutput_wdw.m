@@ -1,7 +1,12 @@
 WhereSession = '/home/priyanka/Desktop/forWDW/S12_20230731_r0_processed.mat';
 WhereSession = '/home/priyanka/Desktop/forWDW/Q9_20221116_r0_processed.mat';
-% WhereSession = '/home/priyanka/Desktop/forWDW/O3_20210927_r0_processed.mat';
-WhereSession = '/home/priyanka/Desktop/forWDW/Q4_20221109_r0_processed.mat';
+WhereSession = '/home/priyanka/Desktop/forWDW/O3_20210927_r0_processed.mat';
+%WhereSession = '/home/priyanka/Desktop/forWDW/Q4_20221109_r0_processed.mat';
+
+Paths = WhichComputer();
+WhereSession = fullfile(Paths.Wolf.processed,'forWDW','O3_20210927_r0_processed.mat');
+WhereSession = fullfile(Paths.Wolf.processed,'forWDW','Q4_20221109_r0_processed.mat');
+
 
 load(WhereSession);
 
@@ -30,7 +35,7 @@ for n = 1:size(Sniffidx,1)
 end
 
 %%
-thisUnitSpikes = SingleUnits(26).spikes;
+thisUnitSpikes = SingleUnits(18).spikes;
 window = [-0.1 1];
 figure;
 
@@ -109,12 +114,12 @@ for snifftype = 1:5
         case 5
             whichsniffs = intersect(find(Sniffidx(:,4)==1), find(Sniffidx(:,5)==3));
     end
-    %whichsniffs = intersect(whichsniffs,find(Sniffidx(:,7)==-4));
+    whichsniffs = intersect(whichsniffs,find(Sniffidx(:,7)==-4));
 
     SniffTS = Sniffidx(whichsniffs,:);
     SniffTS(:,1:2) = PassiveOut.Timestamps{1}(SniffTS(:,1:2));
     SniffTS(:,3) = SniffTS(:,2) - SniffTS(:,1);
-    SniffTS = sortrows(SniffTS,3,'ascend');
+    SniffTS = sortrows(SniffTS,[6 3],'ascend');
     for x = 1:size(SniffTS,1)
         ts = SniffTS(x,1) + window;
         whichSpikes = intersect(find(thisUnitSpikes>=ts(1)), find(thisUnitSpikes<=ts(2)));
