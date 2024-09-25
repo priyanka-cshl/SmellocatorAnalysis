@@ -377,7 +377,10 @@ if exist('CuratedPassiveSniffTimestamps','var')
     LocationSniffs = PassiveOut.SniffsFiltered{1}*nan;
     DigitalSniffs = PassiveOut.SniffsFiltered{1}*0;
     for n = 1:size(CuratedPassiveSniffTimestamps)
-        idx = CuratedPassiveSniffTimestamps(n,8:9);
+        %idx = CuratedPassiveSniffTimestamps(n,8:9);
+        idx = [];
+        [~,idx(1)] = min(abs(PassiveOut.Timestamps{1}-CuratedPassiveSniffTimestamps(n,1))); % sniff start
+        [~,idx(2)] = min(abs(PassiveOut.Timestamps{1}-CuratedPassiveSniffTimestamps(n,2))); % sniff end
         if CuratedPassiveSniffTimestamps(n,10) == -1
             DigitalSniffs(idx(1):idx(2)) = -1;
         else
