@@ -200,11 +200,13 @@ for t = 1:size(TuningTTLs,1) % every trial
             end
         end
 
-        ValveTS = ReplayTTLs.OdorValve{whichReplay}(:,1:2) + TuningTTLs(t,1);
+        ValveTS = ReplayTTLs.OdorValve{whichReplay};
+        ValveTS(find(ValveTS(:,1)<0),:) = [];
+        ValveTS(:,1:2) = ValveTS(:,1:2) + TuningTTLs(t,1);
         for n = 1:size(ValveTS,1) % every subtrial
             [~,idx1] = min(abs(timestamps-ValveTS(n,1))); % trial start
             [~,idx2] = min(abs(timestamps-ValveTS(n,2))); % trial end
-            OdorVector(idx1:idx2) = ReplayTTLs.OdorValve{whichReplay}(n,4); % odor identity
+            OdorVector(idx1:idx2) = ValveTS(n,4); % odor identity
             if n == perturbedSubtrial
                 TrialVector(idx1:idx2) = -2; % perturbation-replay
                 ReplayVector(idx1:idx2) = - (Templates(whichTemplate,3) + 0.1);
