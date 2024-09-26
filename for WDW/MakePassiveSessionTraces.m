@@ -212,7 +212,11 @@ for t = 1:size(TuningTTLs,1) % every trial
                 ReplayVector(idx1:idx2) = - (Templates(whichTemplate,3) + 0.1);
             else
                 TrialVector(idx1:idx2) = -3; % replays
-                ReplayVector(idx1:idx2) = - (Templates(whichTemplate,1) + n - 1);
+                if ~isempty(whichTemplate)
+                    ReplayVector(idx1:idx2) = - (Templates(whichTemplate,1) + n - 1);
+                else
+                    ReplayVector(idx1:idx2) = -3;
+                end
             end
         end
         
@@ -344,10 +348,10 @@ if ~ITIAirState
             t1 = t1 + 1;
             AirTS(1,:) = [];
         elseif f==1 && isnan(AirTS(f,1)) && TTLs.Air(t1+f-1,2) < timestamps(1) ...
-                && ~isempty(strfind(WhereSession,'O3_20211005'))
+                && (~isempty(strfind(WhereSession,'O3_20211005')) || ~isempty(strfind(WhereSession,'O8_20220704')))
             %t1 = t1 + 1;
             AirTS(f,2) = TTLs.Air(t1+f-1,2);
-        elseif f > 1 && ~isempty(strfind(WhereSession,'O3_20211005')) ...
+        elseif f > 1 && (~isempty(strfind(WhereSession,'O3_20211005')) || ~isempty(strfind(WhereSession,'O8_20220704'))) ...
                 && TuningTTLs(find(TuningTTLs(:,1)>TTLs.Air(t1+f-1,2),1,'first'),3)>2
             AirTS(f,2) = TTLs.Air(t1+f-1,2);
         end
