@@ -1,5 +1,6 @@
 
 SessionName = 'S12_20230731_r0';
+SessionName = 'O3_20211005_r0';
 
 %% load a particular fit config
 Paths = WhichComputer();
@@ -37,16 +38,16 @@ for whichset = 1:6
 
 end
 
-%% get fits from wulf
-% wulfPath = fullfile(Paths.Wolf.processed,'sniffPSTHPredictions/sessions',[SessionName,'_processed'],'configs/20ms/glm_basis/active_noperturb/results.mat');
-% WulfPSTHs = LoadWulfGLMOutput(wulfPath,nUnits);
-
 %% get the timestamps from the original processed file
 WhereSession = fullfile(Paths.Wolf.processed,'forWDW',[SessionName, '_processed.mat']);
 load(WhereSession, 'TracesOut');
 downsample  = PSTHbinsize/(1000/500);
 TS_temp     = TracesOut.Timestamps{1};
 TS     = TS_temp(1):PSTHbinsize/1000:TS_temp(end);
+
+%% get fits from wulf
+wulfPath = fullfile(Paths.Wolf.processed,'sniffPSTHPredictions',SessionName(1:regexp(SessionName,'_','once')-1),SessionName,[SessionName,'_wdw.mat']);
+WulfPSTHs = LoadWulfGLMOutput(wulfPath,nUnits,TS);
 
 %% Looking at a particular unit
 window = [-0.1 1]; % in seconds
@@ -63,7 +64,7 @@ for whichUnit = 1:nUnits
     %% make the psths
     for sniffType = 1:5
         whichSniffs = find(CLsniffs(:,7)==sniffType);
-        summedTrace = 0; predTrace = zeros(6,diff(window)+1); predictedTraces = [];
+        summedTrace = 0; predTrace = zeros(7,diff(window)+1); predictedTraces = [];
         for n = 1:numel(whichSniffs)
             sniffStart = CLsniffs(whichSniffs(n),8);
             [~,idx] = min(abs(TS-sniffStart));
@@ -72,6 +73,7 @@ for whichUnit = 1:nUnits
             for whichset = 1:6
                 predictedTraces(whichset,:) = PredictedPSTH{whichset}(whichUnit,idx(1):idx(2));
             end
+            predictedTraces(7,:) = WulfPSTHs(whichUnit,idx(1):idx(2));
             predTrace = predTrace + predictedTraces;
         end
         summedTrace = summedTrace/n;
@@ -79,7 +81,7 @@ for whichUnit = 1:nUnits
         SniffPSTH{whichUnit}{sniffType} = summedTrace;
         ExpectedPSTH{whichUnit}{sniffType} = predTrace;
 
-        for whichset = 1:6
+        for whichset = 1:7
             mycorr = corrcoef(summedTrace,predTrace(whichset,:));
             PSTHcorrs{whichUnit}{sniffType}(whichset) = mycorr(1,2);
         end
@@ -103,13 +105,25 @@ for whichUnit = 1:nUnits
 %         %plot(sgolayfilt(ExpectedPSTH{sniffType}',1,3));
 %     end
 end
-%%
+%% compare sniffPSTHs for a particular unit
+whichUnit = 1;
+figure; 
+for sniffType = 1:5
+    subplot(1,5,sniffType); 
+    hold on;
+    plot(sgolayfilt(SniffPSTH{whichUnit}{sniffType},1,3),'k');
+    plot(ExpectedPSTH{whichUnit}{sniffType}(7,:),'r'); 
+    plot(ExpectedPSTH{whichUnit}{sniffType}(1,:),'b'); 
+    plot(ExpectedPSTH{whichUnit}{sniffType}(4,:),'g'); 
+end
+
 
 %% comparing R2 for psth
+figure;
 for sniffType = 1:5
     M(:,:,sniffType) = cell2mat(cellfun(@(x) x{sniffType}, PSTHcorrs, 'UniformOutput', false)'); 
     subplot(1,5,sniffType);
-    errorbar(1:6,mean(M(:,:,sniffType)),std(M(:,:,sniffType)));
+    errorbar(1:7,mean(M(:,:,sniffType)),std(M(:,:,sniffType)));
 end
 
 
