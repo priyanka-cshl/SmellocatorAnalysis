@@ -1,8 +1,12 @@
-%% analyzing passive replays 
+%% script to analyze basic active/passive replay sessions
 SessionName = 'O3_20211005_r0';
 
-%% load the wdw processed sessions
+%% Housekeeping
 Paths = WhichComputer();
+
+
+%% load the wdw processed sessions
+
 WhereSession = fullfile(Paths.Wolf.processed,'forWDW',[SessionName,'_processed.mat']);
 load(WhereSession);
 binsize = mean(diff(TracesOut.Timestamps{1})); % in seconds
@@ -17,7 +21,7 @@ nTemplates = numel(find(diff(replayedTrials)~=1)) + 1;
 
 if nTemplates == 1
     subtrials = sort(abs(replayedTrials));
-    % find the stretches of replaym
+    % find the stretches of replay
     ReplayIdx(:,1) = find(diff(PassiveOut.Replay{1})==-subtrials(1)) + 1;
     ReplayIdx(:,2) = find(diff(PassiveOut.Replay{1})==subtrials(end));
 
@@ -113,11 +117,11 @@ nActiveReplays = size(TrialIdxOL,1);
 
 %% plot an example unit
 unitIDs = cell2mat({SingleUnits.id})';
-whichUnit = 1;
-%whichUnit = find(unitIDs==1095);
-% whichUnit = find(unitIDs==921);
-% whichUnit = find(unitIDs==1218);
-%whichUnit = find(unitIDs==979);
+%whichUnit = 1;
+whichUnit = find(unitIDs==1095);
+whichUnit = find(unitIDs==921);
+whichUnit = find(unitIDs==1218);
+whichUnit = find(unitIDs==979);
 thisUnitSpikes = SingleUnits(whichUnit).spikes;
 nTrials = nActiveReplays + nReplays + 1;
 
@@ -175,9 +179,7 @@ PlotRaster_v2(TemplateSpikesAdjusted,1,Plot_Colors('k'));
 
 
 % plot the predicted passive replay and closed loop spikes
-dt = 0.020; % in seconds
-PSTHbinsize = 20;
-multfact = 1000/PSTHbinsize;
+
 
 for whichplot = 2:3
     subplot(3,1,whichplot); % plot the expected spikes

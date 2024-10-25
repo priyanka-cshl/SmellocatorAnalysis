@@ -25,7 +25,7 @@ for examples = 1:4
 MouseName = regexprep(SessionTag,'_(\w+)_processed.mat','');
 Paths = WhichComputer();
 MySession = fullfile(Paths.ProcessedSessions,MouseName,SessionTag);
-PredictedSession = fullfile('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/sniffPSTHPredictions/', ...
+PredictedSession = fullfile('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/sniffPSTHPredictionsOld/', ...
                     MouseName, strrep(SessionTag,'r0_processed','sniffs'));
 
 [TrialAligned, TrialInfo, ...
@@ -82,10 +82,12 @@ SpikesPlot = [];
 for x = 1:size(AllSniffs,1)   
     ExhalationTimes = [AllSniffs(x,10) 0 AllSniffs(x,3:4)];
     ExhalationTimes = reshape(ExhalationTimes,2,2)';
-    if AllSniffs(x,1) < 0
-        SniffPlotter(ExhalationTimes', x, Plot_Colors('Odor3'));
-    else
-        SniffPlotter(ExhalationTimes', x, Plot_Colors('Odor2'));
+    if ~plotPSTH
+        if AllSniffs(x,1) < 0
+            SniffPlotter(ExhalationTimes', x, Plot_Colors('Odor3'));
+        else
+            SniffPlotter(ExhalationTimes', x, Plot_Colors('Odor2'));
+        end
     end
     
     % get the predicted spike times
@@ -100,9 +102,12 @@ if ~plotPSTH
     %set(gca,'YLim', [0 2200], 'XLim',[-0.05 0.75],'TickDir','out');
     set(gca,'XLim',[-0.05 0.75],'TickDir','out');
 else
-    imagesc(PSTHOut)
-    colormap(brewermap([100],'Blues'))
-    set(gca,'YLim',[0 2000],'TickDir','out');
+    plot(0.01*(1:size(PSTHOut,2)),sgolayfilt(mean(PSTHOut(1:1000,:)),1,5),'k');
+    plot(0.01*(1:size(PSTHOut,2)),sgolayfilt(mean(PSTHOut(1001:2000,:)),1,5),'r');
+    set(gca,'XLim',[-0.05 0.75],'TickDir','out');
+    %imagesc(PSTHOut)
+    %colormap(brewermap([100],'Blues'))
+    %set(gca,'YLim',[0 2000],'TickDir','out');
 end
 
 end

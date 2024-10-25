@@ -5,7 +5,7 @@ if nargin < 2
 end
 
 MySession = '/mnt/data/Processed/Behavior/O3/O3_20211005_r0_processed.mat';
-%MySession = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/O3/O3_20211005_r0_processed.mat';
+MySession = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Behavior/O3/O3_20211005_r0_processed.mat';
 
 %% get the processed data loaded
 load(MySession, 'Traces', 'PassiveReplayTraces', 'TrialInfo', ...

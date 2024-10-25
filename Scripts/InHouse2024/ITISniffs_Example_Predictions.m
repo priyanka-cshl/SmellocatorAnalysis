@@ -11,20 +11,31 @@ shade_exhalation = 1;
 figure;
 for examples = 1:4
     switch examples
+%         case 1
+%             SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 58;
+%         case 2
+%             SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 10;
+%         case 3
+%             SessionTag = 'Q3_20221019_r0_processed.mat';    UnitID = 18;
+%         case 4
+%             SessionTag = 'Q8_20221204_r0_processed.mat';    UnitID = 49;
+
+
         case 1
-            SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 58;
+            SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 58;    OdorID = 3;
         case 2
-            SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 10;
+            SessionTag = 'S12_20230731_r0_processed.mat';   UnitID = 31;    OdorID = 3;
         case 3
-            SessionTag = 'Q3_20221019_r0_processed.mat';    UnitID = 18;
+            SessionTag = 'S12_20230731_r0_processed.mat';    UnitID = 44;   OdorID = 3;
         case 4
-            SessionTag = 'Q8_20221204_r0_processed.mat';    UnitID = 49;            
+            SessionTag = 'S12_20230731_r0_processed.mat';    UnitID = 44;   OdorID = 3;
+    
     end
 
 MouseName = regexprep(SessionTag,'_(\w+)_processed.mat','');
 Paths = WhichComputer();
 MySession = fullfile(Paths.ProcessedSessions,MouseName,SessionTag);
-PredictedSession = fullfile('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/sniffPSTHPredictions/', ...
+PredictedSession = fullfile('/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/sniffPSTHPredictionsOld/', ...
                     MouseName, strrep(SessionTag,'r0_processed','sniffs'));
 
 [TrialAligned, TrialInfo, ...
