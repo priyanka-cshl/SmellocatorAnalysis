@@ -311,6 +311,19 @@ for i = 1:4
     end
 end
 
+if any(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'))
+    handles.(['Trial',num2str(4),'Plot']) = fill(NaN,NaN,handles.plotcolors.(['Odor',num2str(4)]));
+    hold on;
+    handles.(['Trial',num2str(4),'Plot']).EdgeColor = 'none';
+    ValveTS = TrialTimeStamps(find(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal')),1:2)';
+    if ~isempty(ValveTS)
+        handles.(['Trial',num2str(4),'Plot']).Vertices = [ ...
+            reshape([ValveTS(:) ValveTS(:)]', 2*numel(ValveTS), []) , ...
+            repmat([5 5.5 5.5 5]',size(ValveTS,2),1)];
+        handles.(['Trial',num2str(4),'Plot']).Faces = reshape(1:2*numel(ValveTS),4,size(ValveTS,2))';
+    end
+end
+
 % plot the target zone
 handles.TargetZonePlot = fill(NaN,NaN,handles.plotcolors.TZ,'FaceAlpha',0.2);
 hold on;
