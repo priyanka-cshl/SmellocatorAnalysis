@@ -1,7 +1,8 @@
 %% script to analyze contamination issues in the O3 dataset
 
 %% load processed sniff and spike data
-SessionName = 'O3_20210927_r0';
+%SessionName = 'O3_20210927_r0';
+SessionName = 'Q4_20221109_r0'; 
 MySession = fullfile('/home/priyanka/Desktop/forWDW',[SessionName,'_processed.mat']);
 load(MySession); % loads TracesOut PassiveOut SingleUnits
 
@@ -12,7 +13,8 @@ SniffIdx(:,2) = find(diff([SniffVector; 0])<0); % last inhalation idx
 
 %% lets plot the last sniff in the trial and the next 1-3 sniffs in the ITI
 figure;
-thisUnitSpikes = SingleUnits(72).spikes;
+thisUnitSpikes = SingleUnits(6).spikes;
+nSniffs = 10;
 %subplot(3,4,n)
 for odor = 1:3
     SpikesPlot = []; OdorTransitions = [];
@@ -31,12 +33,33 @@ for odor = 1:3
             ts = ts + [-0.25 0 0.75];
             whichSpikes = intersect(find(thisUnitSpikes>=ts(1)), find(thisUnitSpikes<=ts(3)));
             thisSniffSpikes = thisUnitSpikes(whichSpikes) - ts(2);
-            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes x*ones(numel(thisSniffSpikes),1) Transition*ones(numel(thisSniffSpikes),1)]);
+            thisSniffLocation = mean(TracesOut.SniffsLocationed{1}(SniffIdx(i,1):SniffIdx(i,2)));
+            thisSniffManifold = mode(TracesOut.Manifold{1}(SniffIdx(i,1):SniffIdx(i,2)));
+            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes x*ones(numel(thisSniffSpikes),1)...
+                Transition*ones(numel(thisSniffSpikes),1) thisSniffLocation*ones(numel(thisSniffSpikes),1) ...
+                thisSniffManifold*ones(numel(thisSniffSpikes),1)]);
         end
     end
-    for n = 1:4
+    for n = 1:nSniffs
         f = find(SpikesPlot(:,2)==n);
-        subplot(3,4,n + (odor-1)*4); 
-        plot(SpikesPlot(f,1),SpikesPlot(f,3),'.k');
+        subplot(3,nSniffs,n + (odor-1)*nSniffs); hold on
+        mySpikesPlot = SpikesPlot(f,[1 3 4 5]);
+        %[~,sortorder] = sortrows(mySpikesPlot,[3 2]);
+        mySpikesPlot = sortrows(mySpikesPlot,[4 3 2 1]);
+        U = unique(mySpikesPlot(:,2),'stable');
+        for x = 1:numel(U)
+            mySpikesPlot(find(mySpikesPlot(:,2)==U(x)),5) = x;
+        end
+        m = find(mySpikesPlot(:,4)==0,1,'last');
+        if ~isempty(m)
+            mySpikesPlot((m+1):end,5) = mySpikesPlot((m+1):end,5) + 20;
+        end
+        %plot(SpikesPlot(f,1),SpikesPlot(f,4),'.k');
+        f = find(abs(mySpikesPlot(:,3))<10);
+        plot(mySpikesPlot(f,1),mySpikesPlot(f,5),'.k');
+        f = find(abs(mySpikesPlot(:,3))>=10);
+        plot(mySpikesPlot(f,1),mySpikesPlot(f,5),'.r');
+
+        set(gca,'YLim',[0 250]);
     end
 end
