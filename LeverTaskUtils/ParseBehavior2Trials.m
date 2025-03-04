@@ -61,7 +61,9 @@ for thisTrial = 1:numel(TrialOn)
     % store original trial ID - some trials may get deleted later because of weird target zones
     TrialInfo.TrialID(thisTrial) = thisTrial;
     thisTrialOffset = TrialOffsets(thisTrial); % this will be zero if there were no digital-analog sample drops
-    
+%     if thisTrial == 105
+%         keyboard;
+%     end
     if ~isnan(thisTrialOffset)
         % extract continuous traces for lever, motor position, licks and sniffs
         

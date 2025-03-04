@@ -311,6 +311,10 @@ for i = 1:4
     end
 end
 
+% put trial no. labels 
+text(mean(TrialTimeStamps,2), mean(TrialTimeStamps,2)*0+5, ...
+    arrayfun(@num2str, (1:size(TrialTimeStamps,1))', 'UniformOutput', false));
+
 if any(strcmp(TrialInfo.Perturbation(:,1),'RuleReversal'))
     handles.(['Trial',num2str(4),'Plot']) = fill(NaN,NaN,handles.plotcolors.(['Odor',num2str(4)]));
     hold on;
