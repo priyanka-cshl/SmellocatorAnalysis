@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI
 
-% Last Modified by GUIDE v2.5 21-Aug-2024 15:59:06
+% Last Modified by GUIDE v2.5 10-Feb-2025 09:02:01
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -190,7 +190,7 @@ switch handles.datamode
             Traces.OdorLocation     = Traces.Motor;
         end
         [SniffTimeStamps] = ...
-            TrialWiseSniffs(TrialInfo,Traces); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
+            TrialWiseSniffs(TrialInfo,Traces,'dlgoverride',logical(1)); % [sniffstart sniffstop nextsniff odorlocation sniffslope stimstate trialID]
         % remove overlapping sniffs
         handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,end)>0),:);
 
@@ -1020,4 +1020,80 @@ delete(roi);
 guidata(hObject, handles);
 
 
+% --- Executes on button press in RedoStretch.
+function RedoStretch_Callback(hObject, eventdata, handles)
+% hObject    handle to RedoStretch (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+roi = drawrectangle;
+indices_of_interest = intersect(...
+                    find(handles.SniffTrace.Timestamps >= roi.Position(1)), ...
+                        find(handles.SniffTrace.Timestamps <= (roi.Position(1) + roi.Position(3)) ) );
+
+sdnew = 2*str2double(handles.SDfactor.String);
+
+switch handles.datamode
+    case {'smellocator', 'smellocator_raw'}
+        stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
+        stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
+        stretchOdorLocation = handles.OdorLocationTrace(indices_of_interest);
+
+        thisStretchSniffs = ProcessThermistorData([stretchTimeStamps stretchThermistor stretchOdorLocation],'SDfactor',sdnew,'dlgoverride',logical(1));
+        thisStretchSniffs = thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:);
+        % find trace indices that correspond to detected sniff timestamps
+        for n = 1:size(thisStretchSniffs,1)
+
+            % was this already detected
+            f = find(abs(handles.SniffsTS(:,1)-thisStretchSniffs(n,1))<0.004,1,'first');
+            if ~isempty(f) & abs(handles.SniffsTS(f,2)-thisStretchSniffs(n,2))<0.004
+                thisStretchSniffs(n,8:9) = NaN;
+            else
+                % inhalation start
+                [~,idx] = min(abs(handles.SniffTrace.Timestamps - thisStretchSniffs(n,1)));
+                if abs(handles.SniffTrace.Timestamps(idx) - thisStretchSniffs(n,1)) < 0.004
+                    thisStretchSniffs(n,8) = idx;
+                end
+                % inhalation end
+                [~,idx] = min(abs(handles.SniffTrace.Timestamps - thisStretchSniffs(n,2)));
+                if abs(handles.SniffTrace.Timestamps(idx) - thisStretchSniffs(n,2)) < 0.004
+                    thisStretchSniffs(n,9) = idx;
+                end
+            end
+        end
+
+        if isfield(handles,'SniffsTSnew')
+            handles.SniffsTSnew = vertcat(handles.SniffsTSnew, thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:));
+            handles.SniffsTSnew = sortrows(handles.SniffsTSnew,1);
+        else
+            handles.SniffsTSnew = thisStretchSniffs;
+        end
+
+end
+
+% collate the list and make sure peaks fall in order
+[handles] = collatesniffs(handles,0);
+% update plots
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+
+% keep the new detections
+answer = questdlg('Keep the new detections?', ...
+    'Redo stretch', ...
+    'Yes','No','Yes');
+
+% Handle response
+switch answer
+    case 'Yes'
+        
+    case 'No'
+        for x = 1:size(thisStretchSniffs,1)
+            if ~isempty(find(ismember(thisStretchSniffs(x,1:3),handles.SniffsTSnew(:,1:3),'rows')))
+                y = find(ismember(thisStretchSniffs(x,1:3),handles.SniffsTSnew(:,1:3),'rows'));
+                handles.SniffsTSnew(y,:) = [];
+            end
+        end
+        handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8) = -handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8);
+        UpdatePeakValleyPlots(hObject, eventdata, handles); 
+end
+delete(roi);
+guidata(hObject, handles);
 

@@ -7,12 +7,14 @@ params.CaseSensitive = false;
 params.addParameter('samplerate', 500, @(x) isnumeric(x));
 params.addParameter('SDfactor', 2.5, @(x) isnumeric(x));
 params.addParameter('plotting', 0, @(x) islogical(x));
+params.addParameter('dlgoverride', 0, @(x) islogical(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 SampleRate = params.Results.samplerate;
 plotting = params.Results.plotting;
 SDfactor = params.Results.SDfactor;
+nodlg = params.Results.dlgoverride;
 
 % was odorlocation info provided?
 if size(RespirationData,2) == 3
@@ -51,29 +53,43 @@ peakprom = std(TH_filt)/SDfactor;
 % ignore any indices than were interpolated
 if any(ismember(locs_ex,invalid_indices))
     whichones = find(ismember(locs_ex,invalid_indices));
-    figure;
-    temptrace = TH_filt;
-    temptrace(invalid_indices) = NaN;
-    plot(RespirationData(:,1),temptrace);
-    hold on
-    plot(RespirationData(locs_ex(whichones),1),pks_ex(whichones),'vk');
-    todelete = userchoice(whichones);
+    if ~nodlg
+        figure;
+        temptrace = TH_filt;
+        temptrace(invalid_indices) = NaN;
+        plot(RespirationData(:,1),temptrace);
+        hold on
+        plot(RespirationData(locs_ex(whichones),1),pks_ex(whichones),'vk');
+
+        todelete = userchoice(whichones);
+    else
+        todelete = whichones;
+    end
     locs_ex(todelete,:) = [];
     pks_ex(todelete,:) = [];
-    close(gcf);
+    if ~nodlg
+        close(gcf);
+    end
 end
 if any(ismember(locs_in,invalid_indices))
     whichones = find(ismember(locs_in,invalid_indices));
-    figure;
-    temptrace = TH_filt;
-    temptrace(invalid_indices) = NaN;
-    plot(RespirationData(:,1),temptrace);
-    hold on
-    plot(RespirationData(locs_in(whichones),1),-pks_in(whichones),'.r');
-    todelete = userchoice(whichones);
+    if ~nodlg
+        figure;
+        temptrace = TH_filt;
+        temptrace(invalid_indices) = NaN;
+        plot(RespirationData(:,1),temptrace);
+        hold on
+        plot(RespirationData(locs_in(whichones),1),-pks_in(whichones),'.r');
+
+        todelete = userchoice(whichones);
+    else
+        todelete = whichones;
+    end
     locs_in(todelete,:) = [];
     pks_in(todelete,:) = [];
-    close(gcf);
+    if ~nodlg
+        close(gcf);
+    end
 end
 
 if plotting
@@ -95,20 +111,28 @@ while any(diff(sortlocs(:,3))==0)
     hold on
     plot(RespirationData(locs_ex,1),RespirationData(locs_ex,3),'.k');
     plot(RespirationData(locs_in,1),RespirationData(locs_in,3),'.r');
-    
+
     f = find(diff(sortlocs(:,3))==0,1,'first');
     if sortlocs(f,2) > 0 % missing an inhalation detection
         % try local valley detection
         [~,missedval] = min(TH_filt(sortlocs(f,1):sortlocs(f+1,1)));
         missedidx = missedval - 1 + sortlocs(f,1);
         plot(RespirationData(missedidx,1),TH_filt(missedidx),'or');
-        [locs_in,locs_ex] = editpoints(locs_in,missedidx,locs_ex);
+        if ~nodlg
+            [locs_in,locs_ex] = editpoints(locs_in,missedidx,locs_ex);
+        else
+            locs_in = sort([locs_in; missedidx]);
+        end
     else % missing an exhalation detection
         % try local peak detection
         [~,missedpeak] = max(TH_filt(sortlocs(f,1):sortlocs(f+1,1)));
         missedidx = missedpeak - 1 + sortlocs(f,1);
         plot(RespirationData(missedidx,1),TH_filt(missedidx),'ok')
-        [locs_ex,locs_in] = editpoints(locs_ex,missedidx,locs_in);
+        if ~nodlg
+            [locs_ex,locs_in] = editpoints(locs_ex,missedidx,locs_in);
+        else
+            locs_ex = sort([locs_ex; missedidx]);
+        end
     end
     sortlocs = compute_sortlocs(locs_ex,locs_in);
     close(gcf);
@@ -123,10 +147,10 @@ for i = firstinhalation:2:size(sortlocs,1) % every inhalation
         sniffstart = NaN;
         sniffstartidx = NaN;
     end
-    
+
     sniffend    = RespirationData(sortlocs(i,1),1);
     sniffendidx = sortlocs(i,1);
-    
+
     if i < size(sortlocs,1)
         nextsniff   = RespirationData(sortlocs(i+1,1),1);
         nextsniffidx = sortlocs(i+1,1);
@@ -150,7 +174,7 @@ end
         answer = questdlg('Keep the identified point?', ...
             'Peak/Valley curation', ...
             'Yes','No','No');
-        
+
         % Handle response
         switch answer
             case 'Yes'
@@ -161,10 +185,10 @@ end
     end
 
     function [locs_1,locs_2] = editpoints(locs_1,locs_to_edit,locs_2)
-        
+
         list = { 'Keep new detection', 'Delete 1','Delete 2','Other'};
         [answer,tf] = listdlg('ListString',list);
-        
+
         % Handle response
         if tf
             switch answer

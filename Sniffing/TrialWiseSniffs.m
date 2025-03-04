@@ -7,10 +7,12 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('SDfactor', 2.5, @(x) isnumeric(x));
+params.addParameter('dlgoverride', logical(0), @(x) islogical(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
 SDfactor = params.Results.SDfactor;
+nodlg = params.Results.dlgoverride;
 
 %% sniff peak-valley detection
 SniffTimeStamps = [];
@@ -19,7 +21,7 @@ for trialID = 1:numel(TrialInfo.Odor)
     TraceTimeStamps = Traces.Timestamps{trialID};
     Thermistor      = Traces.Sniffs{trialID};
     OdorLocation    = Traces.OdorLocation{trialID};
-    thisTrialSniffs = ProcessThermistorData([TraceTimeStamps Thermistor OdorLocation],'SDfactor',SDfactor);
+    thisTrialSniffs = ProcessThermistorData([TraceTimeStamps Thermistor OdorLocation],'SDfactor',SDfactor,'dlgoverride',nodlg);
 
     % apppend to AllSniffs and also handle end cases
     if trialID > 1

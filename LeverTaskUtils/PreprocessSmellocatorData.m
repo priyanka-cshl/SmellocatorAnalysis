@@ -47,7 +47,8 @@ if ~overwriteflag && exist(savepath)
     end
 end
 
-[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
+%[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
+[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath,'Fastmode',1);
 FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
 disp(MyFileName);

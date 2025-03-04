@@ -40,6 +40,10 @@ for x = 1:size(AllSniffs,1)
         end
         
         thissnifflocation = floor(AllSniffs(x,[12 13 14])+110);
+        if any(isinf(thissnifflocation))
+            fprintf('warning: Infs in sniff location\n');
+            thissnifflocation(find(isinf(thissnifflocation))) = 1;
+        end
         SniffPlotter(ExhalationTimes', x, SniffColors(thissnifflocation,:));
         
         if x == size(AllSniffs,1)

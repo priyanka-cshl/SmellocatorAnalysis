@@ -149,18 +149,44 @@ TuningAligned.Events = [];
 TuningAligned.EventsLegends = [];
 
 %% 6: Process Sniffs
-load(TrialInfo.SessionPath,'SniffTS', 'SniffTS_passive','TimestampAdjust');
-% Sniffs are in behavior timebase
-
-% use TimestampAdjust to convert to OEPS timebase
-% check that there was no clock drift
-if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
-    disp('clock drift in ephys and behavior files');
-    keyboard;
+% for the closed loop part
+load(TrialInfo.SessionPath,'CuratedSniffTimestamps');
+if exist('CuratedSniffTimestamps','var')
+    SniffTS = CuratedSniffTimestamps(:,1:4);
+else
+    load(TrialInfo.SessionPath,'SniffTS');
+end
+% for the passive part
+load(TrialInfo.SessionPath,'CuratedPassiveSniffTimestamps');
+if exist('CuratedPassiveSniffTimestamps','var')
+    SniffTS_passive = CuratedPassiveSniffTimestamps(:,1:4);
+else
+    load(TrialInfo.SessionPath,'SniffTS_passive');
 end
 
-AllSniffs = [ (SniffTS(:,1:3) + TimestampAdjust.ClosedLoop)  SniffTS(:,4); ...
-    (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
+% Sniffs are in behavior timebase
+load(TrialInfo.SessionPath,'TimestampAdjust');
+if isfield(TimestampAdjust,'ClosedLoop')
+    if length(TimestampAdjust.ClosedLoop)==1
+        if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+            disp('clock drift in ephys and behavior files');
+            keyboard;
+        end
+        AllSniffs = [ (SniffTS(:,1:3) + TimestampAdjust.ClosedLoop)  SniffTS(:,4); ...
+        (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
+    end
+else
+    % calculate the adequate time correction
+    ephys = TTLs.Trial(1:numel(TrialInfo.Odor),2);
+    behavior = TrialInfo.SessionTimestamps(:,2);
+    myfit = fit(behavior,ephys-behavior,'poly1');
+
+    TimestampAdjust.ClosedLoop(2) = myfit.p2; 
+    TimestampAdjust.ClosedLoop(1) = myfit.p1; 
+    
+    AllSniffs = [ (SniffTS(:,1:3) + SniffTS(:,1:3).*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))  SniffTS(:,4); ...
+        (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
+end
 
 % For Sniff Alingment to Trials
 % need a 4 col TrialTimes matrix [nTrials x 4]
@@ -208,6 +234,7 @@ load(TrialInfo.SessionPath,'SingleUnits');
 for whichunit = 1:size(SingleUnits,2)
     AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
     AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
+    AllUnits.SpikeAmps{whichunit} = SingleUnits(1).spikescaling(find(SingleUnits(1).clusterscalingorder == SingleUnits(whichunit).id));
 end
 
 end
