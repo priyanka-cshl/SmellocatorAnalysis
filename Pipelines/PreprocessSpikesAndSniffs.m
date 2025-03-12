@@ -1,4 +1,4 @@
-function [TrialAligned, TrialInfo, ReplayAligned, ReplayInfo, TuningAligned, TuningInfo, AllUnits] = PreprocessSpikesAndSniffs(MySession)
+function [TrialAligned, TrialInfo, ReplayAligned, ReplayInfo, TuningAligned, TuningInfo, AllUnits, TimestampAdjust] = PreprocessSpikesAndSniffs(MySession)
 % general script to take the output of PreprocessSmellocatorData
 % and organize the ephys data by aligning to trials
 % and also to trial-aligned sniffs
@@ -166,16 +166,26 @@ end
 
 % Sniffs are in behavior timebase
 load(TrialInfo.SessionPath,'TimestampAdjust');
-if isfield(TimestampAdjust,'ClosedLoop')
-    if length(TimestampAdjust.ClosedLoop)==1
-        if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
-            disp('clock drift in ephys and behavior files');
-            keyboard;
-        end
-        AllSniffs = [ (SniffTS(:,1:3) + TimestampAdjust.ClosedLoop)  SniffTS(:,4); ...
-        (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
+recalc = 0;
+if exist('TimestampAdjust','var')
+    if length(TimestampAdjust.ClosedLoop) == 1
+        recalc = 1;
     end
 else
+    recalc = 1;
+end
+
+% if isfield(TimestampAdjust,'ClosedLoop')
+%     if length(TimestampAdjust.ClosedLoop)==1
+%         if any(abs(TTLs.Trial(1:numel(TrialInfo.Odor),2) - (TrialInfo.SessionTimestamps(:,2) + TimestampAdjust.ClosedLoop))>0.04)
+%             disp('clock drift in ephys and behavior files');
+%             keyboard;
+%         end
+%         AllSniffs = [ (SniffTS(:,1:3) + TimestampAdjust.ClosedLoop)  SniffTS(:,4); ...
+%         (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
+%     end
+% else
+if recalc
     % calculate the adequate time correction
     ephys = TTLs.Trial(1:numel(TrialInfo.Odor),2);
     behavior = TrialInfo.SessionTimestamps(:,2);
@@ -183,10 +193,10 @@ else
 
     TimestampAdjust.ClosedLoop(2) = myfit.p2; 
     TimestampAdjust.ClosedLoop(1) = myfit.p1; 
-    
-    AllSniffs = [ (SniffTS(:,1:3) + SniffTS(:,1:3).*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))  SniffTS(:,4); ...
-        (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
 end
+
+AllSniffs = [ (SniffTS(:,1:3) + SniffTS(:,1:3).*TimestampAdjust.ClosedLoop(1) + TimestampAdjust.ClosedLoop(2))  SniffTS(:,4); ...
+    (SniffTS_passive(:,1:3) + TimestampAdjust.Passive) SniffTS_passive(:,4) ];
 
 % For Sniff Alingment to Trials
 % need a 4 col TrialTimes matrix [nTrials x 4]
