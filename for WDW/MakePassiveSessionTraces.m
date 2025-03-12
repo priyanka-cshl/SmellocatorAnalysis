@@ -70,6 +70,21 @@ if ~TrialVector(1)
     idx = reshape(ts(1:2*n),2,n)';
     ts = session_data.timestamps(idx);
     ts(:,3) = ts(:,2)-ts(:,1);
+
+
+    if any(ts(2:end,1) - ts(1:end-1,2) < 0.003)
+        keyboard; 
+        % some fake transitions - merge them
+        funk = find((ts(2:end,1) - ts(1:end-1,2)) < 0.003,1,"first");
+        while ~isempty(funk)
+            ts(funk,2) = ts(funk+1,2);
+            ts(funk,3) = ts(funk,2) - ts(funk,1);
+            ts(funk+1,:) = [];
+            funk = find((ts(2:end,1) - ts(1:end-1,2)) < 0.003,1,"first");
+        end
+        
+
+    end
 else
     keyboard;
 end
