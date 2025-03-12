@@ -47,8 +47,8 @@ if ~overwriteflag && exist(savepath)
     end
 end
 
-%[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
-[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath,'Fastmode',1);
+[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath);
+%[MyData, MySettings, DataTags] = ReadSessionData(MyFilePath,'Fastmode',1);
 FileLocations.Behavior = MyFilePath;
 [FilePaths, MyFileName] = fileparts(MyFilePath);
 disp(MyFileName);
@@ -211,8 +211,15 @@ end
 if ~exist(fileparts(savepath),'dir')
     mkdir(fileparts(savepath));
 end
-save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
-               'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
-               'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust','-append');
+if exist(savepath)==2
+    save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
+        'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
+        'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust','-append');
+else
+    save(savepath, 'Traces', 'PassiveReplayTraces', 'TrialInfo', 'TargetZones', ...
+        'startoffset', 'errorflags', 'SampleRate', 'FileLocations', ...
+        'TTLs', 'ReplayTTLs', 'TuningTTLs', 'SingleUnits', 'Tuningextras', 'SniffTS', 'SniffTS_passive', 'TimestampAdjust');
+end
+
     
 end
