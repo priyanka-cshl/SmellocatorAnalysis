@@ -1,3 +1,4 @@
+
 function varargout = SniffViewer_v3(varargin)
 % SNIFFVIEWER_V3 MATLAB code for SniffViewer_v3.fig
 %      SNIFFVIEWER_V3, by itself, creates a new SNIFFVIEWER_V3 or raises the existing
@@ -122,7 +123,7 @@ MySession = handles.WhereSession.String;
 [handles.TrialAligned, handles.TrialInfo, ...
     handles.ReplayAligned, handles.ReplayInfo, ...
     handles.TuningAligned, handles.TuningInfo, ...
-    handles.AllUnits] = ...
+    handles.AllUnits, handles.TimestampAdjust] = ...
     PreprocessSpikesAndSniffs(MySession);
 
 handles.NumUnits.String = num2str(size(handles.AllUnits.Spikes,2));
@@ -283,9 +284,10 @@ if handles.spike_amplitudes.Value
     hold off
     %thisunitamps = handles.SingleUnits(1).spikescaling(find(handles.SingleUnits(1).clusterscalingorder == handles.SingleUnits(whichUnit).id));
     axes(handles.amplitudeaxes);
-    plot(handles.AllUnits(whichUnit).Spikes,handles.AllUnits(whichUnit).SpikeAmps,'.');
+    plot(handles.AllUnits.Spikes{whichUnit},handles.AllUnits.SpikeAmps{whichUnit},'.');
     hold on
-    session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
+    session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TrialInfo.SessionTimestamps(end,2)*handles.TimestampAdjust.ClosedLoop(1) + handles.TimestampAdjust.ClosedLoop(2); 
+    %session_end = handles.TrialInfo.SessionTimestamps(end,2) + handles.TimestampAdjuster;
     line([session_end session_end],get(gca,'YLim'),'Color','k');
 end
 
