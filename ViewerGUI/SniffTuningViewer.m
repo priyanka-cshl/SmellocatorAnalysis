@@ -22,7 +22,7 @@ function varargout = SniffTuningViewer(varargin)
 
 % Edit the above text to modify the response to help SniffTuningViewer
 
-% Last Modified by GUIDE v2.5 14-Mar-2025 14:38:12
+% Last Modified by GUIDE v2.5 17-Mar-2025 15:42:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,10 +55,12 @@ function SniffTuningViewer_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for SniffTuningViewer
 handles.output = hObject;
 
+handles.figure1.Position(4) = 35;
+
 %% make TABs
 %Create tab groupA - motor and odors
 handles.tgroupA = uitabgroup('Parent', handles.figure1,'TabLocation', 'top',...
-    'Position', [0.125 0.04 0.8500 0.8500] );
+    'Position', [0.125 0.09 0.8500 0.8500] );
 handles.tabA1 = uitab('Parent', handles.tgroupA, 'Title', 'Stimulus-wise');
 handles.tabA2 = uitab('Parent', handles.tgroupA, 'Title', 'Contanimation');
 %Place panels into each tab
@@ -89,9 +91,10 @@ for i = 1:5
     axes(currentaxis);
     set(currentaxis,'Color','none','XTick',[],'YTick',[]);
     hold on
+    handles.(['overlayspikesplot',num2str(i)]) = plot(NaN, NaN, '.','Color', [0.7 0.5 0.85], 'Markersize', 0.75);
     handles.(['spikesplot',num2str(i)]) = plot(NaN, NaN, '.k','Markersize', 0.5);
-    handles.(['overlayspikesplot',num2str(i)]) = plot(NaN, NaN, '.r','Markersize', 0.5);
 end
+handles.stackMerge.Enable = 'off';
 
 % Update handles structure
 guidata(hObject, handles);
@@ -161,6 +164,9 @@ function [handles] = UpdatePlots(hObject, eventdata, handles)
     guidata(hObject, handles);
 
     UpdateUnits(handles);
+    if handles.MergeUnits.Value
+        MergeUnits_Callback(hObject, eventdata, handles);
+    end
 
 % --- Executes within Load Session and at any unit update or plot update call.
 function UpdateUnits(handles)
@@ -169,12 +175,6 @@ function UpdateUnits(handles)
     handles.thisUnit.Data(3) = handles.AllUnits.ChannelInfo(whichUnit,2); % cluster ID
     handles.thisUnit.Data(4) = handles.AllUnits.ChannelInfo(whichUnit,1); % tetrode
     %myXlim = eval(handles.xlims.String);
-
-    if handles.MergeUnits.Value
-        OverlayUnit = handles.MergingUnit.Data(1);
-        handles.MergingUnit.Data(3) = handles.AllUnits.ChannelInfo(OverlayUnit,1);
-        handles.MergingUnit.Data(2) = handles.AllUnits.ChannelInfo(OverlayUnit,2);
-    end
 
     thisUnitSpikes = handles.AllUnits.Spikes{whichUnit};
     
@@ -185,23 +185,7 @@ function UpdateUnits(handles)
         SpikesPlot = SpikeRaster{snifftype};
         SpikesPlot(:,2) = abs(SpikesPlot(:,2));
         set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
-        if ~handles.MergeUnits.Value
-            set(handles.(['overlayspikesplot',num2str(snifftype)]),'XData',nan,'YData',nan);
-        end
-
     end
-
-    if handles.MergeUnits.Value
-        MergeUnitSpikes = handles.AllUnits.Spikes{OverlayUnit};
-        [OverlaySpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, MergeUnitSpikes);
-        for snifftype = 1:5
-            myspikeplot = ['overlayspikesplot',num2str(snifftype)];
-            SpikesPlot = OverlaySpikeRaster{snifftype};
-            SpikesPlot(:,2) = abs(SpikesPlot(:,2));
-            set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
-        end
-    end
-    drawnow
 
 
 % --- Executes on button press in NextUnit.
@@ -232,9 +216,31 @@ function PrevUnit_Callback(hObject, eventdata, handles)
 
 % --- Executes when entered data in editable cell(s) in thisUnit.
 function thisUnit_CellEditCallback(hObject, eventdata, handles)
+    if eventdata.Indices(1) == 3
+        if ~isempty(find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData))
+            handles.thisUnit.Data(2) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
+            handles.thisUnit.Data(4) = handles.AllUnits.ChannelInfo(handles.thisUnit.Data(2),1);
+        end
+    end
+    % Update handles structure
+    guidata(hObject, handles);
     UpdateUnits(handles);
     % Update handles structure
     guidata(hObject, handles);
+
+% --- Executes when entered data in editable cell(s) in MergingUnit.
+function MergingUnit_CellEditCallback(hObject, eventdata, handles)
+    if eventdata.Indices(1) == 2
+        if ~isempty(find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData))
+            handles.MergingUnit.Data(1) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
+            handles.MergingUnit.Data(3) = handles.AllUnits.ChannelInfo(handles.MergingUnit.Data(1),1);
+        end
+    end
+    % Update handles structure
+    guidata(hObject, handles);
+    if handles.MergeUnits.Value
+        MergeUnits_Callback(hObject, eventdata, handles)
+    end
 
 
 % --- Executes on selection change in SortSniffsBy.
@@ -246,6 +252,63 @@ function SortSniffsBy_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in MergeUnits.
 function MergeUnits_Callback(hObject, eventdata, handles)
-    handles = UpdatePlots(hObject, eventdata, handles);
+    if ~handles.MergeUnits.Value
+        handles.stackMerge.Enable = 'off';
+        for snifftype = 1:5
+            set(handles.(['overlayspikesplot',num2str(snifftype)]),'XData',nan,'YData',nan);
+        end
+    else
+        handles.stackMerge.Enable = 'on';
+        OverlayUnit = handles.MergingUnit.Data(1);
+        handles.MergingUnit.Data(3) = handles.AllUnits.ChannelInfo(OverlayUnit,1);
+        handles.MergingUnit.Data(2) = handles.AllUnits.ChannelInfo(OverlayUnit,2);
+
+        MergeUnitSpikes = handles.AllUnits.Spikes{OverlayUnit};
+        [OverlaySpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, MergeUnitSpikes);
+
+        for snifftype = 1:5
+            myspikeplot = ['overlayspikesplot',num2str(snifftype)];
+            SpikesPlot = OverlaySpikeRaster{snifftype};
+            SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+%             if handles.stackMerge.Value
+%                 set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData', ...
+%                     SpikesPlot(:,2) + handles.maxsniffs + 100 );
+%             else
+                set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+%             end
+        end
+    end
+    stackMerge_Callback(hObject, eventdata, handles);
+    % Update handles structure
+    guidata(hObject, handles);
+
+
+% --- Executes on button press in stackMerge.
+function stackMerge_Callback(hObject, eventdata, handles)
+% Hint: get(hObject,'Value') returns toggle state of stackMerge
+    if handles.stackMerge.Value && handles.MergeUnits.Value % stack the two merging units
+        % change ylim
+        ylim = [-(handles.maxsniffs + 1) (handles.maxsniffs + 1)];
+        spikecolor  = [0.3 0.05 0.2]; %[0 0.5 0.75];
+        spikesize = 0.5;
+        handles.figure1.Position(4) = 35*2;
+        handles.A1.Position(4) = 28*2;
+    else
+        % change ylim
+        ylim = [0 (handles.maxsniffs + 1)];
+        spikecolor = [0.7000 0.5000 0.8500];
+        spikesize = 0.75;
+        handles.figure1.Position(4) = 35;
+        handles.A1.Position(4) = 28;
+    end
+    for i = 1:5
+        set(handles.(['axes',num2str(i)]),'YLim', ylim);
+        myspikeplot = ['overlayspikesplot',num2str(i)];
+        myYData = abs(get(handles.(myspikeplot),'YData'));
+        if handles.stackMerge.Value
+            myYData = -myYData;
+        end
+        set(handles.(myspikeplot),'YData',myYData,'Color',spikecolor,'Markersize', spikesize);
+    end
     % Update handles structure
     guidata(hObject, handles);

@@ -21,8 +21,9 @@ oldpath = fullfile(Paths.Grid.Behavior_processed,AnimalName,[MyFileName,'_proces
 load(oldpath);
 
 savepath = regexprep(oldpath,AnimalName,newname);
-copyfile(oldpath,savepath);
-
+if ~exist(savepath)
+    copyfile(oldpath,savepath);
+end
 %% Get spikes - label spikes by trials
 SingleUnits = [];
 % get directory to choose sorting units
