@@ -22,7 +22,7 @@ function varargout = SniffTuningViewer(varargin)
 
 % Edit the above text to modify the response to help SniffTuningViewer
 
-% Last Modified by GUIDE v2.5 17-Mar-2025 15:42:03
+% Last Modified by GUIDE v2.5 18-Mar-2025 14:31:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -60,7 +60,7 @@ handles.figure1.Position(4) = 35;
 %% make TABs
 %Create tab groupA - motor and odors
 handles.tgroupA = uitabgroup('Parent', handles.figure1,'TabLocation', 'top',...
-    'Position', [0.125 0.09 0.8500 0.8500] );
+    'Position', [0.13 0.09 0.8500 0.8500] );
 handles.tabA1 = uitab('Parent', handles.tgroupA, 'Title', 'Stimulus-wise');
 handles.tabA2 = uitab('Parent', handles.tgroupA, 'Title', 'Contanimation');
 %Place panels into each tab
@@ -136,10 +136,10 @@ function LoadSession_Callback(hObject, eventdata, handles)
         handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
         handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
     end
-
-    handles.thisUnit.Data(1) = size(handles.AllUnits.Spikes,2);
-    if isnan(handles.thisUnit.Data(2)) || handles.thisUnit.Data(2)>handles.thisUnit.Data(1)
-        handles.thisUnit.Data(2) = 1;
+    
+    handles.NumUnits.Data(1) = size(handles.AllUnits.Spikes,2);
+    if isnan(handles.thisUnit.Data(1,1)) || handles.thisUnit.Data(1,1)>handles.NumUnits.Data(1)
+        handles.thisUnit.Data(1,1) = 1;
     end
 
     handles = UpdatePlots(hObject, eventdata, handles);
@@ -164,22 +164,29 @@ function [handles] = UpdatePlots(hObject, eventdata, handles)
     guidata(hObject, handles);
 
     UpdateUnits(handles);
-    if handles.MergeUnits.Value
-        MergeUnits_Callback(hObject, eventdata, handles);
+    if handles.CompareUnits.Value
+        CompareUnits_Callback(hObject, eventdata, handles);
     end
 
 % --- Executes within Load Session and at any unit update or plot update call.
 function UpdateUnits(handles)
 
-    whichUnit = handles.thisUnit.Data(2);
-    handles.thisUnit.Data(3) = handles.AllUnits.ChannelInfo(whichUnit,2); % cluster ID
-    handles.thisUnit.Data(4) = handles.AllUnits.ChannelInfo(whichUnit,1); % tetrode
+    whichUnit = handles.thisUnit.Data(1,1);
+    handles.thisUnit.Data(2,1) = handles.AllUnits.ChannelInfo(whichUnit,2); % cluster ID
+    handles.thisUnit.Data(3,1) = handles.AllUnits.ChannelInfo(whichUnit,1); % tetrode
     %myXlim = eval(handles.xlims.String);
-
+    
     thisUnitSpikes = handles.AllUnits.Spikes{whichUnit};
     
     [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes);
-
+    if handles.PoolUnits.Value 
+        PoolUnitSpikes = handles.AllUnits.Spikes{handles.thisUnit.Data(1,2)};
+        [Pool2Raster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, PoolUnitSpikes);
+        for snifftype = 1:5
+            SpikeRaster{snifftype} = vertcat(SpikeRaster{snifftype},Pool2Raster{snifftype});
+        end
+    end
+    
     for snifftype = 1:5
         myspikeplot = ['spikesplot',num2str(snifftype)];
         SpikesPlot = SpikeRaster{snifftype};
@@ -190,11 +197,11 @@ function UpdateUnits(handles)
 
 % --- Executes on button press in NextUnit.
 function NextUnit_Callback(hObject, eventdata, handles)
-    temp = rem(handles.thisUnit.Data(2)+1, handles.thisUnit.Data(1));
+    temp = rem(handles.thisUnit.Data(1,1)+1, handles.NumUnits.Data(1));
     if ~temp
-        handles.thisUnit.Data(2) = handles.thisUnit.Data(1);
+        handles.thisUnit.Data(1,1) = handles.NumUnits.Data(1);
     else
-        handles.thisUnit.Data(2) = temp;
+        handles.thisUnit.Data(1,1) = temp;
     end
     UpdateUnits(handles);
     % Update handles structure
@@ -203,11 +210,11 @@ function NextUnit_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in PrevUnit.
 function PrevUnit_Callback(hObject, eventdata, handles)
-    temp = rem(handles.thisUnit.Data(2)-1, handles.thisUnit.Data(1));
+    temp = rem(handles.thisUnit.Data(1,1)-1, handles.NumUnits.Data(1));
     if ~temp
-        handles.thisUnit.Data(2) = handles.thisUnit.Data(1);
+        handles.thisUnit.Data(1,1) = handles.NumUnits.Data(1);
     else
-        handles.thisUnit.Data(2) = temp;
+        handles.thisUnit.Data(1,1) = temp;
     end
     UpdateUnits(handles);
     % Update handles structure
@@ -216,30 +223,40 @@ function PrevUnit_Callback(hObject, eventdata, handles)
 
 % --- Executes when entered data in editable cell(s) in thisUnit.
 function thisUnit_CellEditCallback(hObject, eventdata, handles)
-    if eventdata.Indices(1) == 3
+    if eventdata.Indices(1) == 2
+        col = eventdata.Indices(2);
         if ~isempty(find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData))
-            handles.thisUnit.Data(2) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
-            handles.thisUnit.Data(4) = handles.AllUnits.ChannelInfo(handles.thisUnit.Data(2),1);
+            handles.thisUnit.Data(1,col) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
+            handles.thisUnit.Data(3,col) = handles.AllUnits.ChannelInfo(handles.thisUnit.Data(1,col),1);
         end
     end
+
+    if eventdata.Indices(1) == 1 && eventdata.Indices(2) == 2
+        col = eventdata.Indices(2);
+        if ~isempty(find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData))
+            handles.thisUnit.Data(2,col) = handles.AllUnits.ChannelInfo(handles.thisUnit.Data(1,col),2);
+            handles.thisUnit.Data(3,col) = handles.AllUnits.ChannelInfo(handles.thisUnit.Data(1,col),1);
+        end
+    end
+
     % Update handles structure
     guidata(hObject, handles);
     UpdateUnits(handles);
     % Update handles structure
     guidata(hObject, handles);
 
-% --- Executes when entered data in editable cell(s) in MergingUnit.
-function MergingUnit_CellEditCallback(hObject, eventdata, handles)
+% --- Executes when entered data in editable cell(s) in ComparedUnit.
+function ComparedUnit_CellEditCallback(hObject, eventdata, handles)
     if eventdata.Indices(1) == 2
         if ~isempty(find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData))
-            handles.MergingUnit.Data(1) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
-            handles.MergingUnit.Data(3) = handles.AllUnits.ChannelInfo(handles.MergingUnit.Data(1),1);
+            handles.ComparedUnit.Data(1) = find(handles.AllUnits.ChannelInfo(:,2)==eventdata.NewData);
+            handles.ComparedUnit.Data(3) = handles.AllUnits.ChannelInfo(handles.ComparedUnit.Data(1),1);
         end
     end
     % Update handles structure
     guidata(hObject, handles);
-    if handles.MergeUnits.Value
-        MergeUnits_Callback(hObject, eventdata, handles)
+    if handles.CompareUnits.Value
+        CompareUnits_Callback(hObject, eventdata, handles)
     end
 
 
@@ -249,19 +266,22 @@ function SortSniffsBy_Callback(hObject, eventdata, handles)
     % Update handles structure
     guidata(hObject, handles);
 
+    % --- Executes on button press in PoolUnits.
+function PoolUnits_Callback(hObject, eventdata, handles)
+    UpdateUnits(handles);
 
-% --- Executes on button press in MergeUnits.
-function MergeUnits_Callback(hObject, eventdata, handles)
-    if ~handles.MergeUnits.Value
+% --- Executes on button press in CompareUnits.
+function CompareUnits_Callback(hObject, eventdata, handles)
+    if ~handles.CompareUnits.Value
         handles.stackMerge.Enable = 'off';
         for snifftype = 1:5
             set(handles.(['overlayspikesplot',num2str(snifftype)]),'XData',nan,'YData',nan);
         end
     else
         handles.stackMerge.Enable = 'on';
-        OverlayUnit = handles.MergingUnit.Data(1);
-        handles.MergingUnit.Data(3) = handles.AllUnits.ChannelInfo(OverlayUnit,1);
-        handles.MergingUnit.Data(2) = handles.AllUnits.ChannelInfo(OverlayUnit,2);
+        OverlayUnit = handles.ComparedUnit.Data(1);
+        handles.ComparedUnit.Data(3) = handles.AllUnits.ChannelInfo(OverlayUnit,1);
+        handles.ComparedUnit.Data(2) = handles.AllUnits.ChannelInfo(OverlayUnit,2);
 
         MergeUnitSpikes = handles.AllUnits.Spikes{OverlayUnit};
         [OverlaySpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, MergeUnitSpikes);
@@ -286,7 +306,7 @@ function MergeUnits_Callback(hObject, eventdata, handles)
 % --- Executes on button press in stackMerge.
 function stackMerge_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of stackMerge
-    if handles.stackMerge.Value && handles.MergeUnits.Value % stack the two merging units
+    if handles.stackMerge.Value && handles.CompareUnits.Value % stack the two merging units
         % change ylim
         ylim = [-(handles.maxsniffs + 1) (handles.maxsniffs + 1)];
         spikecolor  = [0.3 0.05 0.2]; %[0 0.5 0.75];
