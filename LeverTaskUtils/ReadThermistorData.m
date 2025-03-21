@@ -1,4 +1,4 @@
-function [SniffTS] = ReadThermistorData(FileName,plotting)
+function [SniffTS, RespirationData] = ReadThermistorData(FileName,plotting)
 
 if nargin<2
     plotting = 0;
@@ -119,7 +119,8 @@ if find(ismember(Temp.session_data.trace_legend,'thermistor'))
         figure, scatter(SniffTS(:,3) - SniffTS(:,1),SniffTS(:,2) - SniffTS(:,1), 'ok');
         set(gca,'YLim', [0 max(get(gca,'XLim'))]);
     end
-    
+
+RespirationData(:,3) = TH_filt;    
 else
     SniffTS = [];
 end
