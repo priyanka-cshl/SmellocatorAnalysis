@@ -15,19 +15,6 @@ rootfolder = fullfile(Paths.Grid.Behavior,MouseName);
 BehaviorFiles = dir ([rootfolder,'/',[MouseName,'_',MatFileTag,'_r','*']]);
 TuningFiles = dir ([rootfolder,'/',[MouseName,'_',MatFileTag,'_o','*']]);
 
-% if ~isempty(BehaviorFiles) %& size(BehaviorFiles,1) == 1
-%     % BehaviorPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Behavior/Q9/Q9_20221119_r0.mat';
-%     for s = 1:size(BehaviorFiles,1)
-%         BehaviorPaths{s} = fullfile(rootfolder,BehaviorFiles(s).name);
-%     end
-% end
-% if ~isempty(TuningFiles) %& size(TuningFiles,1) == 1
-%     % TuningPath = '/Users/Priyanka/Desktop/LABWORK_II/Data/Behavior/Q9/Q9_20221119_o0.mat';
-%     for s = 1:size(TuningFiles,1)
-%         TuningPaths{s} = fullfile(rootfolder,TuningFiles(s).name);
-%     end
-% end
-
 if size(BehaviorFiles,1) == 2
     % first get the second session
     load(fullfile(rootfolder,BehaviorFiles(2).name),'session_data');
@@ -147,10 +134,10 @@ Traces.Trial{1} = Odor*0; % dummy trace
 %% get Trial OFF Timestamps from the tuning file
 if ~isempty(TuningFiles) %& size(TuningFiles,1) == 1
     if size(BehaviorFiles,1) == 1
-        TuningPaths = fullfile(rootfolder,TuningFiles(1).name);
+        TuningPath = fullfile(rootfolder,TuningFiles(1).name);
     elseif (BehaviorFiles(2).datenum - TuningFiles(1).datenum) > 0
         % make sure the chronology is correct
-        TuningPaths = fullfile(rootfolder,TuningFiles(1).name);
+        TuningPath = fullfile(rootfolder,TuningFiles(1).name);
     else
         keyboard;
     end
@@ -172,7 +159,7 @@ tuning_TS(:,3) = diff(tuning_TS')'; % trial durations
 behavior_last = size(behavior_TS,1);
 offset = 0;
 tuning_idx = [nan nan];
-max_offset = size(TTLs.Trial,1) - size(tuning_TS,1) - behavior_last + 1;
+max_offset = min(size(TTLs.Trial,1) - size(tuning_TS,1) - behavior_last + 1, 5);
 while offset <= max_offset
     n1 = behavior_last + offset + 1;
     n2 = n1 + size(tuning_TS,1) - 1 - 2;
@@ -235,7 +222,32 @@ AllSniffs(f:end,8) = AllSniffs(f:end,8) + 1;
 
 %% if there's another round of behavior stuff?
 if size(BehaviorFiles,1) == 2
-    keyboard;
+    % find the next time adjustment for adjusting sniff timestamps
+
+    trial_last = size(behavior_TS,1) + offset + size(tuning_TS,1);
+    behavior_TS = BehaviorTrials_multi{2}.TimeStamps;
+    offset = 0;
+    behavior_idx = [nan nan];
+    max_offset = 5;
+
+    while offset <= max_offset
+        n1 = trial_last + offset;
+        n2 = n1 + size(behavior_TS,1) - 1;
+    if mean(1000*abs([behavior_TS(1:end,3)- TTLs.Trial(n1:n2,3)])) < 1
+        behavior_idx = [n1 n2];
+        break;
+    end
+    offset = offset + 1;
+    end
+
+    ephys = TTLs.Trial(behavior_idx(1):behavior_idx(2),2);
+    behavior = behavior_TS(:,2);
+    myfit = fit(behavior,ephys-behavior,'poly1');
+    TimestampAdjust.ClosedLoop2(2) = myfit.p2; 
+    TimestampAdjust.ClosedLoop2(1) = myfit.p1;
+
+    
+
 end
 %%
 %end
