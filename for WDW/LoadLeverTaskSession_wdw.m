@@ -117,7 +117,7 @@ if exist('CuratedSniffTimestamps','var')
     end
     LocationSniffs = TracesOut.SniffsFiltered{1}*nan;
     DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
-    for n = 1:size(CuratedSniffTimestamps)
+    for n = 1:size(CuratedSniffTimestamps,1)
         idx = CuratedSniffTimestamps(n,8:9);
         if CuratedSniffTimestamps(n,10) == -1
             DigitalSniffs(idx(1):idx(2)) = -1;
