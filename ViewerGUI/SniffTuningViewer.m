@@ -22,7 +22,7 @@ function varargout = SniffTuningViewer(varargin)
 
 % Edit the above text to modify the response to help SniffTuningViewer
 
-% Last Modified by GUIDE v2.5 18-Mar-2025 14:31:35
+% Last Modified by GUIDE v2.5 21-Mar-2025 13:26:53
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -72,18 +72,34 @@ set(handles.A2,'position',get(handles.A1,'position'));
 
 %% session path
 [Paths] = WhichComputer();
+handles.quickmode = 0;
+handles.RefreshUnits.Enable = 'off';
 
 if ~isempty(varargin)
-    if exist(varargin{1}) == 2
-        handles.WhereSession.String = varargin{1};
+    if numel(varargin) == 2 && strcmp(varargin{2},'quickprocess')
+        if exist(varargin{1}) == 7
+            handles.WhereSession.String = varargin{1};
+        else
+            handles.WhereSession.String = '/mnt/data/Sorted/NS12/2023-07-27_17-18-37';
+        end
+        [~,handles.MouseName] = fileparts(fileparts(handles.WhereSession.String));
+        handles.quickmode = 1;
+        handles.RefreshUnits.Enable = 'on';
     else
-        handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW',varargin{1});
+        if exist(varargin{1}) == 2
+            handles.WhereSession.String = varargin{1};
+        else
+            handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW',varargin{1});
+        end
+        [~,FileName] = fileparts(handles.WhereSession.String);
+        handles.MouseName = regexprep(FileName,'_(\w+)_processed.mat','');
     end
 else
     handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW','Q4_20221112_r0_processed.mat');
+    [~,FileName] = fileparts(handles.WhereSession.String);
+    handles.MouseName = regexprep(FileName,'_(\w+)_processed.mat','');
 end
-[~,FileName] = fileparts(handles.WhereSession.String);
-handles.MouseName = regexprep(FileName,'_(\w+)_processed.mat','');
+
 
 %% initializations
 for i = 1:5
@@ -99,7 +115,7 @@ handles.stackMerge.Enable = 'off';
 % Update handles structure
 guidata(hObject, handles);
 
-if exist(handles.WhereSession.String)==2
+if exist(handles.WhereSession.String)==2 || exist(handles.WhereSession.String)==7
     LoadSession_Callback(hObject, eventdata, handles);
 end
 
@@ -120,17 +136,25 @@ varargout{1} = handles.output;
 
 % --- Executes on button press in LoadSession.
 function LoadSession_Callback(hObject, eventdata, handles)
-
-    if isempty(handles.WhereSession.String)
-        [Paths] = WhichComputer();
+    
+    if ~handles.quickmode
+        if isempty(handles.WhereSession.String)
+            [Paths] = WhichComputer();
             [WhichSession, SessionPath] = uigetfile(...
-                                    fullfile(Paths.Wolf.processed,'forWDW','Q4_20221112_r0_processed.mat'),...
-                                    'Select Session');
-        handles.WhereSession.String = fullfile(SessionPath,WhichSession);
-    end
+                fullfile(Paths.Wolf.processed,'forWDW','Q4_20221112_r0_processed.mat'),...
+                'Select Session');
+            handles.WhereSession.String = fullfile(SessionPath,WhichSession);
+        end
 
-    % get a list of sniffs, also get units
-    [handles.AllSniffs, handles.SniffColumnInfo, SingleUnits] = GetAllSniffs(handles.WhereSession.String);
+        % get a list of sniffs, also get units
+        [handles.AllSniffs, handles.SniffColumnInfo, SingleUnits] = GetAllSniffs(handles.WhereSession.String);
+    else
+        % get a list of sniffs, also get units
+        [handles.AllSniffs] = QuickSniffTTLMapper(handles.WhereSession.String);
+
+        % loading units
+        SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
+    end
 
     for whichunit = 1:size(SingleUnits,2)
         handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
@@ -332,3 +356,21 @@ function stackMerge_Callback(hObject, eventdata, handles)
     end
     % Update handles structure
     guidata(hObject, handles);
+
+
+% --- Executes on button press in RefreshUnits.
+function RefreshUnits_Callback(hObject, eventdata, handles)
+    % loading units
+    SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
+    handles.AllUnits = [];
+
+    for whichunit = 1:size(SingleUnits,2)
+        handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
+        handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
+    end
+    
+    handles.NumUnits.Data(1) = size(handles.AllUnits.Spikes,2);
+    if isnan(handles.thisUnit.Data(1,1)) || handles.thisUnit.Data(1,1)>handles.NumUnits.Data(1)
+        handles.thisUnit.Data(1,1) = 1;
+    end
+    UpdateUnits(handles);
