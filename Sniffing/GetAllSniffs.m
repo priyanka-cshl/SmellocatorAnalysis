@@ -1,10 +1,26 @@
-function [AllSniffs, ColumnInfo, SingleUnits] = GetAllSniffs(MySession)
+function [AllSniffs, ColumnInfo, SingleUnits] = GetAllSniffs(MySession, varargin)
 
-load(MySession); % loads TracesOut PassiveOut SingleUnits
+%% parse input arguments
+narginchk(1,inf)
+params = inputParser;
+params.CaseSensitive = false;
+params.addParameter('quickmode', false, @(x) islogical(x) || x==0 || x==1);
+
+% extract values from the inputParser
+params.parse(varargin{:});
+quickmode = params.Results.quickmode;
+
+if ~quickmode
+    load(MySession); % loads TracesOut PassiveOut SingleUnits
+    max_sess = 2;
+else
+    TracesOut = MySession;
+    max_sess = 1;
+end
 
 % get sniffs for both closed loop and passive phase
 AllSniffs = [];
-for sessionphase = 1:2
+for sessionphase = 1:max_sess
 
     switch sessionphase
         case 1 % closed loop
