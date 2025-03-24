@@ -31,6 +31,24 @@ if size(BehaviorFiles,1) == 2
     % first get the second session
     BehaviorPath = fullfile(rootfolder,BehaviorFiles(2).name);
     BehaviorTrials_multi{2}.TimeStamps = TrialsfromMatFile(BehaviorPath);
+
+    % also check chronology
+    if ~isempty(TuningFiles)
+        if (BehaviorFiles(1).datenum - TuningFiles(1).datenum < 0) && ...
+            (BehaviorFiles(2).datenum - TuningFiles(1).datenum > 0)
+            if size(TuningFiles,1) > 1
+                if (BehaviorFiles(2).datenum - TuningFiles(2).datenum > 0)
+                    disp('File order does not make sense');
+                    keyboard;
+                end
+            end
+        else
+            disp('File order does not make sense');
+            keyboard;
+        end
+        
+         
+    end
 end
 
 % start with the first session
@@ -110,10 +128,6 @@ if size(BehaviorFiles,1) == 2
     %% another round of tuning as well?
     if size(TuningFiles,1) == 2
         TuningPath = fullfile(rootfolder,TuningFiles(2).name);
-        % check chronology
-        if BehaviorFiles(2).datenum - TuningFiles(2).datenum < 0 
-            keyboard;
-        end
         [tuning_TS] = TrialsfromMatFile(TuningPath);
         [TSadjust, trialsdone] = matchtrialsandclockdiff(tuning_TS, TTLs.Trial, trialsdone);
         [DigitalSniffs, LocationSniffs, SessMarker(4)] = SniffProcess(TuningPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
@@ -164,6 +178,9 @@ end
         while offset <= max_offset
             n1 = start_E + offset; % starting index in the ephys list
             n2 = n1 + size(Trials_B,1) - 1; % last index in the ephys list
+            if n2 > size(Trials_E,1)
+                break;
+            end
             if mean(1000*abs([Trials_B(2:end-1,3)- Trials_E((n1+1):(n2-1),3)])) < 1 % less than 1 ms difference in durations
                 match_idx = [n1 n2];
                 break;
@@ -182,6 +199,7 @@ end
             n2 = n1 + size(Trials_B,1) - 1;
             [Trials_E(n1:n2,3) Trials_B(1:end,3)]
             uptowhich = 12;
+            [Trials_E(n1+(1:uptowhich),3) Trials_B((1:uptowhich),3)]
             ephys = Trials_E(n1+(1:uptowhich),2);
             behavior = Trials_B(1:uptowhich,2);
             trialsdone = n2;

@@ -78,7 +78,7 @@ handles.RefreshUnits.Enable = 'off';
 if ~isempty(varargin)
     if numel(varargin) == 2 && strcmp(varargin{2},'quickprocess')
         if exist(varargin{1}) == 7
-            handles.WhereSession.String = varargin{1};
+            handles.WhereSession.String = varargin{1};   
         else
             handles.WhereSession.String = '/mnt/data/Sorted/NS12/2023-07-27_17-18-37';
         end
@@ -150,7 +150,7 @@ function LoadSession_Callback(hObject, eventdata, handles)
         [handles.AllSniffs, handles.SniffColumnInfo, SingleUnits] = GetAllSniffs(handles.WhereSession.String);
     else
         % get a list of sniffs, also get units
-        [handles.AllSniffs] = QuickSniffTTLMapper(handles.WhereSession.String);
+        [handles.AllSniffs] = QuickSniffTTLMapper_v2(handles.WhereSession.String);
 
         % loading units
         SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
@@ -373,4 +373,8 @@ function RefreshUnits_Callback(hObject, eventdata, handles)
     if isnan(handles.thisUnit.Data(1,1)) || handles.thisUnit.Data(1,1)>handles.NumUnits.Data(1)
         handles.thisUnit.Data(1,1) = 1;
     end
+
+    % Update handles structure
+    guidata(hObject, handles);
+    
     UpdateUnits(handles);

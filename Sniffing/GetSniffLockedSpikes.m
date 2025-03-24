@@ -16,7 +16,7 @@ for snifftype = 1:size(GroupedSniffs,2)
         if SniffTS(x,8) == 1
             SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes x*ones(numel(thisSniffSpikes),1)]);
         else
-            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes -(x+100)*ones(numel(thisSniffSpikes),1)]);
+            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes -(x+100*(SniffTS(x,8)-1))*ones(numel(thisSniffSpikes),1)]);
         end
     end
 
