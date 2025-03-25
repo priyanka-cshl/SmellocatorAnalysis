@@ -12,6 +12,13 @@ function [AllSniffs] = QuickSniffTTLMapper_v2(myKsDir)
 if strcmp(myKsDir(end),filesep)
     myKsDir = myKsDir(1:end-1);
 end
+
+% have sniffs already been processed
+if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
+    load (fullfile(myKsDir,'quickprocesssniffs.mat'));
+    return;
+end
+
 [~,ephysfile] = fileparts(myKsDir);
 [~,MouseName] = fileparts(fileparts(myKsDir));
 Filename = strsplit(ephysfile,'_'); % splits date and timestamp
@@ -147,6 +154,8 @@ for s = 1:numel(SessMarker)-1
     f = find(AllSniffs(:,1)>SessMarker(s),1,'first');
     AllSniffs(f:end,8) = AllSniffs(f:end,8) + 1;
 end
+
+save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
 
 %% function definitions
 
