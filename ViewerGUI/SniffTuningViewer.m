@@ -22,7 +22,7 @@ function varargout = SniffTuningViewer(varargin)
 
 % Edit the above text to modify the response to help SniffTuningViewer
 
-% Last Modified by GUIDE v2.5 21-Mar-2025 13:26:53
+% Last Modified by GUIDE v2.5 28-Mar-2025 14:21:16
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -58,21 +58,36 @@ handles.output = hObject;
 handles.figure1.Position(4) = 35;
 
 %% make TABs
-%Create tab groupA - motor and odors
+%Create tab groupA - sniff locked vs. contamination
 handles.tgroupA = uitabgroup('Parent', handles.figure1,'TabLocation', 'top',...
-    'Position', [0.13 0.09 0.8500 0.8500] );
+    'Position', [0.145 0.09 0.8500 0.8500] );
 handles.tabA1 = uitab('Parent', handles.tgroupA, 'Title', 'Stimulus-wise');
 handles.tabA2 = uitab('Parent', handles.tgroupA, 'Title', 'Contanimation');
 %Place panels into each tab
 set(handles.A1,'Parent',handles.tabA1)
 set(handles.A2,'Parent',handles.tabA2)
 %Reposition each panel to same location as panel 1
-handles.A1.Position = [1.000    0.1   172.000   28.0000];
+%handles.A1.Position = [1.000    0.1   172.000   28.0000];
+handles.A1.Position = [0.01    0.01   0.98   0.97];
 set(handles.A2,'position',get(handles.A1,'position'));
+
+%Create tab groupB - single unit of multi unit
+handles.tgroupB = uitabgroup('Parent', handles.figure1,'TabLocation', 'top',...
+    'Position', [0.005 0.38 0.135 0.560] );
+handles.tabB1 = uitab('Parent', handles.tgroupB, 'Title', 'Basic');
+handles.tabB2 = uitab('Parent', handles.tgroupB, 'Title', 'Multi');
+%Place panels into each tab
+set(handles.View1,'Parent',handles.tabB1)
+set(handles.View2,'Parent',handles.tabB2)
+%Reposition each panel to same location as panel 1
+handles.View1.Position = [0.05    0.1   27.000   17.0000];
+set(handles.View2,'position',get(handles.View1,'position'));
+
 
 %% session path
 [Paths] = WhichComputer();
 handles.quickmode = 0;
+handles.AllUnits = [];
 handles.RefreshUnits.Enable = 'off';
 
 if ~isempty(varargin)
@@ -116,8 +131,12 @@ handles.stackMerge.Enable = 'off';
 guidata(hObject, handles);
 
 if exist(handles.WhereSession.String)==2 || exist(handles.WhereSession.String)==7
-    LoadSession_Callback(hObject, eventdata, handles);
+    handles = LoadSession_Callback(hObject, eventdata, handles);
 end
+
+handles.figure1.Resize = 'on';
+% Update handles structure
+guidata(hObject, handles);
 
 % UIWAIT makes SniffTuningViewer wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -135,7 +154,7 @@ varargout{1} = handles.output;
 
 
 % --- Executes on button press in LoadSession.
-function LoadSession_Callback(hObject, eventdata, handles)
+function [handles] = LoadSession_Callback(hObject, eventdata, handles)
     
     if ~handles.quickmode
         if isempty(handles.WhereSession.String)
@@ -155,10 +174,13 @@ function LoadSession_Callback(hObject, eventdata, handles)
         % loading units
         SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
     end
-
+    
+    handles.MultiSelectUnits = [];
+    handles.selectCount.Data(1) = 0;
     for whichunit = 1:size(SingleUnits,2)
         handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
         handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
+        handles.UnitList.Data(whichunit,:) = [whichunit handles.AllUnits.ChannelInfo(whichunit,[2 1])];
     end
     
     handles.NumUnits.Data(1) = size(handles.AllUnits.Spikes,2);
@@ -178,8 +200,8 @@ function [handles] = UpdatePlots(hObject, eventdata, handles)
     % get sniff time stamps and info for the sniffs we want to plot
     [handles.SelectedSniffs] = ParseSniffsByType(handles.AllSniffs, handles.SortSniffsBy.Value);
     %myXlim = eval(handles.xlims.String);
-
-    handles.maxsniffs = max(cellfun(@length, handles.SelectedSniffs));
+    
+    handles.maxsniffs = max(cellfun(@length, handles.SelectedSniffs)) + 100*(max(handles.SelectedSniffs{1}(:,8))-1);
     for snifftype = 1:5
         set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 handles.maxsniffs+1]);
     end
@@ -363,10 +385,12 @@ function RefreshUnits_Callback(hObject, eventdata, handles)
     % loading units
     SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
     handles.AllUnits = [];
-
+    handles.MultiSelectUnits = [];
+    handles.selectCount.Data(1) = 0;
     for whichunit = 1:size(SingleUnits,2)
         handles.AllUnits.Spikes{whichunit}      = SingleUnits(whichunit).spikes; % raw timestamps in OEPS base
         handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
+        handles.UnitList.Data(whichunit,:) = [whichunit handles.AllUnits.ChannelInfo(whichunit,[2 1])];
     end
     
     handles.NumUnits.Data(1) = size(handles.AllUnits.Spikes,2);
@@ -378,3 +402,54 @@ function RefreshUnits_Callback(hObject, eventdata, handles)
     guidata(hObject, handles);
     
     UpdateUnits(handles);
+
+
+% --- Executes on button press in ShowMulti.
+function ShowMulti_Callback(hObject, eventdata, handles)
+    ygap = 500;
+    if handles.selectCount.Data(1)
+        for n = 1:handles.selectCount.Data(1)
+            whichUnit = handles.MultiSelectUnits(n);
+            thisUnitSpikes = handles.AllUnits.Spikes{whichUnit};
+            if n == 1
+                [PooledRaster, maxsniffs] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes);
+                % maxsniffs = maxsniffs + 100;
+                maxsniffs = handles.maxsniffs;
+            else
+                [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes, ((n-1)*(maxsniffs + ygap)));
+                for snifftype = 1:5
+                    PooledRaster{snifftype} = vertcat(SpikeRaster{snifftype},PooledRaster{snifftype});
+                end
+            end
+        end
+
+        for snifftype = 1:5
+            myspikeplot = ['spikesplot',num2str(snifftype)];
+            SpikesPlot = PooledRaster{snifftype};
+            SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+            set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+            set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 n*(handles.maxsniffs+ygap)]);
+        end
+    end
+
+% --- Executes when selected cell(s) is changed in UnitList.
+function UnitList_CellSelectionCallback(hObject, eventdata, handles)
+    if ~isempty(eventdata.Indices)
+        selectedUnits = eventdata.Indices(:,1);
+        handles.MultiSelectUnits = selectedUnits;
+        handles.selectCount.Data(1) = numel(selectedUnits);
+    end
+    % Update handles structure
+    guidata(hObject, handles);
+    
+
+
+% --- Executes on button press in RescaleYLim.
+function RescaleYLim_Callback(hObject, eventdata, handles)
+% hObject    handle to RescaleYLim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    for snifftype = 1:5
+        set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 handles.maxsniffs+1]);
+    end
+
