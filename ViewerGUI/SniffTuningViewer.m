@@ -357,15 +357,15 @@ function stackMerge_Callback(hObject, eventdata, handles)
         ylim = [-(handles.maxsniffs + 1) (handles.maxsniffs + 1)];
         spikecolor  = [0.3 0.05 0.2]; %[0 0.5 0.75];
         spikesize = 0.5;
-        handles.figure1.Position(4) = 35*2;
-        handles.A1.Position(4) = 28*2;
+%         handles.figure1.Position(4) = 35*2;
+%         handles.A1.Position(4) = 28*2;
     else
         % change ylim
         ylim = [0 (handles.maxsniffs + 1)];
         spikecolor = [0.7000 0.5000 0.8500];
         spikesize = 0.75;
-        handles.figure1.Position(4) = 35;
-        handles.A1.Position(4) = 28;
+%         handles.figure1.Position(4) = 35;
+%         handles.A1.Position(4) = 28;
     end
     for i = 1:5
         set(handles.(['axes',num2str(i)]),'YLim', ylim);
