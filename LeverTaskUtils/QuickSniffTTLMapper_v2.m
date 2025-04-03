@@ -26,10 +26,11 @@ end
 [~,MouseName] = fileparts(fileparts(myKsDir));
 Filename = strsplit(ephysfile,'_'); % splits date and timestamp
 MatFileTag = regexprep(Filename{1},'-',''); % removes dashes from date
-% hack for dealing with resorting of sessions from batch S from Marie
-if strcmp(MouseName(1:2),'NS')
+% hack for dealing with resorting of sessions from batch S, O from Marie
+if strcmp(MouseName(1:2),'nS') || strcmp(MouseName(1:2),'nO')
     MouseName = MouseName(2:end);
 end
+
 rootfolder = fullfile(Paths.Grid.Behavior,MouseName); % where behavior and tuning files are saved
 BehaviorFiles = dir ([rootfolder,'/',[MouseName,'_',MatFileTag,'_r','*']]);
 TuningFiles = dir ([rootfolder,'/',[MouseName,'_',MatFileTag,'_o','*']]);
