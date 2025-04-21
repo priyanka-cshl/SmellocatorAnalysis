@@ -166,8 +166,11 @@ save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
         % load and binzarize the trial ON-OFF trace
         MyTrialTrace = session_data.trace(:,7);
         MyTrialBinary = MyTrialTrace;
-        MyTrialBinary(MyTrialBinary>0) = 1;
-
+        if any(MyTrialBinary<0)
+            MyTrialBinary(MyTrialBinary~=0) = 1;
+        else
+            MyTrialBinary(MyTrialBinary>0) = 1;
+        end
         % detect trial transitions and get transition timestamps in behavior space
         trial_idx = find(diff([0; MyTrialBinary; 0]));
         trial_idx = reshape(trial_idx,2,[])';

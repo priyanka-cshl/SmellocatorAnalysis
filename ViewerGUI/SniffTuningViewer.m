@@ -392,6 +392,9 @@ function RefreshUnits_Callback(hObject, eventdata, handles)
         handles.AllUnits.ChannelInfo(whichunit,1:2) = [SingleUnits(whichunit).tetrode SingleUnits(whichunit).id]; % tetrode and phy cluster ID
         handles.UnitList.Data(whichunit,:) = [whichunit handles.AllUnits.ChannelInfo(whichunit,[2 1])];
     end
+    if size(handles.UnitList.Data,1) > whichunit
+        handles.UnitList.Data(whichunit:end,:) = [];
+    end
     
     handles.NumUnits.Data(1) = size(handles.AllUnits.Spikes,2);
     if isnan(handles.thisUnit.Data(1,1)) || handles.thisUnit.Data(1,1)>handles.NumUnits.Data(1)
@@ -409,7 +412,7 @@ function ShowMulti_Callback(hObject, eventdata, handles)
     ygap = 500;
     if handles.selectCount.Data(1)
         for n = 1:handles.selectCount.Data(1)
-            whichUnit = handles.MultiSelectUnits(n);
+            whichUnit = handles.MultiSelectUnits(handles.selectCount.Data(1) + 1 - n);
             thisUnitSpikes = handles.AllUnits.Spikes{whichUnit};
             if n == 1
                 [PooledRaster, maxsniffs] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes);
