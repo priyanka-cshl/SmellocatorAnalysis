@@ -1,4 +1,4 @@
-function [cluster] = SingleUnitStability(myKsDir, options)
+function [cluster] = SingleUnitStability(myKsDir, varargin)
 % function to load spike waveforms for each unit an assess unit stability over time
 
 %% extract inputs
@@ -27,6 +27,32 @@ sp = loadKSdirPriyanka(myKsDir);
 % sp.cgs are cluster defs (1 = MUA, 2 = good, 3 = Unsorted??) (1/cluster)
 % spikes from clusters labeled "noise" have already been omitted
 
+%% for waveform extraction
+fileName = fullfile(myKsDir,sp.dat_path); % binary .dat file that contains the raw data
+filenamestruct = dir(fileName);
+nChannels = sp.n_channels_dat;
+if exist(fullfile(myKsDir,"SessionDetails.mat"))==2
+    temp = load(fullfile(myKsDir,"SessionDetails.mat"));
+    nSamples = temp.Files.Samples;
+else
+    dataTypeNBytes = numel(typecast(cast(0, sp.dtype), 'uint8')); % determine number of bytes per sample
+    nSamples = filenamestruct.bytes/(nChannels*dataTypeNBytes);  % Number of samples per channel
+end
+mmf = memmapfile(fileName, 'Format', {sp.dtype, [nChannels nSamples], 'x'});
+chMap = readNPY(fullfile(myKsDir, 'channel_map.npy'))+1; % Order in which data was streamed to disk; must be 1-indexed for Matlab
+nChInMap = numel(chMap);
+
+% initializations for reading waveforms
+wfWin = [-40 41];          % Number of samples before and after spiketime to include in waveform
+nWf = 2000;                % Maximum Number of waveforms per unit to pull out
+wfNSamples = length(wfWin(1):wfWin(end));
+
+recDuration = max(sp.st);
+nSegments   = 3;
+segDuration = recDuration/nSegments;
+timeSegments = repmat([0 segDuration],nSegments,1) + ...
+                segDuration*((1:nSegments)-1)';
+
 %% get all clusters and reorder by primary channel
 [~,clusterorder] = sort(sp.channels);
 
@@ -37,45 +63,49 @@ for mycluster = 1:length(sp.cids) % for each cluster
     % get all spiketimes (in seconds)
     allspikes = sp.st(sp.clu==sp.cids(whichcluster));
     primeChannel = sp.channels(whichcluster);
-    otherChannels = floor(primeChannel/8)*8 + 1:8;
+    otherChannels = floor(primeChannel/8)*8 + (1:8) -1;
 
     
     % which tetrode
-    tetrode = floor(sp.channels(whichcluster)/4)+1 + ...
-        rem(sp.channels(whichcluster),4)/10;
+    tetrode = floor(primeChannel/4)+1 + rem(primeChannel,4)/10;
     
     % Outputs
     cluster(mycluster).id = sp.cids(whichcluster);
     cluster(mycluster).tetrode = tetrode;
     cluster(mycluster).spikes = allspikes;
-
-    if ~nofuss
-        cluster(mycluster).spikecount = numel(allspikes);
-        cluster(mycluster).quality = sp.cgs(whichcluster);
-        [fpRate, numViolations] = ISIViolations(allspikes, 1/30000, 0.002);
-        cluster(mycluster).ISIquality = [round(fpRate,2,'significant'), round(numViolations/(numel(allspikes)-1),2,'significant')];
-        %     if mycluster == 1
-        %             cluster.spikescaling = sp.tempScalingAmps;
-        %             cluster.clusterscalingorder = sp.clu;
-        %     end
-    end
+    cluster(mycluster).spikecount = numel(allspikes);
+    cluster(mycluster).quality = sp.cgs(whichcluster);
+    [fpRate, numViolations] = ISIViolations(allspikes, 1/30000, 0.002);
+    cluster(mycluster).ISIquality = [round(fpRate,2,'significant'), round(numViolations/(numel(allspikes)-1),2,'significant')];
+    cluster(mycluster).Amplitudes = sp.tempScalingAmps(sp.clu==sp.cids(whichcluster));
     
-    if getwaveforms
-        
-        % get all spikewaveforms
-        gwfparams.dataDir = myKsDir;         % KiloSort/Phy output folder
-        gwfparams.fileName = sp.dat_path;    % .dat file containing the raw
-        gwfparams.dataType = sp.dtype;       % Data type of .dat file (this should be BP filtered)
-        gwfparams.nCh = sp.n_channels_dat;   % Number of channels that were streamed to disk in .dat file
-        gwfparams.wfWin = [-40 41];          % Number of samples before and after spiketime to include in waveform
-        gwfparams.nWf = 2000;                % Number of waveforms per unit to pull out
-        gwfparams.spikeTimes = allspikes*sp.sample_rate; % Vector of cluster spike times (in samples) same length as .spikeClusters
-        gwfparams.spikeClusters = sp.cids(whichcluster) + 0*gwfparams.spikeTimes; % Vector of cluster IDs (Phy nomenclature)   same length as .spikeTimes
-        wf = getWaveForms(gwfparams);
-        
-        %     [~,channels] = sort(std(squeeze(wf.waveFormsMean),0,2),'descend');
-        %     channels = ceil(channels/4);
-        %     tetrode = mode(channels(1:4));
+    % prep for waveform extraction
+    % exclude any spikes earlier than the window limit 
+    allspikes((allspikes<=abs(wfWin(1)/sp.sample_rate)),:) = [];
+    allspikes((allspikes>=(recDuration-wfWin(2)/sp.sample_rate)),:) = [];
+    % adjust number of waveforms to pull out as needed
+
+    % for the whole session
+    numWF       = min(nWf, numel(allspikes));
+    permSpikes  = randperm(numel(allspikes));
+    whichSpikes = allspikes(permSpikes(1:numWF));
+    % convert to samples
+    whichIndices = whichSpikes*sp.sample_rate + wfWin;
+    whichIndices = sortrows(whichIndices,1);
+    waveForms{1} = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
+    
+    % for each time segment 
+    % get total spike count in each segment
+    for seg = 1:size(timeSegments,1)
+        thisSegmentSpikes = allspikes(find(allspikes>timeSegments(seg,1) & allspikes<=timeSegments(seg,2)));
+        cluster(mycluster).spikecount(seg+1) = numel(thisSegmentSpikes);
+        numWF       = min(nWf, numel(thisSegmentSpikes));
+        permSpikes  = randperm(numel(thisSegmentSpikes));
+        whichSpikes = thisSegmentSpikes(permSpikes(1:numWF));
+        % convert to samples
+        whichIndices = whichSpikes*sp.sample_rate + wfWin;
+        whichIndices = sortrows(whichIndices,1);
+        waveForms{seg+1} = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
     end
     
     if savefigs
@@ -178,4 +208,16 @@ if ~nofuss
     disp(['found ',num2str(mycluster),' units']);
 end
 
+    function [wfOut] = extractWaveforms(mySpikeIndices, mmf)
+        % convert to samples
+        for thisSpike = 1:size(mySpikeIndices,1)
+            % every spike
+            curSpikeIndex = int32(mySpikeIndices(thisSpike,:));
+%             disp(curSpikeIndex);
+%             if ~isinteger(curSpikeIndex(2))
+%                 keyboard;
+%             end
+            wfOut(thisSpike,:,:) = mmf.Data.x(:,curSpikeIndex(1):curSpikeIndex(2));
+        end
+    end
 end
