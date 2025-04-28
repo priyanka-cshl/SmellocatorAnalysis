@@ -236,8 +236,10 @@ function UpdateUnits(handles)
     for snifftype = 1:5
         myspikeplot = ['spikesplot',num2str(snifftype)];
         SpikesPlot = SpikeRaster{snifftype};
-        SpikesPlot(:,2) = abs(SpikesPlot(:,2));
-        set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+        if ~isempty(SpikesPlot)
+            SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+            set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+        end
     end
 
 
@@ -429,9 +431,11 @@ function ShowMulti_Callback(hObject, eventdata, handles)
         for snifftype = 1:5
             myspikeplot = ['spikesplot',num2str(snifftype)];
             SpikesPlot = PooledRaster{snifftype};
-            SpikesPlot(:,2) = abs(SpikesPlot(:,2));
-            set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
-            set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 n*(handles.maxsniffs+ygap)]);
+            if ~isempty(SpikesPlot)
+                SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+                set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+                set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 n*(handles.maxsniffs+ygap)]);
+            end
         end
     end
 

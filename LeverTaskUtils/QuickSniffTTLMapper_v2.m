@@ -15,7 +15,7 @@ end
 
 % have sniffs already been processed
 if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
-    load (fullfile(myKsDir,'quickprocesssniffs.mat'));
+    load (fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
     return;
 end
 
