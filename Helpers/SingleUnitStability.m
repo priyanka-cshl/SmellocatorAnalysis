@@ -5,11 +5,14 @@ function [cluster] = SingleUnitStability(myKsDir, varargin)
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
-params.addParameter('plotwaveforms', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('plotwaveforms', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
 plotWaveforms = params.Results.plotwaveforms;
+saveFigures = params.Results.savefigures;
+plotDrift = 1;
 
 %% add repos if needed
 Paths = WhichComputer();
@@ -56,7 +59,15 @@ timeSegments = repmat([0 segDuration],nSegments,1) + ...
 %% get all clusters and reorder by primary channel
 [~,clusterorder] = sort(sp.channels);
 
+if saveFigures
+    if ~exist(fullfile(myKsDir,'ClusterMaps'),'dir')
+        mkdir(fullfile(myKsDir,'ClusterMaps'));
+    end
+end
+
 for mycluster = 1:length(sp.cids) % for each cluster
+
+    disp(mycluster);
 
     whichcluster = clusterorder(mycluster);
     
@@ -64,7 +75,6 @@ for mycluster = 1:length(sp.cids) % for each cluster
     allspikes = sp.st(sp.clu==sp.cids(whichcluster));
     primeChannel = sp.channels(whichcluster);
     otherChannels = floor(primeChannel/8)*8 + (1:8) -1;
-
     
     % which tetrode
     tetrode = floor(primeChannel/4)+1 + rem(primeChannel,4)/10;
@@ -92,7 +102,7 @@ for mycluster = 1:length(sp.cids) % for each cluster
     % convert to samples
     whichIndices = whichSpikes*sp.sample_rate + wfWin;
     whichIndices = sortrows(whichIndices,1);
-    waveForms{1} = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
+    [waveForms{1}, meanWFs{1}] = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
     
     % for each time segment 
     % get total spike count in each segment
@@ -105,110 +115,126 @@ for mycluster = 1:length(sp.cids) % for each cluster
         % convert to samples
         whichIndices = whichSpikes*sp.sample_rate + wfWin;
         whichIndices = sortrows(whichIndices,1);
-        waveForms{seg+1} = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
+        [waveForms{seg+1}, meanWFs{seg+1}] = extractWaveforms(whichIndices, mmf); % numWF x nChannels x WinSize
     end
-    
-    if savefigs
-        
-        if ~exist(fullfile(myKsDir,'ClusterMaps'),'dir')
-            mkdir(fullfile(myKsDir,'ClusterMaps'));
-        end
-        
+
+    cluster(mycluster).WF = waveForms;
+    cluster(mycluster).meanWF = meanWFs;
+
+    if plotWaveforms || saveFigures
+
         % plot waveform map
         figure;
-        nTetrodes = 8 + 8*(sp.n_channels_dat > 40);
+        nTetrodePairs = ceil(nChInMap/8);
+        subplotRows = nTetrodePairs + 4;
         % determine YLim by taking the waveform span on the strongest channel
-        myLims = [min(min(wf.waveFormsMean(1,(tetrode-1)*4+[1 2 3 4],:))) ...
-            max(max(wf.waveFormsMean(1,(tetrode-1)*4+[1 2 3 4],:))) ];
+        myLims = [ min(min(meanWFs{1}(otherChannels+1,:,1))) ...
+            max(max(meanWFs{1}(otherChannels+1,:,1))) ];
         myLims = 100*[floor(myLims(1)/100) ceil(myLims(2)/100)];
-        for whichChannel = 1:sp.n_channels_dat
-            whichPlot = 8*(sp.ycoords(whichChannel)/1000 - 1) + sp.xcoords(whichChannel);
-            subplot(nTetrodes,8,whichPlot);
-            %plot(squeeze(wf.waveFormsMean(1,whichChannel,:)));
-            meanWF = squeeze(wf.waveFormsMean(1,whichChannel,:));
-            stdWF = nanstd(squeeze(wf.waveForms(1,:,whichChannel,:)),1)';
-            if ceil(whichChannel/4)==tetrode
-                switch sp.cgs(whichcluster)
-                    case 2 % good unit
-                        MyShadedErrorBar([],meanWF,stdWF,'r');
-                    otherwise
-                        MyShadedErrorBar([],meanWF,stdWF,'b');
-                end
-                
+
+        % plotting
+        for whichChannel = 1:nChInMap
+            whichPlot = whichChannel;
+            subplot(subplotRows,8,whichPlot);
+            meanWF = squeeze(meanWFs{1}(whichChannel,:,1));
+            stdWF = squeeze(meanWFs{1}(whichChannel,:,2));
+            if ismember(whichChannel-1,otherChannels)
+                MyShadedErrorBar([],meanWF,stdWF,'r',{},0.5);
             else
-                MyShadedErrorBar([],meanWF,stdWF,'k');
+                MyShadedErrorBar([],meanWF,stdWF,'b',{},0.5);
             end
+
+            if plotDrift
+            % add the three recording segments
+            offset = diff(myLims)/4;
+            for seg = 1:3
+                meanWF = squeeze(meanWFs{seg+1}(whichChannel,:,1)) - (offset*seg);
+                stdWF = squeeze(meanWFs{seg+1}(whichChannel,:,2));
+                if ismember(whichChannel-1,otherChannels)
+                    MyShadedErrorBar([],meanWF,stdWF,'r',{},0.5);
+                else
+                    MyShadedErrorBar([],meanWF,stdWF,'b',{},0.5);
+                end
+            end
+            end
+
             set(gca,'Box','off','Color','none','XColor','none','YColor','none',...
-                'YLim',myLims,'XLim',[0 diff(gwfparams.wfWin)],'XTick',[],'YTick',[]);
+                'YLim',[myLims(1)-offset*3 myLims(2)],'XLim',[0 diff(wfWin)],'XTick',[],'YTick',[]);
+
+            set(gca,'Box','off','Color','none','XColor','none','YColor','none',...
+                'YLim',myLims,'XLim',[0 diff(wfWin)],'XTick',[],'YTick',[]);
+            
         end
-        
-        % plotting Grid
-        foo = reshape(1:nTetrodes*8,8,nTetrodes)';
-        if nTetrodes <= 8
-            WF_subplots   = foo(1:2,5:8);
-            ISI_subplots  = foo(3:5,5:8);
-            Corr_subplots = foo(6:8,5:8);
-        else
-            WF_subplots   = foo(1:4,5:8);
-            ISI_subplots  = foo(5:10,5:8);
-            Corr_subplots = foo(11:16,5:8);
-        end
-        
-        % plot individual waveforms
-        myLims = [];
-        for n = 1:4
-            whichWire = 4*(tetrode-1) + n;
-            subplot(nTetrodes,8,WF_subplots(:,n));
-            plot(squeeze(wf.waveForms(1,:,whichWire,:))','r');
-            myLims = vertcat(myLims,get(gca,'YLim'));
-        end
-        for n = 1:4
-            subplot(nTetrodes,8,WF_subplots(:,n));
-            set(gca,'YLim',[2*min(myLims(:,1)) 2*max(myLims(:,2))],...
-                'Box','off','Color','none','XColor','none','YColor','none',...
-                'XLim',[0 diff(gwfparams.wfWin)],'XTick',[],'YTick',[]);
-        end
-        
+
+        % add the ISI and corr plots
+        % map out the plotting grid
+        foo = reshape(1:subplotRows*8,8,subplotRows)';
+        ISI_subplots  = foo((nTetrodePairs+1):(end-1),1:4);
+        Corr_subplots = foo((nTetrodePairs+1):(end-1),5:8);
+        Amp_plots = foo(end,1:8);
+
         % plot the ISI histogram
         ISIs = 1000*diff(allspikes); % in milliseconds
-        subplot(nTetrodes,8,ISI_subplots(:));
+        subplot(subplotRows,8,ISI_subplots(:));
         H = histogram(ISIs,[0:1:50 Inf]);
         myHist = H.Values(1:end-1);
+        maxY = 100*ceil(max(myHist)/100);
+        cla
+        rectangle('Position',[0 0 2 maxY],'EdgeColor', 'none', 'FaceColor', 0.7*[1 1 1]);
+        hold on
         bar(myHist,1,'EdgeColor','none');
-        set(gca,'Color','none','YLim',[0 100*ceil(max(myHist)/100)],'XTick',[],'YTick',[]);
+        set(gca,'Color','none','YLim',[0 maxY],'XTick',[],'YTick',[]);
         title(['Cluster# ',num2str(cluster(mycluster).id)])
+
         
         % plot the autocorrelation
         SpikeTrain = zeros(ceil(max(1000*allspikes)),1);
         SpikeTrain(round(1000*allspikes),1) = 1;
         [r,lags] = xcorr(SpikeTrain,50,'coeff');
         r(lags==0) = NaN;
-        subplot(nTetrodes,8,Corr_subplots(:));
+        subplot(subplotRows,8,Corr_subplots(:));
         bar(r,1,'EdgeColor','none');
         set(gca,'Color','none','XTick',[],'YTick',[]);
+        title(['Amplitudes ',mat2str(myLims)])
+
+        % plot the spike amplitudes over time
+        subplot(subplotRows,8,Amp_plots(:));
+        plot(cluster(mycluster).spikes, cluster(mycluster).Amplitudes,'.','MarkerSize', 4);
+        axLims = get(gca,'YLim')/10;
+        axLims(1) = floor(axLims(1))*10;
+        axLims(2) = ceil(axLims(2))*10;
+        set(gca,'Color','none','YLim',axLims,'YTick',axLims,'XLim',[0 ceil(recDuration)],'TickDir','out');
         
-        % print to pdf
-        set(gcf,'renderer','Painters');
-        set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 0.6, 0.9]);
-        print(fullfile(myKsDir,'ClusterMaps',['Cluster',num2str(cluster(mycluster).id),'.eps']),...
-            '-depsc','-tiff','-r300','-painters');
-        close;
+        if saveFigures
+            % print to pdf
+            set(gcf,'Color','w');
+            set(gcf,'renderer','Painters');
+            if mycluster == 1
+                if nTetrodePairs == 8
+                    figPosition = [0.7, 0.2, 0.2, 0.9];
+                else
+                    figPosition = [0.7, 0.2, 0.2, 0.7];
+                end            
+                set(gcf, 'Units', 'Normalized', 'OuterPosition', figPosition);
+                exportgraphics(gcf, ...
+                    fullfile(myKsDir,'ClusterMaps','UnitSummary.pdf'),...
+                    'ContentType','vector');
+            else
+                set(gcf, 'Units', 'Normalized', 'OuterPosition', figPosition);
+                exportgraphics(gcf, ...
+                    fullfile(myKsDir,'ClusterMaps','UnitSummary.pdf'),...
+                    'ContentType','vector','Append',true);
+            end
+            close;
+        end
     end
     
 end
 
-% sort by tetrodes
-[~,sortorder] = sort(arrayfun(@(x) x.tetrode, cluster));
-cluster = cluster(sortorder);
+save(fullfile(myKsDir,'ClustersFull.mat'),"cluster",'-v7.3');
 
-if ~nofuss
-    cluster(1).spikescaling = sp.tempScalingAmps;
-    cluster(1).clusterscalingorder = sp.clu;
 
-    disp(['found ',num2str(mycluster),' units']);
-end
-
-    function [wfOut] = extractWaveforms(mySpikeIndices, mmf)
+    function [wfOut, meanwfOut] = extractWaveforms(mySpikeIndices, mmf)
         % convert to samples
         for thisSpike = 1:size(mySpikeIndices,1)
             % every spike
@@ -219,5 +245,9 @@ end
 %             end
             wfOut(thisSpike,:,:) = mmf.Data.x(:,curSpikeIndex(1):curSpikeIndex(2));
         end
+            meanwfOut(:,:,1) = squeeze(mean(wfOut,1,'omitnan')); % average across all spikes
+            if size(wfOut,1) > 1
+                meanwfOut(:,:,2) = squeeze(std(double(wfOut),1,'omitnan'));
+            end
     end
 end
