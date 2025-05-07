@@ -9,6 +9,7 @@ params.addParameter('whichreplays', [], @(x) isnumeric(x));
 params.addParameter('plotfigures', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('plotephys', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('savefigures', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('savepdfs', false, @(x) islogical(x) || x==0 || x==1);
 params.addParameter('whichunits', [], @(x) isnumeric(x));
 params.addParameter('PSTHsmooth', 100, @(x) isnumeric(x));
 params.addParameter('UnitsPerFig', 8, @(x) isnumeric(x));
@@ -21,6 +22,7 @@ params.parse(varargin{:});
 allreplays = params.Results.whichreplays;
 plotreplayfigs = params.Results.plotfigures;
 savereplayfigs = params.Results.savefigures;
+savereplaypdfs = params.Results.savepdfs;
 plotephysfigs = params.Results.plotephys;
 whichUnits = params.Results.whichunits;
 smoothingfactor = params.Results.PSTHsmooth;
@@ -33,6 +35,8 @@ global SampleRate;
 global MyFileName;
 global TargetZones;
 global startoffset;
+global pdfPosition;
+global MyPDFname;
 
 if isempty(allreplays)
     allreplays = 1:numel(Replay.TemplateTraces.TrialIDs);
@@ -291,6 +295,13 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                                 saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
                                 close(gcf);
                             end
+%                             if savereplaypdfs
+%                                 set(gcf, 'Units', 'Normalized', 'OuterPosition', pdfPosition);
+%                                 exportgraphics(gcf, ...
+%                                     [MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.pdf'],...
+%                                     'ContentType','vector','Append',true);
+%                                     close(gcf);
+%                             end
                             figure;
                         end
                     end
@@ -380,6 +391,19 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                                 saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
                                 close(gcf);
                             end
+                            if savereplaypdfs
+                                set(gcf, 'Units', 'Normalized', 'OuterPosition', pdfPosition);
+                                if i == units_per_fig
+                                    exportgraphics(gcf, ...
+                                    MyPDFname,...
+                                    'ContentType','vector');
+                                else
+                                exportgraphics(gcf, ...
+                                    MyPDFname,...
+                                    'ContentType','vector','Append',true);
+                                end
+                                close(gcf);
+                            end
                             figure;
                         end
                     end
@@ -391,6 +415,13 @@ for x = 1:numel(allreplays) % for every unique replay stretch
                 saveas(gcf,[MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.fig']);
                 close(gcf);
             end
+%             if savereplaypdfs
+%                 set(gcf, 'Units', 'Normalized', 'OuterPosition', pdfPosition);
+%                 exportgraphics(gcf, ...
+%                     [MyFileName,'_MyUnits_',num2str(MyUnit/units_per_fig),'.pdf'],...
+%                     'ContentType','vector','Append',true);
+%                 close(gcf);
+%             end
             
         end
         

@@ -4,6 +4,10 @@ Paths = WhichComputer();
 foo = regexp(MySessionName,'_','split');
 AnimalName = foo{1};
 MySession = fullfile(Paths.Grid.Behavior_processed,AnimalName,MySessionName);
+global pdfPosition
+pdfPosition = [0.6336    0.0574    0.3086    0.8028];
+global MyPDFname
+MyPDFname = '/mnt/data/Sorted/nO3/2021-10-05_14-24-31/ClusterMaps/ReplayResponses.pdf';
 
 % Load the relevant variables
 load(MySession, 'Traces', 'TrialInfo', 'TTLs', 'ReplayTTLs', 'SingleUnits', 'PassiveReplayTraces', 'TargetZones');
@@ -19,7 +23,7 @@ if any(strcmp(TrialInfo.Perturbation(:,1),'OL-Replay'))
     ReplayTracePlotter(OpenLoop, TrialInfo, SingleUnits, TTLs, PassiveReplayTraces);
 
     ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
-    'plotfigures', 1, 'plotephys', 1, 'whichunits', PlotUnits);
+    'plotfigures', 1, 'savepdfs', 1, 'plotephys', 1, 'whichunits', PlotUnits);
 else
     [OpenLoop] = ExtractReplayTrials_v2(Traces, TrialInfo, TTLs, ReplayTTLs, PassiveReplayTraces);
 

@@ -1,4 +1,4 @@
-function [SniffsOut] = ParseSniffsByType(AllSniffs, SortBy)
+function [SniffsOut] = ParseSniffsByType(AllSniffs, SortBy, timechunks)
 
 if nargin<2
     SortBy = 1;
@@ -28,6 +28,15 @@ for snifftype = 1:5
         case 2
             % by sessionphase and then occurence
             SniffTS = sortrows(SniffTS,[8 1],'ascend');
+        case 3
+            % by occurence
+            SniffTS = sortrows(SniffTS,[1],'ascend');
+
+            % and label by recording chunks
+            for chunks = 1:size(timechunks,1)
+                SniffTS(find(SniffTS(:,1)>timechunks(chunks,1)),8) = chunks;
+            end
+
     end
     
     SniffsOut{snifftype} = SniffTS;
