@@ -14,10 +14,10 @@ if strcmp(myKsDir(end),filesep)
 end
 
 % have sniffs already been processed
-if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
-    load (fullfile(myKsDir,'quickprocesssniffs.mat'));
-    return;
-end
+% if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
+%     load (fullfile(myKsDir,'quickprocesssniffs.mat'));
+%     return;
+% end
 
 [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile(myKsDir);
 

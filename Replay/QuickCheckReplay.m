@@ -7,6 +7,7 @@ MySession = fullfile(Paths.Grid.Behavior_processed,AnimalName,MySessionName);
 global pdfPosition
 pdfPosition = [0.6336    0.0574    0.3086    0.8028];
 global MyPDFname
+
 MyPDFname = '/mnt/data/Sorted/nO3/2021-10-05_14-24-31/ClusterMaps/ReplayResponses.pdf';
 
 % Load the relevant variables
@@ -20,7 +21,7 @@ if any(strcmp(TrialInfo.Perturbation(:,1),'OL-Replay'))
     ReplayRespirationTracePlotter(OpenLoop.TemplateTraces, OpenLoop.ReplayTraces, PassiveReplayTraces);
     set(gcf,'Position',[2615 27 700 969]);
 
-    ReplayTracePlotter(OpenLoop, TrialInfo, SingleUnits, TTLs, PassiveReplayTraces);
+    %ReplayTracePlotter(OpenLoop, TrialInfo, SingleUnits, TTLs, PassiveReplayTraces);
 
     ProcessOpenLoopTrials(OpenLoop, TrialInfo, SingleUnits, TTLs, ...
     'plotfigures', 1, 'savepdfs', 1, 'plotephys', 1, 'whichunits', PlotUnits);
