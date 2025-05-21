@@ -68,9 +68,10 @@ ts = find(diff(TrialVector));
 if ~TrialVector(1)
     n = floor((length(ts)/2));
     idx = reshape(ts(1:2*n),2,n)';
-    ts = session_data.timestamps(idx);
+    alltimestamps = TS(:,1);
+    ts = alltimestamps(idx); %session_data.timestamps(idx); -- in case there are sample drops
+    %ts = session_data.timestamps(idx);
     ts(:,3) = ts(:,2)-ts(:,1);
-
 
     if any(ts(2:end,1) - ts(1:end-1,2) < 0.003)
         keyboard; 
@@ -429,6 +430,10 @@ if ~exist('CuratedPassiveSniffTimestamps','var')
 end
 
 if exist('CuratedPassiveSniffTimestamps','var')
+
+    % adding a hack to deal with timestamp messup for batch Q
+    CuratedPassiveSniffTimestamps(:,1:2) = PassiveOut.Timestamps{1}(CuratedPassiveSniffTimestamps(:,8:9));
+
     if size(CuratedPassiveSniffTimestamps,2) < 10
         CuratedPassiveSniffTimestamps(:,10) = 0;
     end
