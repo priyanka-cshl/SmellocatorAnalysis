@@ -18,7 +18,8 @@ if any(strcmp(TrialInfo.Perturbation(:,1),'OL-Replay'))
     [OpenLoop] = ExtractReplayTrials(Traces, TrialInfo, TTLs, ReplayTTLs);
 
     % code to plot respiration traces
-    ReplayRespirationTracePlotter(OpenLoop.TemplateTraces, OpenLoop.ReplayTraces, PassiveReplayTraces);
+    %ReplayRespirationTracePlotter(OpenLoop.TemplateTraces, OpenLoop.ReplayTraces, PassiveReplayTraces);
+    ReplaySelectTracePlotter(OpenLoop.TemplateTraces, OpenLoop.ReplayTraces, PassiveReplayTraces,'Sniffs');
     set(gcf,'Position',[2615 27 700 969]);
 
     %ReplayTracePlotter(OpenLoop, TrialInfo, SingleUnits, TTLs, PassiveReplayTraces);
