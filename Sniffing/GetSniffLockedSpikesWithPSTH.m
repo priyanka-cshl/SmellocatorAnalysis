@@ -7,7 +7,7 @@ params.CaseSensitive = false;
 params.addParameter('yoffset', 0, @(x) isnumeric(x));
 params.addParameter('window', [-0.1 1], @(x) isnumeric(x));
 params.addParameter('PSTHBinsize', 20, @(x) isnumeric(x));
-%params.addParameter('plotwaveforms', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('onlyCL', false, @(x) islogical(x) || x==0 || x==1);
 
 % extract values from the inputParser
 params.parse(varargin{:});
@@ -15,12 +15,16 @@ yoffset = params.Results.yoffset;
 binsize = params.Results.PSTHBinsize/1000;
 window = params.Results.window;
 myBins = window(1):binsize:window(2);
+onlyClosedLoop = params.Results.onlyCL;
 
 
 maxsniffs = 0;
 for snifftype = 1:size(GroupedSniffs,2)
     SpikesPlot = [];
     SniffTS = GroupedSniffs{snifftype};
+    if onlyClosedLoop
+        SniffTS(SniffTS(:,8)>1,:) = [];
+    end
     myPSTH = nan(size(SniffTS,1),numel(myBins));
 
     % plot spikes
@@ -49,16 +53,18 @@ for snifftype = 1:size(GroupedSniffs,2)
     PSTHs{snifftype}.mean(1,:) = mean(myPSTH,1,'omitnan') / binsize;
     nBins = sqrt(sum(~isnan(myPSTH),1));
     PSTHs{snifftype}.sem(1,:) = std(myPSTH,1,'omitnan')./nBins;
+    
+    if ~onlyClosedLoop
+        % for each chunk
+        if snifftype == 1
+            maxchunks = max(unique(SniffTS(:,8)));
+        end
 
-    % for each chunk
-    if snifftype == 1
-        maxchunks = max(unique(SniffTS(:,8)));
-    end
-
-    for chunk = 1:maxchunks
-        PSTHs{snifftype}.mean(1+chunk,:)    = mean(myPSTH(find(SniffTS(:,8)==chunk),:),1,'omitnan') / binsize;
-        nBins = sqrt(sum(~isnan(myPSTH(find(SniffTS(:,8)==chunk),:)),1));
-        PSTHs{snifftype}.sem(1+chunk,:)     = std(myPSTH(find(SniffTS(:,8)==chunk),:),1,'omitnan')./nBins;
+        for chunk = 1:maxchunks
+            PSTHs{snifftype}.mean(1+chunk,:)    = mean(myPSTH(find(SniffTS(:,8)==chunk),:),1,'omitnan') / binsize;
+            nBins = sqrt(sum(~isnan(myPSTH(find(SniffTS(:,8)==chunk),:)),1));
+            PSTHs{snifftype}.sem(1+chunk,:)     = std(myPSTH(find(SniffTS(:,8)==chunk),:),1,'omitnan')./nBins;
+        end
     end
 
 end
