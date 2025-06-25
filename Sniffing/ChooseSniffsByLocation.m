@@ -1,7 +1,10 @@
-function [SniffsOut] = ChooseSniffsByLocation(AllSniffs, SortBy)
+function [SniffsOut] = ChooseSniffsByLocation(AllSniffs, SortBy, timechunks)
 
 if nargin<2
     SortBy = 1;
+    timechunks = [];
+elseif nargin<3
+    timechunks = [];
 end
 
 targetLocs = 8;
@@ -43,6 +46,11 @@ for snifftype = 1:5
         case 3
             % by occurence
             SniffTS = sortrows(SniffTS,[1],'ascend');
+
+            % and label by recording chunks
+            for chunks = 1:size(timechunks,1)
+                SniffTS(find(SniffTS(:,1)>timechunks(chunks,1)),8) = chunks;
+            end
     end
     
     SniffsOut{snifftype} = SniffTS;

@@ -59,10 +59,25 @@ timeSegments = repmat([0 segDuration],nSegments,1) + ...
     segDuration*((1:nSegments)-1)';
 
 %% for sniff processing
-AllSniffs = QuickSniffTTLMapper_v2(myKsDir);
-CL_end = round(AllSniffs(find(AllSniffs(:,8)==1,1,'last'),2)); %timestamp of last sniff in the session phase == 1
-% change column 8 for all sniffs to be 1 after extracting passive starttime
-SelectedSniffs = ParseSniffsByType(AllSniffs, 3, timeSegments); % parse sniffs by stimulus type and order them by occurence
+% check if wdw processed file exists
+[folder,foo] = fileparts(myKsDir);
+foo = strsplit(regexprep(foo,'-',''),'_');
+[~,mousename] = fileparts(folder);
+procFile = [mousename,'_',foo{1},'_r0_processed.mat'];
+baseFolder = '/home/priyanka/Desktop/forWDW';
+if exist(fullfile(baseFolder,procFile)) == 2
+    [AllSniffs] = GetAllSniffs(fullfile(baseFolder,procFile));
+    CL_end = round(AllSniffs(find(AllSniffs(:,8)==1,1,'last'),2)); %timestamp of last sniff in the session phase == 1
+    % change column 8 for all sniffs to 1 after extracting passive starttime
+    AllSniffs(:,8) = 1;
+    % get sniff time stamps and info for the sniffs we want to plot
+    SelectedSniffs = ChooseSniffsByLocation(AllSniffs, 3, timeSegments);
+else
+    AllSniffs = QuickSniffTTLMapper_v2(myKsDir);
+    CL_end = round(AllSniffs(find(AllSniffs(:,8)==1,1,'last'),2)); %timestamp of last sniff in the session phase == 1
+    % change column 8 for all sniffs to be 1 after extracting passive starttime
+    SelectedSniffs = ParseSniffsByType(AllSniffs, 3, timeSegments); % parse sniffs by stimulus type and order them by occurence
+end
 psthbins = 20;
 sniffwindow = [-0.1 0.5];
 
@@ -75,7 +90,7 @@ if saveFigures
     end
 end
 %%
-for mycluster = 49:length(sp.cids) % for each cluster
+for mycluster = 1:length(sp.cids) % for each cluster
 
     disp(mycluster);
 
@@ -334,7 +349,9 @@ save(fullfile(myKsDir,'ClustersFull.mat'),"cluster",'-v7.3');
             %             if ~isinteger(curSpikeIndex(2))
             %                 keyboard;
             %             end
-            wfOut(thisSpike,:,:) = mmf.Data.x(:,curSpikeIndex(1):curSpikeIndex(2));
+            if curSpikeIndex(2)<=size(mmf.Data.x,2)
+                wfOut(thisSpike,:,:) = mmf.Data.x(:,curSpikeIndex(1):curSpikeIndex(2));
+            end
         end
         meanwfOut(:,:,1) = squeeze(mean(wfOut,1,'omitnan')); % average across all spikes
         if size(wfOut,1) > 1

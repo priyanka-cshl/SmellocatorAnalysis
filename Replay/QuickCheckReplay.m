@@ -8,7 +8,7 @@ global pdfPosition
 pdfPosition = [0.6336    0.0574    0.3086    0.8028];
 global MyPDFname
 
-MyPDFname = '/mnt/data/Sorted/nO3/2021-10-05_14-24-31/ClusterMaps/ReplayResponses.pdf';
+MyPDFname = '/mnt/data/Sorted/Q9/2022-11-19_17-14-37/ClusterMaps/ReplayResponses.pdf';
 
 % Load the relevant variables
 load(MySession, 'Traces', 'TrialInfo', 'TTLs', 'ReplayTTLs', 'SingleUnits', 'PassiveReplayTraces', 'TargetZones');

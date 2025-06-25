@@ -1,7 +1,19 @@
-function [SniffsOut] = ParseSniffsByType(AllSniffs, SortBy, timechunks)
+function [SniffsOut] = ParseSniffsByType(AllSniffs, timechunks, varargin)
+
+%% extract inputs
+narginchk(1,inf);
+params = inputParser;
+params.CaseSensitive = false;
+params.addParameter('SortBy', 1, @(x) isnumeric(x));
+params.addParameter('SelectLocs', false, @(x) islogical(x) || x==0 || x==1);
+
+% extract values from the inputParser
+params.parse(varargin{:});
+SortBy = params.Results.SortBy;
+SelectLocs = params.Results.SelectLocs;
 
 if nargin<2
-    SortBy = 1;
+    timechunks = [];
 end
 
 %% split by stimulus conditions 
@@ -31,10 +43,12 @@ for snifftype = 1:5
         case 3
             % by occurence
             SniffTS = sortrows(SniffTS,[1],'ascend');
-
-            % and label by recording chunks
-            for chunks = 1:size(timechunks,1)
-                SniffTS(find(SniffTS(:,1)>timechunks(chunks,1)),8) = chunks;
+            
+            if isempty(timechunks)
+                % and label by recording chunks
+                for chunks = 1:size(timechunks,1)
+                    SniffTS(find(SniffTS(:,1)>timechunks(chunks,1)),8) = chunks;
+                end
             end
 
     end
