@@ -16,6 +16,9 @@ end
 % have sniffs already been processed
 if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
     load (fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
+    if strcmp(myKsDir,'/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31')
+        AllSniffs(find(AllSniffs(:,1)>9000),:) = [];
+    end
     return;
 end
 

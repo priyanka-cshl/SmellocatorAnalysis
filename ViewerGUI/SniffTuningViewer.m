@@ -89,6 +89,7 @@ set(handles.View2,'position',get(handles.View1,'position'));
 handles.quickmode = 0;
 handles.AllUnits = [];
 handles.RefreshUnits.Enable = 'off';
+handles.snifftypes = 5;
 
 if ~isempty(varargin)
     if numel(varargin) == 2 && strcmp(varargin{2},'quickprocess')
@@ -170,6 +171,9 @@ function [handles] = LoadSession_Callback(hObject, eventdata, handles)
     else
         % get a list of sniffs, also get units
         [handles.AllSniffs] = QuickSniffTTLMapper_v2(handles.WhereSession.String);
+        if numel(unique(handles.AllSniffs(:,4))) == 1
+            handles.snifftypes = 1;
+        end
 
         % loading units
         SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
@@ -198,11 +202,11 @@ function [handles] = LoadSession_Callback(hObject, eventdata, handles)
 function [handles] = UpdatePlots(hObject, eventdata, handles)
 
     % get sniff time stamps and info for the sniffs we want to plot
-    [handles.SelectedSniffs] = ParseSniffsByType(handles.AllSniffs, handles.SortSniffsBy.Value);
+    [handles.SelectedSniffs] = ParseSniffsByType(handles.AllSniffs, [], 'SortBy', handles.SortSniffsBy.Value);
     %myXlim = eval(handles.xlims.String);
     
     handles.maxsniffs = max(cellfun(@length, handles.SelectedSniffs)) + 100*(max(handles.SelectedSniffs{1}(:,8))-1);
-    for snifftype = 1:5
+    for snifftype = 1:handles.snifftypes
         set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 handles.maxsniffs+1]);
     end
 
@@ -228,12 +232,12 @@ function UpdateUnits(handles)
     if handles.PoolUnits.Value 
         PoolUnitSpikes = handles.AllUnits.Spikes{handles.thisUnit.Data(1,2)};
         [Pool2Raster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, PoolUnitSpikes);
-        for snifftype = 1:5
+        for snifftype = 1:handles.snifftypes
             SpikeRaster{snifftype} = vertcat(SpikeRaster{snifftype},Pool2Raster{snifftype});
         end
     end
     
-    for snifftype = 1:5
+    for snifftype = 1:handles.snifftypes
         myspikeplot = ['spikesplot',num2str(snifftype)];
         SpikesPlot = SpikeRaster{snifftype};
         if ~isempty(SpikesPlot)
@@ -322,7 +326,7 @@ function PoolUnits_Callback(hObject, eventdata, handles)
 function CompareUnits_Callback(hObject, eventdata, handles)
     if ~handles.CompareUnits.Value
         handles.stackMerge.Enable = 'off';
-        for snifftype = 1:5
+        for snifftype = 1:handles.snifftypes
             set(handles.(['overlayspikesplot',num2str(snifftype)]),'XData',nan,'YData',nan);
         end
     else
@@ -334,7 +338,7 @@ function CompareUnits_Callback(hObject, eventdata, handles)
         MergeUnitSpikes = handles.AllUnits.Spikes{OverlayUnit};
         [OverlaySpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, MergeUnitSpikes);
 
-        for snifftype = 1:5
+        for snifftype = 1:handles.snifftypes
             myspikeplot = ['overlayspikesplot',num2str(snifftype)];
             SpikesPlot = OverlaySpikeRaster{snifftype};
             SpikesPlot(:,2) = abs(SpikesPlot(:,2));
@@ -422,13 +426,13 @@ function ShowMulti_Callback(hObject, eventdata, handles)
                 maxsniffs = handles.maxsniffs;
             else
                 [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes, ((n-1)*(maxsniffs + ygap)));
-                for snifftype = 1:5
+                for snifftype = 1:handles.snifftypes
                     PooledRaster{snifftype} = vertcat(SpikeRaster{snifftype},PooledRaster{snifftype});
                 end
             end
         end
 
-        for snifftype = 1:5
+        for snifftype = 1:handles.snifftypes
             myspikeplot = ['spikesplot',num2str(snifftype)];
             SpikesPlot = PooledRaster{snifftype};
             if ~isempty(SpikesPlot)
@@ -456,7 +460,7 @@ function RescaleYLim_Callback(hObject, eventdata, handles)
 % hObject    handle to RescaleYLim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-    for snifftype = 1:5
+    for snifftype = 1:handles.snifftypes
         set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 handles.maxsniffs+1]);
     end
 
