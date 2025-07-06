@@ -1,7 +1,7 @@
 function [] = mCIDResponseExaminer() %(myDir,myStimFile)
 
 myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
-myStimFile = '/mnt/albeanu_lab/priyanka/EphysData/T3/250516/250516_13_55.txt';
+myStimFile = '/mnt/data/Sorted/T3/250516/250516_13_55.txt';
 
 % get trial and odor valve transitions
 temp = load(fullfile(myKsDir,'myTTLfile_1.mat'));
