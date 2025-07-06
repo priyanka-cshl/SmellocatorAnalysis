@@ -1,4 +1,4 @@
-function [SniffTS,SniffExtra] = ProcessThermistorData(RespirationData,varargin)
+function [SniffTS,SniffExtra,RespirationData] = ProcessThermistorData(RespirationData,varargin)
 
 %% parse input arguments
 narginchk(1,inf)
