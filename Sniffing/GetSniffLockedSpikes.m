@@ -16,11 +16,11 @@ for snifftype = 1:size(GroupedSniffs,2)
         whichSpikes = intersect(find(thisUnitSpikes>=ts(1)), find(thisUnitSpikes<=ts(2)));
         thisSniffSpikes = thisUnitSpikes(whichSpikes) - SniffTS(x,1);
         y = x + yoffset;
-        if SniffTS(x,8) == 1
+%         if SniffTS(x,8) == 1
             SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes y*ones(numel(thisSniffSpikes),1)]);
-        else
-            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes -(y+100*(SniffTS(x,8)-1))*ones(numel(thisSniffSpikes),1)]);
-        end
+%         else
+%             SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes -(y+100*(SniffTS(x,8)-1))*ones(numel(thisSniffSpikes),1)]);
+%         end
     end
 
     %plot(SpikesPlot(:,1), SpikesPlot(:,2), '.k','Markersize', 0.5);

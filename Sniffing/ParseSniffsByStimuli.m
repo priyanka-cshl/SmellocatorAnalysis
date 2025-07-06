@@ -35,6 +35,8 @@ for snifftype = 1:(numel(odors)+1)
         case 3
             % by sessionphase and then location, then duration
             SniffTS = sortrows(SniffTS,[8 6 3],'ascend');
+        case 4 % by duration
+            SniffTS = sortrows(SniffTS,[3],'ascend');
     end
     
     SniffsOut{snifftype} = SniffTS;
