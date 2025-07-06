@@ -35,30 +35,22 @@ plot(TS,-1.5+THfilt*10,'b'); % thermistor: offset and scaled
 set(gca, 'XLim', [500 520]);
 
 % peaks-valleys as detected from pressure sensor - plotted on PS trace
-inflexion_points = inflexion_points_PS;
-plot(TS(inflexion_points(find(~inflexion_points(:,3)),1)),...
-    PSfilt(inflexion_points(find(~inflexion_points(:,3)),1)),'or');
-plot(TS(inflexion_points(find(inflexion_points(:,3)),1)),...
-    PSfilt(inflexion_points(find(inflexion_points(:,3)),1)),'ok');
+inflexion_points = inflexion_points_PS(2:end-1,:);
+plot(TS(inflexion_points(:,1)),PSfilt(inflexion_points(:,1)),'or'); % peak
+plot(TS(inflexion_points(:,2)),PSfilt(inflexion_points(:,2)),'ok'); % valley
 
 % peaks-valleys as detected from pressure sensor - plotted on TH trace
-plot(TS(inflexion_points(find(~inflexion_points(:,3)),1)),...
-    -1.5 + 10*THfilt(inflexion_points(find(~inflexion_points(:,3)),1)),'.r');
-plot(TS(inflexion_points(find(inflexion_points(:,3)),1)),...
-    -1.5 + 10*THfilt(inflexion_points(find(inflexion_points(:,3)),1)),'.k');
+plot(TS(inflexion_points(:,1)),-1.5 + 10*THfilt(inflexion_points(:,1)),'.r');
+plot(TS(inflexion_points(:,2)),-1.5 + 10*THfilt(inflexion_points(:,2)),'.k');
 
 % peaks-valleys as detected from thermistor - plotted on TH trace
-inflexion_points = inflexion_points_TH;
-plot(TS(inflexion_points(find(~inflexion_points(:,3)),1)),...
-    -1.5 + 10*THfilt(inflexion_points(find(~inflexion_points(:,3)),1)),'or');
-plot(TS(inflexion_points(find(inflexion_points(:,3)),1)),...
-    -1.5 + 10*THfilt(inflexion_points(find(inflexion_points(:,3)),1)),'ok');
+inflexion_points = inflexion_points_TH(2:end-1,:);
+plot(TS(inflexion_points(:,1)),-1.5 + 10*THfilt(inflexion_points(:,1)),'or');
+plot(TS(inflexion_points(:,2)),-1.5 + 10*THfilt(inflexion_points(:,2)),'ok');
 
 % peaks-valleys as detected from thermistor - plotted on PS trace
-plot(TS(inflexion_points(find(~inflexion_points(:,3)),1)),...
-    PSfilt(inflexion_points(find(~inflexion_points(:,3)),1)),'.r');
-plot(TS(inflexion_points(find(inflexion_points(:,3)),1)),...
-    PSfilt(inflexion_points(find(inflexion_points(:,3)),1)),'.k');
+plot(TS(inflexion_points(:,1)),PSfilt(inflexion_points(:,1)),'.r');
+plot(TS(inflexion_points(:,2)),PSfilt(inflexion_points(:,2)),'.k');
 
 %% overlay pressure sensor from thermistor diff
 figure;
@@ -68,11 +60,69 @@ plot(TS,PSfilt,'k'); % pressure sensor
 plot(TS,-1.5+THfilt*10,'b'); % thermistor: offset and scaled
 set(gca, 'XLim', [500 520],'YLim',[-3 1.5]);
 
+
+%% overlay pressure sensor from thermistor diff
+figure;
+plot(TS,cumsum(PSfilt))
+
+plot(TS,-PSfilt2*150,'color',Plot_Colors('t'),'Linewidth',1);
+hold on;
+plot(TS,PSfilt,'k'); % pressure sensor
+plot(TS,-1.5+THfilt*10,'b'); % thermistor: offset and scaled
+set(gca, 'XLim', [500 520],'YLim',[-3 1.5]);
+
+
 %% predicting PS from TH
 figure;
 scatter(PSfilt,-PSfilt2*150,'.k');
 set(gca,'XLim',[-1.5 3.5],'YLim',[-1.5 3.5]);
 axis square;
+
+
+%% compare inhalation onset
+Inh_TH = inflexion_points_TH(3:end-2,1); % indices of peaks in the thermistor trace
+window = [-40 40]/2; % in bins
+for i = 1:size(Inh_TH,1)
+    t = Inh_TH(i) + window;
+    PS_stretch = PSfilt(t(1):1:t(2));
+    PS_stretch(PS_stretch<0) = 0;
+    PS_stretch(PS_stretch>0) = 1;
+    temp = find(diff(PS_stretch));
+    if isempty(temp)
+        deltaStart(i,1) = nan;
+        deltaStart(i,3) = nan;
+    else
+        PS_delta = (t(1):1:t(2)) - Inh_TH(i);
+        [~,Zero_PS] = min(abs(PS_delta(temp)));
+        deltaStart(i,1) = PS_delta(temp(Zero_PS));
+        deltaStart(i,3) = temp(Zero_PS) + t(1) - 1;
+    end
+end
+deltaStart(:,2) = inflexion_points_TH(3:end-2,3) - inflexion_points_TH(3:end-2,1);
+
+%% compare inhalation onset
+Inh_TH = inflexion_points_TH(3:end-2,1); % indices of peaks in the thermistor trace
+PS_valleys = inflexion_points_PS(2:end-1,2);
+PS_peaks = inflexion_points_PS(2:end-1,1);
+window = [-40 40]/2; % in bins
+for i = 1:size(Inh_TH,1)
+    
+    % find the most recent valley in the pressure sensor
+    lastvalley = find(inflexion_points_PS(:,2)<=Inh_TH(i),1,'last');
+    t = inflexion_points_PS(lastvalley,2:3);
+    PS_stretch = PSfilt(t(1):1:t(2));
+    % take the derivative
+    PSdiff = diff(PS_stretch);
+    [~,idx] = max(PSdiff);
+    if ~isempty(idx)
+        deltaStart2(i,1) = (idx + t(1) - 1) - Inh_TH(i);
+        deltaStart2(i,3) = (idx + t(1) - 1);
+    else
+        deltaStart2(i,1) = nan;
+        deltaStart2(i,3) = nan;
+    end
+end
+deltaStart2(:,2) = inflexion_points_TH(3:end-2,3) - inflexion_points_TH(3:end-2,1);
 
 %% comparing the two sensors
 Delta_starts = [];
