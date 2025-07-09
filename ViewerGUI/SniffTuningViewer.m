@@ -22,7 +22,7 @@ function varargout = SniffTuningViewer(varargin)
 
 % Edit the above text to modify the response to help SniffTuningViewer
 
-% Last Modified by GUIDE v2.5 28-Mar-2025 14:21:16
+% Last Modified by GUIDE v2.5 09-Jul-2025 11:18:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -71,7 +71,7 @@ set(handles.A2,'Parent',handles.tabA2)
 handles.A1.Position = [0.01    0.01   0.98   0.97];
 set(handles.A2,'position',get(handles.A1,'position'));
 
-%Create tab groupB - single unit of multi unit
+%Create tab groupB - single unit or multi unit
 handles.tgroupB = uitabgroup('Parent', handles.figure1,'TabLocation', 'top',...
     'Position', [0.005 0.38 0.135 0.560] );
 handles.tabB1 = uitab('Parent', handles.tgroupB, 'Title', 'Basic');
@@ -82,7 +82,6 @@ set(handles.View2,'Parent',handles.tabB2)
 %Reposition each panel to same location as panel 1
 handles.View1.Position = [0.05    0.1   27.000   17.0000];
 set(handles.View2,'position',get(handles.View1,'position'));
-
 
 %% session path
 [Paths] = WhichComputer();
@@ -173,6 +172,7 @@ function [handles] = LoadSession_Callback(hObject, eventdata, handles)
         [handles.AllSniffs] = QuickSniffTTLMapper_v2(handles.WhereSession.String);
         if numel(unique(handles.AllSniffs(:,4))) == 1
             handles.snifftypes = 1;
+            handles.stack_many_units.Value = 0;
         end
 
         % loading units
@@ -418,27 +418,57 @@ function ShowMulti_Callback(hObject, eventdata, handles)
     ygap = 500;
     if handles.selectCount.Data(1)
         for n = 1:handles.selectCount.Data(1)
-            whichUnit = handles.MultiSelectUnits(handles.selectCount.Data(1) + 1 - n);
+            if handles.snifftypes == 1 && ~handles.stack_many_units.Value
+                whichUnit = handles.MultiSelectUnits(n);
+            else
+                whichUnit = handles.MultiSelectUnits(handles.selectCount.Data(1) + 1 - n);
+            end
             thisUnitSpikes = handles.AllUnits.Spikes{whichUnit};
             if n == 1
                 [PooledRaster, maxsniffs] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes);
                 % maxsniffs = maxsniffs + 100;
                 maxsniffs = handles.maxsniffs;
             else
-                [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes, ((n-1)*(maxsniffs + ygap)));
-                for snifftype = 1:handles.snifftypes
-                    PooledRaster{snifftype} = vertcat(SpikeRaster{snifftype},PooledRaster{snifftype});
+                if handles.snifftypes == 1 && ~handles.stack_many_units.Value
+                    if n <= 5
+                        [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes);
+                        PooledRaster{n} = SpikeRaster{1};
+                        stackjump = 1;
+                    else
+                        whichplot = rem(n-1,5)+1;
+                        stackjump = floor((n-1)/5) + 1;
+                        [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes, ((stackjump-1)*(maxsniffs + ygap)));
+                        PooledRaster{whichplot} = vertcat(SpikeRaster{1},PooledRaster{whichplot});
+                    end
+                else
+                    [SpikeRaster, ~] = GetSniffLockedSpikes(handles.SelectedSniffs, thisUnitSpikes, ((n-1)*(maxsniffs + ygap)));
+                    for snifftype = 1:handles.snifftypes
+                        PooledRaster{snifftype} = vertcat(SpikeRaster{snifftype},PooledRaster{snifftype});
+                    end
                 end
             end
         end
+        
+        if handles.snifftypes == 1 && ~handles.stack_many_units.Value
+            for snifftype = 1:max(5,(rem(n-1,5)+1))
+                myspikeplot = ['spikesplot',num2str(snifftype)];
+                SpikesPlot = PooledRaster{snifftype};
+                if ~isempty(SpikesPlot)
+                    SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+                    set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+                    set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 stackjump*(handles.maxsniffs+ygap)]);
+                end
+            end
 
-        for snifftype = 1:handles.snifftypes
-            myspikeplot = ['spikesplot',num2str(snifftype)];
-            SpikesPlot = PooledRaster{snifftype};
-            if ~isempty(SpikesPlot)
-                SpikesPlot(:,2) = abs(SpikesPlot(:,2));
-                set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
-                set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 n*(handles.maxsniffs+ygap)]);
+        else
+            for snifftype = 1:handles.snifftypes
+                myspikeplot = ['spikesplot',num2str(snifftype)];
+                SpikesPlot = PooledRaster{snifftype};
+                if ~isempty(SpikesPlot)
+                    SpikesPlot(:,2) = abs(SpikesPlot(:,2));
+                    set(handles.(myspikeplot),'XData',SpikesPlot(:,1),'YData',SpikesPlot(:,2));
+                    set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 n*(handles.maxsniffs+ygap)]);
+                end
             end
         end
     end
@@ -463,4 +493,3 @@ function RescaleYLim_Callback(hObject, eventdata, handles)
     for snifftype = 1:handles.snifftypes
         set(handles.(['axes',num2str(snifftype)]), 'YLim',[0 handles.maxsniffs+1]);
     end
-
