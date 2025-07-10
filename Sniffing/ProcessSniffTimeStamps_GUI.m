@@ -147,6 +147,8 @@ if exist(handles.WhereSession.String)==2
         handles.datamode = 'smellocator';
     elseif ~isempty(strfind(handles.WhereSession.String,'_cid-processed'))
         handles.datamode = 'cid';
+    elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
+        handles.datamode = 'onlyEphys';
     else
         disp('unknown data format');
         return;
@@ -178,6 +180,28 @@ switch handles.datamode
         handles.SniffsTS(:,8:9) = SniffIndices(:,1:2);
         handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
         handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+
+    case 'onlyEphys'
+        load(handles.WhereSession.String, 'AllSniffs', 'RespirationData'); % AllSniffs: nx13, RespirationData: t x 3(ts, raw, filt)
+        handles.SessionLength = RespirationData(end,1);
+
+        try
+            load(fullfile(fileparts(handles.WhereSession.String), 'quickprocessOdorTTLs.mat'));
+        catch
+            warning('no TTLs found');
+        end
+
+        % make equivalent long traces for plotting
+        handles.SniffTrace.Timestamps   = RespirationData(:,1);
+        handles.OdorLocationTrace       = [];
+        handles.SniffTrace.Raw          = RespirationData(:,2); % unfiltered thermistor trace
+        handles.SniffTrace.Filtered     = RespirationData(:,2); % filtered thermistor trace
+        
+        handles.SniffsTS(:,1:2) = AllSniffs(:,1:2);
+        handles.SniffsTS(:,8:9) = AllSniffs(:,11:12);
+        handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
+        handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+
 
     case 'smellocator'
         % data from the lever task - reprocessing and curating sniffs
@@ -308,7 +332,7 @@ function RefindPeaks_Callback(hObject, eventdata, handles)
 sdnew = 2*str2double(handles.SDfactor.String);
 
 switch handles.datamode
-    case 'cid'
+    case {'cid', 'onlyEphys'}
         % re-detect peaks and valleys with lower peak prominence
         [handles.SniffsTSnew, sniffindices] = ProcessThermistorData([handles.SniffTrace.Timestamps handles.SniffTrace.Filtered],'SDfactor',sdnew);
         handles.SniffsTSnew(:,8:9) = sniffindices(:,1:2);
