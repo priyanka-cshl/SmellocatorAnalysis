@@ -771,8 +771,15 @@ set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(old
     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,8)));
 set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,9)));
+if isfield(handles.SniffTrace,'MFS')
+    set(handles.peaksmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+        'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,8)));
+    set(handles.valleysmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+        'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,9)));
+end
+
 % new detections
-if ~isempty(handles.SniffsTSnew)
+if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
     newdetections = find(handles.SniffsTSnew(:,9)>0);
     handles.new_detections.Data = round(handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),3,'decimals');
     set(handles.peaksNew, ...
@@ -799,25 +806,49 @@ function RemovePoints_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 roi = drawrectangle;
+SniffTag = 'SniffsTSnew';
+if ~isfield(handles,SniffTag)
+    SniffTag = 'SniffsTS';
+end
+
 peaks_to_delete = intersect(...
-                    find(handles.SniffsTSnew(:,1) >= roi.Position(1)), ...
-                        find(handles.SniffsTSnew(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+                    find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
 
 valleys_to_delete = intersect(...
-                    find(handles.SniffsTSnew(:,2) >= roi.Position(1)), ...
-                        find(handles.SniffsTSnew(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+                    find(handles.(SniffTag)(:,2) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
 
-if peaks_to_delete == valleys_to_delete
-    handles.lastdeleted.String = mat2str(peaks_to_delete);
-    handles.SniffsTSnew(peaks_to_delete,9) = -abs(handles.SniffsTSnew(peaks_to_delete,9));
-elseif peaks_to_delete == valleys_to_delete + 1
-    handles.SniffsTSnew(peaks_to_delete,9) = -abs(handles.SniffsTSnew(peaks_to_delete,9));
-    handles.SniffsTSnew(valleys_to_delete,9) = -abs(handles.SniffsTSnew(valleys_to_delete,9));
-    % unflag the original sniff in the old detections
-    [~,m] = min(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(valleys_to_delete,1)));
-    handles.SniffsTS(m,8) = abs(handles.SniffsTS(m,8));
+if isempty(peaks_to_delete) & isempty(valleys_to_delete) & strcmp(SniffTag,'SniffsTSnew')
+    SniffTag = 'SniffsTS';
+    peaks_to_delete = intersect(...
+        find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+        find(handles.(SniffTag)(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
 
-    handles.lastdeleted.String = mat2str(vertcat(valleys_to_delete,peaks_to_delete,-m));
+    valleys_to_delete = intersect(...
+        find(handles.(SniffTag)(:,2) >= roi.Position(1)), ...
+        find(handles.(SniffTag)(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+end
+
+
+if strcmp(SniffTag,'SniffsTS')
+    for i = 1:numel(peaks_to_delete)
+        handles.SniffsTS(peaks_to_delete-1,3) = handles.SniffsTS(peaks_to_delete+1,1);
+        handles.SniffsTS(peaks_to_delete,:) = [];
+    end
+else
+    if peaks_to_delete == valleys_to_delete
+        handles.lastdeleted.String = mat2str(peaks_to_delete);
+        handles.SniffsTSnew(peaks_to_delete,9) = -abs(handles.SniffsTSnew(peaks_to_delete,9));
+    elseif peaks_to_delete == valleys_to_delete + 1
+        handles.SniffsTSnew(peaks_to_delete,9) = -abs(handles.SniffsTSnew(peaks_to_delete,9));
+        handles.SniffsTSnew(valleys_to_delete,9) = -abs(handles.SniffsTSnew(valleys_to_delete,9));
+        % unflag the original sniff in the old detections
+        [~,m] = min(abs(handles.SniffsTS(:,1)-handles.SniffsTSnew(valleys_to_delete,1)));
+        handles.SniffsTS(m,8) = abs(handles.SniffsTS(m,8));
+
+        handles.lastdeleted.String = mat2str(vertcat(valleys_to_delete,peaks_to_delete,-m));
+    end
 end
 guidata(hObject, handles);
 UpdatePeakValleyPlots(hObject, eventdata, handles);    
@@ -848,6 +879,9 @@ function ModifyPoint_Callback(hObject, eventdata, handles)
 % user selects which point to edit
 roi = drawrectangle;
 SniffTag = 'SniffsTSnew';
+if ~isfield(handles,SniffTag)
+    SniffTag = 'SniffsTS';
+end
 
 peaks_to_delete = intersect(...
                     find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
@@ -1105,6 +1139,21 @@ indices_of_interest = intersect(...
 sdnew = 2*str2double(handles.SDfactor.String);
 
 switch handles.datamode
+
+    case {'onlyEphys'}
+        stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
+        stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
+        [thisStretchSniffs, thisStretchIndices] = ProcessThermistorData([stretchTimeStamps stretchThermistor],'SDfactor',sdnew);
+        thisStretchSniffs(:,8:9) = indices_of_interest(thisStretchIndices(:,1:2));
+        thisStretchSniffs = thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:);
+
+        if isfield(handles,'SniffsTSnew')
+            handles.SniffsTSnew = vertcat(handles.SniffsTSnew, thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:));
+            handles.SniffsTSnew = sortrows(handles.SniffsTSnew,1);
+        else
+            handles.SniffsTSnew = thisStretchSniffs;
+        end
+
     case {'smellocator', 'smellocator_raw'}
         stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
         stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
