@@ -1,7 +1,12 @@
 function [] = mCIDResponseExaminer() %(myDir,myStimFile)
 
-myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
-myStimFile = '/mnt/data/Sorted/T3/250516/250516_13_55.txt';
+% myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
+% myStimFile = '/mnt/data/Sorted/T3/250516/250516_13_55.txt';
+% myStimFile = fullfile(myKsDir,'250516_13_55.txt');
+
+myKsDir = '/mnt/data/Sorted/T2/_2025-05-21_09-18-56_2025-05-21_11-11-12_2025-05-21_11-23-51/';
+myStimFile = fullfile(myKsDir,'250521_9_24.txt');
+
 
 % get trial and odor valve transitions
 temp = load(fullfile(myKsDir,'myTTLfile_1.mat'));
@@ -67,7 +72,7 @@ SingleUnits = GetSingleUnits(myKsDir, 3);
 nUnits = size(SingleUnits,2);
 
 %% figures related
-savefigs = 1;
+savefigs = 0;
 mycolors = brewermap(10,'YlOrRd');
 mycolors(1:2,:) = [];
 nRows = 4; nCols = 6;
