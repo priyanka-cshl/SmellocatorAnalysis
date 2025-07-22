@@ -405,16 +405,8 @@ switch handles.datamode
                 end
             end
         end
-    case {'RunningProject'}
-        % if respiration traces have already been filtered and saved at low
-        % sampling rate - use those
-
-
-
 
 end
-
-
 
 % collate the list and make sure peaks fall in order
 [handles] = collatesniffs(handles,0);
@@ -614,7 +606,6 @@ if whichmode
     disp('saved sniffs!')
 end
 
-function [handles] = collatesniffs_old(handles,whichmode)
 
 % SniffTSnew has new peaks/valleys detected with the new lower user
 % selected threshold
@@ -937,31 +928,21 @@ end
 UpdatePeakValleyPlots(hObject, eventdata, handles);
 guidata(hObject, handles);
 
+% -----------------------------------------------------------------------
+
 % --- Executes on button press in ZoomON.
 function ZoomON_Callback(hObject, eventdata, handles)
-% hObject    handle to ZoomON (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 axes(handles.SniffingFiltered);
 zoom yon
 guidata(hObject, handles);
 
 % --- Executes on button press in ZoomOFF.
 function ZoomOFF_Callback(hObject, eventdata, handles)
-% hObject    handle to ZoomOFF (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 axes(handles.SniffingFiltered);
 zoom off
 guidata(hObject, handles);
 
 function WindowSize_Callback(hObject, eventdata, handles)
-% hObject    handle to WindowSize (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of WindowSize as text
-%        str2double(get(hObject,'String')) returns contents of WindowSize as a double
 currlims = get(handles.SniffingFiltered,'XLim');
 newLims = currlims(1) + [0 str2double(handles.WindowSize.String)];
 set(handles.SniffingRaw,'XLim',newLims);
@@ -978,36 +959,8 @@ function ClearSession_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-% --- Executes on button press in AddSniff.
-function AddSniff_Callback(hObject, eventdata, handles)
-% hObject    handle to AddSniff (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-axes(handles.SniffingFiltered);
-zoom off
-[x,y] = ginput(2); % select a pair of peak and valley
-
-[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
-% take a window 30 ms on either side
-[peakval,peakidx] = max(handles.SniffTrace.Filtered(idx+[-15:1:15]));
-handles.newSniff(n,1) = handles.SniffTrace.Timestamps(idx+peakidx-15);
-
-[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(2)));
-% take a window 30 ms on either side
-[valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
-handles.newSniff(n,2) = handles.SniffTrace.Timestamps(idx+valleyidx-15);
-guidata(hObject, handles);
-
-
 % --- Executes on slider movement.
 function Scroller_Callback(hObject, eventdata, handles)
-% hObject    handle to Scroller (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 newLims = handles.Scroller.Value * handles.SessionLength + ...
     [0 str2double(handles.WindowSize.String)];
 set(handles.SniffingRaw,'XLim',newLims);
@@ -1021,9 +974,6 @@ guidata(hObject, handles);
 
 % --- Executes on button press in NextStretch.
 function NextStretch_Callback(hObject, eventdata, handles)
-% hObject    handle to NextStretch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 newLims = get(handles.SniffingFiltered,'XLim') + 0.9*str2double(handles.WindowSize.String);
 set(handles.SniffingRaw,'XLim',newLims);
 set(handles.SniffingFiltered,'XLim',newLims);
@@ -1034,12 +984,8 @@ handles.Scroller.Value = newLims(1)/(handles.SessionLength - str2double(handles.
 % Update handles structure
 guidata(hObject, handles);
 
-
 % --- Executes on button press in PreviousStretch.
 function PreviousStretch_Callback(hObject, eventdata, handles)
-% hObject    handle to PreviousStretch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 newLims = get(handles.SniffingFiltered,'XLim') - 0.9*str2double(handles.WindowSize.String);
 set(handles.SniffingRaw,'XLim',newLims);
 set(handles.SniffingFiltered,'XLim',newLims);
@@ -1050,6 +996,78 @@ handles.Scroller.Value = newLims(1)/(handles.SessionLength - str2double(handles.
 % Update handles structure
 guidata(hObject, handles);
 
+
+% --- Executes on button press in RedoStretch.
+function RedoStretch_Callback(hObject, eventdata, handles)
+roi = drawrectangle;
+indices_of_interest = intersect(...
+                    find(handles.SniffTrace.Timestamps >= roi.Position(1)), ...
+                        find(handles.SniffTrace.Timestamps <= (roi.Position(1) + roi.Position(3)) ) );
+
+redo = 1;
+while redo
+    redo = redo + 1;
+    sdnew = redo*str2double(handles.SDfactor.String);
+
+    stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
+    stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
+    if ~isempty(handles.OdorLocationTrace)
+        stretchOdorLocation = handles.OdorLocationTrace(indices_of_interest);
+        [thisStretchSniffs, thisStretchIndices] = ...
+            ProcessThermistorData([stretchTimeStamps stretchThermistor stretchOdorLocation],'SDfactor',sdnew);
+    else
+        [thisStretchSniffs, thisStretchIndices] = ...
+            ProcessThermistorData([stretchTimeStamps stretchThermistor],'SDfactor',sdnew);
+    end
+    thisStretchSniffs(:,8:9) = indices_of_interest(thisStretchIndices(:,1:2));
+    thisStretchSniffs = thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:);
+
+    % show points on the plot
+    set(handles.peaksNew, ...
+        'XData',handles.SniffTrace.Timestamps(thisStretchSniffs(:,8)),...
+        'YData',handles.SniffTrace.Filtered(thisStretchSniffs(:,8)) );
+    set(handles.valleysNew, ...
+        'XData',handles.SniffTrace.Timestamps(thisStretchSniffs(:,9)),...
+        'YData',handles.SniffTrace.Filtered(thisStretchSniffs(:,9)) );
+
+    % keep the new detections
+    answer = questdlg('Keep the new detections?', ...
+        'Redo stretch', ...
+        'Yes','Redo','Cancel','Yes');
+
+    % Handle response
+    switch answer
+        case 'Yes'
+            % integrate into the current set of sniffs
+            whichpeaks = find( (handles.SniffsTS(:,8)>=indices_of_interest(1)) & (handles.SniffsTS(:,8)<=indices_of_interest(end)) );
+            whichvalls = find( (handles.SniffsTS(:,9)>=indices_of_interest(1)) & (handles.SniffsTS(:,9)<=indices_of_interest(end)) );
+            rows2replace = unique(vertcat(whichpeaks,whichvalls));
+
+            chunkA = handles.SniffsTS(1:(rows2replace(1)-1),:);
+            chunkC = handles.SniffsTS((rows2replace(end)+1):end,:);
+            chunkB = thisStretchSniffs;
+            chunkB(:,4:7) = repmat(handles.SniffsTS(rows2replace(1),4:7),size(thisStretchSniffs,1),1);
+            chunkB(1,[1 8]) = handles.SniffsTS(rows2replace(1),[1 8]);
+            chunkB(end,3) = chunkC(1,1);
+            handles.SniffsTS = [chunkA; chunkB; chunkC];
+
+            redo = 0;
+
+        case 'Redo'
+
+        case 'Cancel'
+            redo = 0;
+
+    end
+    set(handles.peaksNew,'XData',[],'YData',[]);
+    set(handles.valleysNew,'XData',[],'YData',[]);
+end
+
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+delete(roi);
+guidata(hObject, handles);
+
+% -----------------------------------------------------------------------
 
 % --- Executes on button press in KeepNewSD.
 function KeepNewSD_Callback(hObject, eventdata, handles)
@@ -1062,7 +1080,6 @@ handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
 handles.SDfactor.String = num2str(2*str2double(handles.SDfactor.String));
 guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of KeepNewSD
-
 
 % --- Executes on button press in KeepOldSD.
 function KeepOldSD_Callback(hObject, eventdata, handles)
@@ -1125,95 +1142,24 @@ handles.rawTrace.YData(indices_to_delete) = nan;
 delete(roi);
 guidata(hObject, handles);
 
+% ===================================================================================
 
-% --- Executes on button press in RedoStretch.
-function RedoStretch_Callback(hObject, eventdata, handles)
-% hObject    handle to RedoStretch (see GCBO)
+% --- Executes on button press in AddSniff.
+function AddSniff_Callback(hObject, eventdata, handles)
+% hObject    handle to AddSniff (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-roi = drawrectangle;
-indices_of_interest = intersect(...
-                    find(handles.SniffTrace.Timestamps >= roi.Position(1)), ...
-                        find(handles.SniffTrace.Timestamps <= (roi.Position(1) + roi.Position(3)) ) );
+axes(handles.SniffingFiltered);
+zoom off
+[x,y] = ginput(2); % select a pair of peak and valley
 
-sdnew = 2*str2double(handles.SDfactor.String);
+[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+% take a window 30 ms on either side
+[peakval,peakidx] = max(handles.SniffTrace.Filtered(idx+[-15:1:15]));
+handles.newSniff(n,1) = handles.SniffTrace.Timestamps(idx+peakidx-15);
 
-switch handles.datamode
-
-    case {'onlyEphys'}
-        stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
-        stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
-        [thisStretchSniffs, thisStretchIndices] = ProcessThermistorData([stretchTimeStamps stretchThermistor],'SDfactor',sdnew);
-        thisStretchSniffs(:,8:9) = indices_of_interest(thisStretchIndices(:,1:2));
-        thisStretchSniffs = thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:);
-
-        if isfield(handles,'SniffsTSnew')
-            handles.SniffsTSnew = vertcat(handles.SniffsTSnew, thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:));
-            handles.SniffsTSnew = sortrows(handles.SniffsTSnew,1);
-        else
-            handles.SniffsTSnew = thisStretchSniffs;
-        end
-
-    case {'smellocator', 'smellocator_raw'}
-        stretchTimeStamps = handles.rawTrace.XData(indices_of_interest)';
-        stretchThermistor = handles.rawTrace.YData(indices_of_interest)';
-        stretchOdorLocation = handles.OdorLocationTrace(indices_of_interest);
-
-        thisStretchSniffs = ProcessThermistorData([stretchTimeStamps stretchThermistor stretchOdorLocation],'SDfactor',sdnew,'dlgoverride',logical(1));
-        thisStretchSniffs = thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:);
-        % find trace indices that correspond to detected sniff timestamps
-        for n = 1:size(thisStretchSniffs,1)
-
-            % was this already detected
-            f = find(abs(handles.SniffsTS(:,1)-thisStretchSniffs(n,1))<0.004,1,'first');
-            if ~isempty(f) & abs(handles.SniffsTS(f,2)-thisStretchSniffs(n,2))<0.004
-                thisStretchSniffs(n,8:9) = NaN;
-            else
-                % inhalation start
-                [~,idx] = min(abs(handles.SniffTrace.Timestamps - thisStretchSniffs(n,1)));
-                if abs(handles.SniffTrace.Timestamps(idx) - thisStretchSniffs(n,1)) < 0.004
-                    thisStretchSniffs(n,8) = idx;
-                end
-                % inhalation end
-                [~,idx] = min(abs(handles.SniffTrace.Timestamps - thisStretchSniffs(n,2)));
-                if abs(handles.SniffTrace.Timestamps(idx) - thisStretchSniffs(n,2)) < 0.004
-                    thisStretchSniffs(n,9) = idx;
-                end
-            end
-        end
-
-        if isfield(handles,'SniffsTSnew')
-            handles.SniffsTSnew = vertcat(handles.SniffsTSnew, thisStretchSniffs(find(thisStretchSniffs(:,end)>0),:));
-            handles.SniffsTSnew = sortrows(handles.SniffsTSnew,1);
-        else
-            handles.SniffsTSnew = thisStretchSniffs;
-        end
-
-end
-
-% collate the list and make sure peaks fall in order
-[handles] = collatesniffs(handles,0);
-% update plots
-UpdatePeakValleyPlots(hObject, eventdata, handles);
-
-% keep the new detections
-answer = questdlg('Keep the new detections?', ...
-    'Redo stretch', ...
-    'Yes','No','Yes');
-
-% Handle response
-switch answer
-    case 'Yes'
-        
-    case 'No'
-        for x = 1:size(thisStretchSniffs,1)
-            if ~isempty(find(ismember(thisStretchSniffs(x,1:3),handles.SniffsTSnew(:,1:3),'rows')))
-                y = find(ismember(thisStretchSniffs(x,1:3),handles.SniffsTSnew(:,1:3),'rows'));
-                handles.SniffsTSnew(y,:) = [];
-            end
-        end
-        handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8) = -handles.SniffsTS(find(handles.SniffsTS(:,8)<0),8);
-        UpdatePeakValleyPlots(hObject, eventdata, handles); 
-end
-delete(roi);
+[~,idx] = min(abs(handles.SniffTrace.Timestamps - x(2)));
+% take a window 30 ms on either side
+[valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
+handles.newSniff(n,2) = handles.SniffTrace.Timestamps(idx+valleyidx-15);
 guidata(hObject, handles);
