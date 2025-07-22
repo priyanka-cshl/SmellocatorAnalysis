@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI_v2(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI_v2
 
-% Last Modified by GUIDE v2.5 21-Jul-2025 15:10:04
+% Last Modified by GUIDE v2.5 22-Jul-2025 10:23:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -198,7 +198,7 @@ switch handles.datamode
             warning('no TTLs found');
         end
 
-        [SniffTimeStamps] = ChunkWiseSniffs(RespirationData(:,[1 3])); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
+        [SniffTimeStamps] = ChunkWiseSniffs(RespirationData(:,[1 3]), 'SDfactor', str2double(handles.SDfactor.String)); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
         % remove nans
         SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
 
@@ -756,18 +756,42 @@ if whichmode
 end
 
 function [] = UpdatePeakValleyPlots(hObject, eventdata, handles)
+
+% update all plots
+TraceTag = {'Filtered'; 'Raw'; 'MFS'};
+peaksTag = {'Filt'; 'Raw'; 'mfs'};
+
 % the original points
 olddetections = find(handles.SniffsTS(:,8)>=0);
-set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
-    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,8)));
-set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
-    'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,9)));
-if isfield(handles.SniffTrace,'MFS')
-    set(handles.peaksmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
-        'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,8)));
-    set(handles.valleysmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
-        'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,9)));
+
+for plotnum = 1:3
+    if isfield(handles.SniffTrace, TraceTag{plotnum})
+        set(handles.(['peaks',peaksTag{plotnum}]),...
+            'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+            'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.SniffsTS(olddetections,8)));
+        set(handles.(['valleys',peaksTag{plotnum}]),...
+            'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+            'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.SniffsTS(olddetections,9)));
+    end
 end
+
+% set(handles.peaksFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,8)));
+% set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,9)));
+% 
+% set(handles.peaksRaw,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,8)));
+% set(handles.valleysFilt,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+%     'YData',handles.SniffTrace.Filtered(handles.SniffsTS(olddetections,9)));
+% 
+% 
+% if isfield(handles.SniffTrace,'MFS')
+%     set(handles.peaksmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+%         'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,8)));
+%     set(handles.valleysmfs,'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+%         'YData',handles.SniffTrace.MFS(handles.SniffsTS(olddetections,9)));
+% end
 
 % new detections
 if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
@@ -824,8 +848,8 @@ end
 
 if strcmp(SniffTag,'SniffsTS')
     for i = 1:numel(peaks_to_delete)
-        handles.SniffsTS(peaks_to_delete-1,3) = handles.SniffsTS(peaks_to_delete+1,1);
-        handles.SniffsTS(peaks_to_delete,:) = [];
+        handles.SniffsTS(peaks_to_delete(i)-1,3) = handles.SniffsTS(peaks_to_delete(i)+1,1);
+        handles.SniffsTS(peaks_to_delete(i),:) = [];
     end
 else
     if peaks_to_delete == valleys_to_delete
@@ -1132,10 +1156,20 @@ function FlagStretch_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 roi = drawrectangle;
-indices_to_delete = intersect(...
-                    find(handles.SniffTrace.Timestamps >= roi.Position(1)), ...
-                        find(handles.SniffTrace.Timestamps <= (roi.Position(1) + roi.Position(3)) ) );
-handles.rawTrace.YData(indices_to_delete) = nan;
+
+SniffTag = 'SniffsTS';
+
+sniffs_to_flag = intersect(...
+                    find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,1) <= (roi.Position(1) + roi.Position(3)) ) );
+handles.(SniffTag)(sniffs_to_flag,8:9) = -abs(handles.(SniffTag)(sniffs_to_flag,8:9));
+
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+
+% indices_to_delete = intersect(...
+%                     find(handles.SniffTrace.Timestamps >= roi.Position(1)), ...
+%                         find(handles.SniffTrace.Timestamps <= (roi.Position(1) + roi.Position(3)) ) );
+% handles.rawTrace.YData(indices_to_delete) = nan;
                     
 % axes(handles.SniffingRaw);
 % set(handles.rawTrace,'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.Raw);
@@ -1163,3 +1197,11 @@ handles.newSniff(n,1) = handles.SniffTrace.Timestamps(idx+peakidx-15);
 [valleyval,valleyidx] = min(handles.SniffTrace.Filtered(idx+[-15:1:15]));
 handles.newSniff(n,2) = handles.SniffTrace.Timestamps(idx+valleyidx-15);
 guidata(hObject, handles);
+
+
+% --- Executes on button press in TempSave.
+function TempSave_Callback(hObject, eventdata, handles)
+SniffDetectionThreshold = str2double(handles.SDfactor.String);
+Curated_SniffTimestamps = handles.SniffsTS;
+save(handles.WhereSession.String,'SniffDetectionThreshold','Curated_SniffTimestamps','-append');
+disp('saved sniffs!')
