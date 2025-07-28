@@ -9,6 +9,13 @@ myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-
 load(fullfile(myKsDir,'quickprocesssniffs.mat'));
 load(fullfile(myKsDir,'SessionDetails.mat'));
 startTS = 0;
+
+if exist('CuratedSniffTimestamps','var')
+    AllSniffs = CuratedSniffTimestamps(find(CuratedSniffTimestamps(:,8)>0),:);
+    AllSniffs(:,4:7) = 0;
+    AllSniffs(:,3) = AllSniffs(:,3) - AllSniffs(:,1);
+end
+
 for i = 1:numel(Files.Samples)
     endTS = Files.Samples(i)/30000 + startTS; % in seconds
     whichsniffs = find( (AllSniffs(:,1)>=startTS) & (AllSniffs(:,1)<endTS) );

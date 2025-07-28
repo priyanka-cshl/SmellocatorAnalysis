@@ -156,6 +156,7 @@ if exist(handles.WhereSession.String)==2
         handles.datamode = 'cid';
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
+        handles.SDfactor.String = '10';
     else
         disp('unknown data format');
         return;
