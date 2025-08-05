@@ -888,6 +888,9 @@ Curated_SniffTimestamps = handles.SniffsTS;
 lastTimestamp = floor(handles.SniffingFiltered.XLim(2));
 save(handles.WhereSession.String,'SniffDetectionThreshold','Curated_SniffTimestamps','lastTimestamp','-append');
 disp(['saved sniffs! @ ',num2str(lastTimestamp), ' seconds']);
+% CuratedSniffTimestamps = handles.SniffsTS;
+% save(handles.WhereSession.String,'CuratedSniffTimestamps','-append');
+
 
 
 % --- Executes on button press in RecoverTemp.
