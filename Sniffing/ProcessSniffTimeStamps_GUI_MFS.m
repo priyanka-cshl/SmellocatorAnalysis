@@ -89,6 +89,7 @@ handles.zeromfs     = plot(nan,nan,'x','Color',Plot_Colors('p'),'MarkerSize',8,'
 handles.pairedTherm = plot(nan,nan,'x','Color',Plot_Colors('b'),'MarkerSize',8,'LineWidth',1); 
 handles.peaksBmfs   = plot(nan,nan,'ok','MarkerSize',4,'LineWidth',1.5); 
 handles.valleysBmfs = plot(nan,nan,'or','MarkerSize',4,'LineWidth',1.5);
+handles.pointercarat= plot(nan,nan,'vk'); 
 
 axes(handles.MFS2Therm);
 hold on;
@@ -108,6 +109,7 @@ set(gca,'XGrid', 'on');
 handles.filtTrace    = plot(nan,nan,'color',Plot_Colors('b'));
 handles.peaksFilt    = plot(nan,nan,'ok','MarkerSize',4); 
 handles.valleysFilt  = plot(nan,nan,'or','MarkerSize',4);
+handles.pointerline  = line([nan nan],[nan nan],'Color','k'); 
 
 % For loading the processed session
 [Paths] = WhichComputer();
@@ -160,7 +162,7 @@ if exist(handles.WhereSession.String)==2
         handles.datamode = 'cid';
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
-        %handles.SDfactor.String = '10';
+        handles.SDfactor.String = '10';
     else
         disp('unknown data format');
         return;
@@ -367,30 +369,6 @@ end
 delete(roi);
 %guidata(hObject, handles);
 
-% --- Executes on key press with focus on figure1 and none of its controls.
-function figure1_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to figure1 (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
-% handles    structure with handles and user data (see GUIDATA)
- % Get the key pressed
-    pressedKey = eventdata.Key;
-    
-    % Implement actions based on the key
-    switch pressedKey
-        case 'd'
-            handles.RemovePoints.BackgroundColor = [0.54 0.94 0.54];
-            RemovePoints_Callback(hObject, eventdata, handles);
-            handles.RemovePoints.BackgroundColor = [0.94 0.94 0.94];
-        case 'o'
-            % Call a function or perform an action for 'o' key
-            disp('Open action triggered!');
-            % call open_file_function(handles);
-        % Add more cases for other keys
-    end
-
 % --- Executes on button press in ModifyPoint.
 function ModifyPoint_Callback(hObject, eventdata, handles)
 % hObject    handle to ModifyPoint (see GCBO)
@@ -567,7 +545,7 @@ for n = 1:numel(sniffs_of_interest)
     whichsniff = sniffs_of_interest(n);
     if isnan(handles.SniffsMFS(whichsniff,4))
         traceidx = handles.SniffsMFS(whichsniff,8);
-        if timeTrace(traceidx) ~= handles.SniffsMFS(whichsniff,1)
+        if abs(timeTrace(traceidx) - handles.SniffsMFS(whichsniff,1)) > 0.0025
             keyboard;
         end
         if mfsTrace(traceidx) <= 0
@@ -576,37 +554,118 @@ for n = 1:numel(sniffs_of_interest)
             f = find(mfsTrace(traceidx:end)<0,1,'first') - 1 + traceidx;
         end
         if abs(traceidx - f) > 25
-            keyboard;
+            set(handles.pointercarat,'XData',timeTrace(traceidx),'YData',mfsTrace(traceidx)+0.025);
+            answer = questdlg('Keep the current detection?', ...
+                'Adjust inhalation onset', ...
+                'Yes','Pick','Delete','Yes');
+
+            % Handle response
+            switch answer
+                case 'Yes'
+                    handles.SniffsMFS(whichsniff,4) = timeTrace(traceidx);
+                case 'Pick'
+                    [x] = ginput(1); % select a pair of peak and valley
+                    [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+                    handles.SniffsMFS(whichsniff,4) = handles.SniffTrace.Timestamps(idx);
+                case 'Delete'
+                    handles.SniffsMFS(whichsniff-1,3) = handles.SniffsMFS(whichsniff+1,1);
+                    handles.SniffsMFS(whichsniff,[4 7]) = -1;
+%                 case 'Other'
+%                     keyboard;
+            end
+
         else
             idx = sort([f traceidx]);
+
+            x = mfsTrace(idx(1):idx(2));
+            y = timeTrace(idx(1):idx(2));
+            xq = 0;
+            % if there are any duplicates in x, interpolation will not work
+            if numel(unique(x)) < numel(x)
+                [~, tokeep] = unique(x,'stable');
+                x = x(tokeep);
+                y = y(tokeep);
+            end
+            handles.SniffsMFS(whichsniff,4) = interp1(x,y,xq);
         end
-        x = mfsTrace(idx(1):idx(2));
-        y = timeTrace(idx(1):idx(2));
-        xq = 0;
-        % if there are any duplicates in x, interpolation will not work
-        if numel(unique(x)) < numel(x)
-            [~, tokeep] = unique(x,'stable');
-            x = x(tokeep);
-            y = y(tokeep);
-        end
-        handles.SniffsMFS(whichsniff,4) = interp1(x,y,xq);
     end
     % keep track of the inhalation detected on the thermistor side as well
     if ~isnan(handles.SniffsMFS(whichsniff,4))
         thermInh = find( (handles.SniffsTS(:,1)>=handles.SniffsMFS(whichsniff,4)) & (handles.SniffsTS(:,1)<=handles.SniffsMFS(whichsniff,2)) );
         if isempty(thermInh)
-            keyboard;
-        else
+            % case 1 - thermistor inhalation was before the MFS inhalation
+            if ~isnan(handles.SniffsMFS(whichsniff-1,5))
+                tmax = max(handles.SniffsMFS(whichsniff,4),handles.SniffsMFS(whichsniff,1));
+                putative = find( (handles.SniffsTS(:,1)>handles.SniffsMFS(whichsniff-1,5)) & (handles.SniffsTS(:,1)<tmax) );
+                if ~isempty(putative)
+                    thermInh = putative;
+                else
+                    set(handles.pointercarat,'XData',handles.SniffsMFS(whichsniff,4),'YData',0.025);
+                    % draw a line on the thernmistor axes as well
+                    ylims = get(handles.SniffingFiltered,'YLim');
+                    %set(handles.pointerline,'XData',handles.SniffsMFS(whichsniff,4)*[1 1],'YData',ylims);
+
+                    answer = questdlg('Ignore thermistor inhalation detection?', ...
+                        'Corresponding Thermistor peak', ...
+                        'Yes','Pick','Delete','Yes');
+
+                    % Handle response
+                    switch answer
+                        case 'Yes'
+                            thermInh = nan;
+                        case 'Pick'
+                            [x] = ginput(1); % select a pair of peak and valley
+                            [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+                            handles.SniffsMFS(whichsniff,5) = handles.SniffTrace.Timestamps(idx);
+                            handles.SniffsMFS(whichsniff,6) = mfsTrace(idx);
+                            handles.SniffsMFS(whichsniff,7) = -1; % extra sniff detection that was missed in the thermistor
+                            thermInh = nan;
+                        case 'Delete'
+                            handles.SniffsMFS(whichsniff-1,3) = handles.SniffsMFS(whichsniff+1,1);
+                            handles.SniffsMFS(whichsniff,[4 7]) = -1;
+                        case 'Quit'
+                            keyboard;
+                    end
+                end
+            end
+        end
+        if ~isnan(thermInh(1))
             handles.SniffsMFS(whichsniff,5) = handles.SniffsTS(thermInh(1),1);
             handles.SniffsMFS(whichsniff,6) = mfsTrace(handles.SniffsTS(thermInh(1),8));
+        elseif handles.SniffsMFS(whichsniff,7) ~= -1
+            handles.SniffsMFS(whichsniff,5:6) = nan; 
         end
     end
 end
+% delete flagged sniffs
+handles.SniffsMFS(find(handles.SniffsMFS(:,4)==-1),:) = [];
+set(handles.pointercarat,'XData',[],'YData',[]);
 UpdatePeakValleyPlots(hObject, eventdata, handles);
 if ~isfield(handles,'roiPosition')
     delete(roi);
 end
 guidata(hObject, handles);
+
+function DeleteZeroCrossings_Callback(hObject, eventdata, handles)
+axes(handles.MFS);
+if ~isfield(handles,'roiPosition')
+    roi = drawrectangle;
+    sniffs_of_interest = intersect(...
+                        find(handles.SniffsMFS(:,1) >= roi.Position(1)), ...
+                            find(handles.SniffsMFS(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+else
+    sniffs_of_interest = intersect(...
+                        find(handles.SniffsMFS(:,1) >= handles.roiPosition(1)), ...
+                            find(handles.SniffsMFS(:,2) <= (handles.roiPosition(2)) ) );
+end
+
+handles.SniffsMFS(sniffs_of_interest,4:6) = nan;
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+if ~isfield(handles,'roiPosition')
+    delete(roi);
+end
+guidata(hObject, handles);
+
 
 % --- Executes on button press in RedoStretch.
 function RedoStretch_Callback(hObject, eventdata, handles)
@@ -764,14 +823,13 @@ handles.(SniffTag) = [handles.(SniffTag)(1:whichsniff,:); handles.newSniff; hand
 guidata(hObject, handles);
 UpdatePeakValleyPlots(hObject, eventdata, handles); 
 
-
 % --- Executes on button press in TempSave.
 function TempSave_Callback(hObject, eventdata, handles)
 MFSDetectionThreshold = str2double(handles.SDfactor.String);
 CuratedMFS_SniffTimestamps = handles.SniffsMFS;
 lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
 save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','lastMFSTimestamp','-append');
-disp(['saved sniffs! @ ',num2str(lastTimestamp), ' seconds']);
+disp(['saved MFS sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
 
 % --- Executes on button press in SaveSniffs.
 function SaveSniffs_Callback(hObject, eventdata, handles)
@@ -779,6 +837,7 @@ MFSDetectionThreshold = str2double(handles.SDfactor.String);
 CuratedMFS_SniffTimestamps = handles.SniffsMFS;
 CuratedMFSSniffTimestamps = handles.SniffsMFS;
 lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
+extraThermsniffs = handles.ExtraSniffsTS;
 save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','CuratedMFSSniffTimestamps','lastMFSTimestamp','-append');
 disp(['saved sniffs! @ ',num2str(lastTimestamp), ' seconds']);
 
@@ -802,3 +861,48 @@ else
 end
 guidata(hObject, handles); 
 UpdatePeakValleyPlots(hObject, eventdata, handles);
+
+
+%% keyboard shortcuts
+% --- Executes on key press with focus on figure1 and none of its controls.
+function figure1_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+% Get the key pressed
+pressedKey = eventdata.Key;
+
+% Implement actions based on the key
+switch pressedKey
+    case 'd'
+        handles.RemovePoints.BackgroundColor = [0.54 0.94 0.54];
+        RemovePoints_Callback(hObject, eventdata, handles);
+        handles.RemovePoints.BackgroundColor = [0.94 0.94 0.94];
+    case {'z', 'uparrow'}
+        handles.roiPosition = get(handles.SniffingFiltered,'XLim');
+        GetZeroCrossings_Callback(hObject, eventdata, handles);
+    case {'downarrow'}
+        handles.roiPosition = get(handles.SniffingFiltered,'XLim');
+        DeleteZeroCrossings_Callback(hObject, eventdata, handles);
+    case 'rightarrow'
+        NextStretch_Callback(hObject, eventdata, handles);
+    case 'leftarrow'
+        PreviousStretch_Callback(hObject, eventdata, handles);
+    case 'm'
+        axes(handles.MFS2Therm);
+        ModifyPoint_Callback(hObject, eventdata, handles);
+    case 'n'
+        axes(handles.MFS2Therm);
+        AddSniff_Callback(hObject, eventdata, handles);
+    case 'r'
+        axes(handles.MFS2Therm);
+        RedoStretch_Callback(hObject, eventdata, handles);
+    case 'o'
+        % Call a function or perform an action for 'o' key
+        disp('Open action triggered!');
+        % call open_file_function(handles);
+        % Add more cases for other keys
+end
