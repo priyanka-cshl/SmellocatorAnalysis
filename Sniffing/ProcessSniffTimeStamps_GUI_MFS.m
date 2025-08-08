@@ -623,6 +623,7 @@ for n = 1:numel(sniffs_of_interest)
                         case 'Delete'
                             handles.SniffsMFS(whichsniff-1,3) = handles.SniffsMFS(whichsniff+1,1);
                             handles.SniffsMFS(whichsniff,[4 7]) = -1;
+                            thermInh = nan;
                         case 'Quit'
                             keyboard;
                     end
