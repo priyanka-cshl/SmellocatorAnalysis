@@ -594,9 +594,10 @@ for n = 1:numel(sniffs_of_interest)
         thermInh = find( (handles.SniffsTS(:,1)>=handles.SniffsMFS(whichsniff,4)) & (handles.SniffsTS(:,1)<=handles.SniffsMFS(whichsniff,2)) );
         if isempty(thermInh)
             % case 1 - thermistor inhalation was before the MFS inhalation
-            if ~isnan(handles.SniffsMFS(whichsniff-1,5))
+            prevsniff = find(handles.SniffsMFS(1:whichsniff-1,4)>=0,1,'last');
+            if ~isnan(handles.SniffsMFS(prevsniff,5))
                 tmax = max(handles.SniffsMFS(whichsniff,4),handles.SniffsMFS(whichsniff,1));
-                putative = find( (handles.SniffsTS(:,1)>handles.SniffsMFS(whichsniff-1,5)) & (handles.SniffsTS(:,1)<tmax) );
+                putative = find( (handles.SniffsTS(:,1)>handles.SniffsMFS(prevsniff,5)) & (handles.SniffsTS(:,1)<tmax) );
                 if ~isempty(putative)
                     thermInh = putative;
                 else
@@ -621,7 +622,7 @@ for n = 1:numel(sniffs_of_interest)
                             handles.SniffsMFS(whichsniff,7) = -1; % extra sniff detection that was missed in the thermistor
                             thermInh = nan;
                         case 'Delete'
-                            handles.SniffsMFS(whichsniff-1,3) = handles.SniffsMFS(whichsniff+1,1);
+                            handles.SniffsMFS(prevsniff,3) = handles.SniffsMFS(whichsniff+1,1);
                             handles.SniffsMFS(whichsniff,[4 7]) = -1;
                             thermInh = nan;
                         case 'Quit'
@@ -800,6 +801,31 @@ delete(roi);
 guidata(hObject, handles);
 
 % ===================================================================================
+% --- Executes on button press in AddSniff.
+function SplitSniff_Callback(hObject, eventdata, handles)
+% hObject    handle to AddSniff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+axes(handles.MFS2Therm);
+SniffTag = handles.primarySniffTS;
+zoom off
+[x,y] = ginput(2); % select a pair of peak and valley
+
+[~,idx1] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+[~,idx2] = min(abs(handles.SniffTrace.Timestamps - x(2)));
+handles.newSniff = [];
+handles.newSniff(1,[2 9]) = [handles.SniffTrace.Timestamps(idx1) idx1];
+handles.newSniff(2,[1 8]) = [handles.SniffTrace.Timestamps(idx2) idx2];
+
+% integrate into the current set of sniffs
+whichsniff = find(handles.(SniffTag)(:,1)<=handles.newSniff(1,2),1,'last');
+handles.newSniff(2,[2 3:7 9]) = handles.(SniffTag)(whichsniff,[2 3:7 9]);
+handles.(SniffTag)(whichsniff,[2 9]) = handles.newSniff(1,[2 9]);
+handles.(SniffTag)(whichsniff,3) = handles.newSniff(2,1);
+handles.newSniff(1,:) = [];
+handles.(SniffTag) = [handles.(SniffTag)(1:whichsniff,:); handles.newSniff; handles.(SniffTag)((whichsniff+1):end,:)];
+guidata(hObject, handles);
+UpdatePeakValleyPlots(hObject, eventdata, handles); 
 
 % --- Executes on button press in AddSniff.
 function AddSniff_Callback(hObject, eventdata, handles)
@@ -838,9 +864,8 @@ MFSDetectionThreshold = str2double(handles.SDfactor.String);
 CuratedMFS_SniffTimestamps = handles.SniffsMFS;
 CuratedMFSSniffTimestamps = handles.SniffsMFS;
 lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
-extraThermsniffs = handles.ExtraSniffsTS;
 save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','CuratedMFSSniffTimestamps','lastMFSTimestamp','-append');
-disp(['saved sniffs! @ ',num2str(lastTimestamp), ' seconds']);
+disp(['saved sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
 
 % --- Executes on button press in RecoverTemp.
 function RecoverTemp_Callback(hObject, eventdata, handles)
@@ -898,6 +923,9 @@ switch pressedKey
     case 'n'
         axes(handles.MFS2Therm);
         AddSniff_Callback(hObject, eventdata, handles);
+    case 'b'
+        axes(handles.MFS2Therm);
+        SplitSniff_Callback(hObject, eventdata, handles);
     case 'r'
         axes(handles.MFS2Therm);
         RedoStretch_Callback(hObject, eventdata, handles);
