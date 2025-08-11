@@ -56,7 +56,26 @@ function ProcessSniffTimeStamps_GUI_MFS_OpeningFcn(hObject, eventdata, handles, 
 handles.output = hObject;
 
 % some initializations
-handles.primarySniffTS          = 'SniffsMFS'; % 'SniffsTS'
+if size(varargin,2) == 2
+    switch varargin{2}
+        case 1
+            handles.primarySniffTS          = 'SniffsMFS'; % 'SniffsTS'
+            handles.primaryAxes             = 'MFS2Therm';
+            handles.primaryRawSniffTrace    = 'mfs2thermTrace';
+            handles.primarySniffTrace       = 'MFS2Therm';
+        case 2
+            handles.primarySniffTS          = 'SniffsTS'; % 'SniffsTS'
+            handles.primaryAxes             = 'SniffingFiltered';
+            handles.primaryRawSniffTrace    = 'rawTrace';
+            handles.primarySniffTrace       = 'Filtered';
+    end
+else
+    handles.primarySniffTS          = 'SniffsMFS'; % 'SniffsTS'
+    handles.primaryAxes             = 'MFS2Therm';
+    handles.primaryRawSniffTrace    = 'mfs2thermTrace';
+    handles.primarySniffTrace       = 'MFS2Therm';
+end
+
 handles.SniffTrace.Raw          = [];
 handles.SniffTrace.Filtered     = [];
 handles.SniffTrace.Timestamps   = [];
@@ -69,6 +88,7 @@ handles.KeepOldSD.BackgroundColor = [0.94 0.94 0.94];
 handles.lastdeleted.String = '';
 handles.datamode = 'smellocator';
 handles.ProcessedSession = '';
+handles.axesPositions = [];
 
 % plots
 axes(handles.SniffingRaw);
@@ -77,6 +97,7 @@ set(gca,'XGrid', 'on');
 handles.rawTrace    = plot(nan,nan,'color',Plot_Colors('b'));
 handles.peaksRaw    = plot(nan,nan,'ok','MarkerSize',4); 
 handles.valleysRaw  = plot(nan,nan,'or','MarkerSize',4);
+handles.axesPositions(1,:) = get(gca,'Position');
 
 axes(handles.MFS);
 hold on;
@@ -90,6 +111,7 @@ handles.pairedTherm = plot(nan,nan,'x','Color',Plot_Colors('b'),'MarkerSize',8,'
 handles.peaksBmfs   = plot(nan,nan,'ok','MarkerSize',4,'LineWidth',1.5); 
 handles.valleysBmfs = plot(nan,nan,'or','MarkerSize',4,'LineWidth',1.5);
 handles.pointercarat= plot(nan,nan,'vk'); 
+handles.axesPositions(3,:) = get(gca,'Position');
 
 axes(handles.MFS2Therm);
 hold on;
@@ -99,9 +121,11 @@ handles.peaksmfs2therm    = plot(nan,nan,'o','MarkerSize',4,'MarkerFaceColor',[0
 handles.valleysmfs2therm  = plot(nan,nan,'o','MarkerSize',4,'MarkerFaceColor',[1 0.5 0],'MarkerEdgeColor','none');
 handles.peaksBmfs2therm    = plot(nan,nan,'ok','MarkerSize',4,'LineWidth',1.5); 
 handles.valleysBmfs2therm  = plot(nan,nan,'or','MarkerSize',4,'LineWidth',1.5);
-handles.peaksNew     = plot(nan,nan,'og','MarkerSize',6); 
-handles.valleysNew   = plot(nan,nan,'om','MarkerSize',6); 
-
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    handles.peaksNew     = plot(nan,nan,'og','MarkerSize',6); 
+    handles.valleysNew   = plot(nan,nan,'om','MarkerSize',6); 
+end
+handles.axesPositions(4,:) = get(gca,'Position');
 
 axes(handles.SniffingFiltered);
 hold on;
@@ -110,10 +134,22 @@ handles.filtTrace    = plot(nan,nan,'color',Plot_Colors('b'));
 handles.peaksFilt    = plot(nan,nan,'ok','MarkerSize',4); 
 handles.valleysFilt  = plot(nan,nan,'or','MarkerSize',4);
 handles.pointerline  = line([nan nan],[nan nan],'Color','k'); 
+if strcmp(handles.primarySniffTS,'SniffsTS')
+    handles.peaksNew     = plot(nan,nan,'og','MarkerSize',6); 
+    handles.valleysNew   = plot(nan,nan,'om','MarkerSize',6); 
+end
+handles.axesPositions(2,:) = get(gca,'Position');
+
+% reorder axes if needed
+if strcmp(handles.primarySniffTS,'SniffsTS')
+    AxesTag     = {'MFS'; 'MFS2Therm'; 'SniffingRaw'; 'SniffingFiltered'};
+    for i = 1:numel(AxesTag)
+        set(handles.(AxesTag{i}),'Position',handles.axesPositions(i,:));
+    end
+end
 
 % For loading the processed session
 [Paths] = WhichComputer();
-
 if ~isempty(varargin)
         handles.WhereSession.String = varargin{1};
 else
@@ -122,29 +158,15 @@ end
 
 % Update handles structure
 guidata(hObject, handles);
-
 LoadSession_Callback(hObject, eventdata, handles);
-
-% UIWAIT makes ProcessSniffTimeStamps_GUI_MFS wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
-
 
 % --- Outputs from this function are returned to the command line.
 function varargout = ProcessSniffTimeStamps_GUI_MFS_OutputFcn(hObject, eventdata, handles) 
-% varargout  cell array for returning output args (see VARARGOUT);
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
 % --- Executes on button press in LoadSession.
 function LoadSession_Callback(hObject, eventdata, handles)
-% hObject    handle to LoadSession (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
 % check that a valid session is specified
 if isempty(handles.WhereSession.String)
     [Paths] = WhichComputer();
@@ -204,6 +226,7 @@ switch handles.datamode
         handles.OdorLocationTrace       = [];
         handles.SniffTrace.Raw          = RespirationData(:,2); % unfiltered thermistor trace
         handles.SniffTrace.Filtered     = RespirationData(:,3); % filtered thermistor trace
+
         if size(RespirationData,2) == 4
             handles.SniffTrace.MFS      = RespirationData(:,4) - 2.5; % unfiltered MassFlowSensor trace
             % filter
@@ -261,9 +284,13 @@ for i = 1:size(AxesTag,1)
         set(handles.(ValleysTag{i+2}),'XData',handles.SniffTrace.Timestamps(handles.SniffsMFS(:,9)),...
             'YData',handles.SniffTrace.(TraceTag{i})(handles.SniffsMFS(:,9)));
     end
-    
+    if strcmp(handles.primarySniffTS,'SniffsMFS')
+        lowest_axes = 4;
+    else
+        lowest_axes = 1;
+    end
     % axes limits and labels
-    if i == 4
+    if i == lowest_axes
         set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)],'YTick', []);
         currlims = get(gca,'YLim');
 
@@ -289,7 +316,7 @@ for i = 1:size(AxesTag,1)
 end
 
 % ste primary working axes
-axes(handles.MFS2Therm);
+axes(handles.(handles.primaryAxes));
 
 % Update handles structure
 guidata(hObject, handles);
@@ -304,18 +331,31 @@ SniffTag = handles.primarySniffTS;
 % the original points
 olddetections = find(handles.(SniffTag)(:,8)>=0);
 
-for plotnum = 3:size(TraceTag,1)
-    if isfield(handles.SniffTrace, TraceTag{plotnum}) & plotnum >= 3
-        set(handles.(['peaks',peaksTag{plotnum+2}]),...
-            'XData',handles.SniffTrace.Timestamps(handles.(SniffTag)(olddetections,8)),...
-            'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.(SniffTag)(olddetections,8)));
-        set(handles.(['valleys',peaksTag{plotnum+2}]),...
-            'XData',handles.SniffTrace.Timestamps(handles.(SniffTag)(olddetections,9)),...
-            'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.(SniffTag)(olddetections,9)));
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    for plotnum = 3:size(TraceTag,1)
+        if isfield(handles.SniffTrace, TraceTag{plotnum}) & plotnum >= 3
+            set(handles.(['peaks',peaksTag{plotnum+2}]),...
+                'XData',handles.SniffTrace.Timestamps(handles.(SniffTag)(olddetections,8)),...
+                'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.(SniffTag)(olddetections,8)));
+            set(handles.(['valleys',peaksTag{plotnum+2}]),...
+                'XData',handles.SniffTrace.Timestamps(handles.(SniffTag)(olddetections,9)),...
+                'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.(SniffTag)(olddetections,9)));
+        end
+        if plotnum == 3
+            set(handles.zeromfs,'XData',handles.SniffsMFS(:,4),'YData',0*handles.SniffsMFS(:,4));
+            set(handles.pairedTherm,'XData',handles.SniffsMFS(:,5),'YData',handles.SniffsMFS(:,6));
+        end
     end
-    if plotnum == 3
-        set(handles.zeromfs,'XData',handles.SniffsMFS(:,4),'YData',0*handles.SniffsMFS(:,4));
-        set(handles.pairedTherm,'XData',handles.SniffsMFS(:,5),'YData',handles.SniffsMFS(:,6));
+else
+    for plotnum = 1:3
+        if isfield(handles.SniffTrace, TraceTag{plotnum})
+            set(handles.(['peaks',peaksTag{plotnum}]),...
+                'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
+                'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.SniffsTS(olddetections,8)));
+            set(handles.(['valleys',peaksTag{plotnum}]),...
+                'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,9)),...
+                'YData',handles.SniffTrace.(TraceTag{plotnum})(handles.SniffsTS(olddetections,9)));
+        end
     end
 end
 
@@ -325,10 +365,10 @@ if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
     handles.new_detections.Data = round(handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),3,'decimals');
     set(handles.peaksNew, ...
         'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,8)),...
-        'YData',handles.SniffTrace.MFS2Therm(handles.SniffsTSnew(newdetections,8)));
+        'YData',handles.SniffTrace.(handles.primarySniffTrace)(handles.SniffsTSnew(newdetections,8)));
     set(handles.valleysNew, ...
         'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
-        'YData',handles.SniffTrace.MFS2Therm(handles.SniffsTSnew(newdetections,9)));
+        'YData',handles.SniffTrace.(handles.primarySniffTrace)(handles.SniffsTSnew(newdetections,9)));
 else
     handles.new_detections.Data = [];
     set(handles.peaksNew, ...
@@ -371,10 +411,6 @@ delete(roi);
 
 % --- Executes on button press in ModifyPoint.
 function ModifyPoint_Callback(hObject, eventdata, handles)
-% hObject    handle to ModifyPoint (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
 % user selects which point to edit
 roi = drawrectangle;
 SniffTag = 'SniffsTSnew';
@@ -671,11 +707,10 @@ guidata(hObject, handles);
 
 % --- Executes on button press in RedoStretch.
 function RedoStretch_Callback(hObject, eventdata, handles)
-
 SniffTag = handles.primarySniffTS;
-TraceTag = 'mfs2thermTrace'; % 'rawTrace'
-SniffTraceTag = 'MFS2Therm'; %'Filtered'
-AxesTag = 'MFS2Therm'; % 'SniffingFiltered'
+AxesTag = handles.primaryAxes; %'MFS2Therm'; % 'SniffingFiltered'
+TraceTag = handles.primaryRawSniffTrace; %'mfs2thermTrace'; % 'rawTrace'
+SniffTraceTag = handles.primarySniffTrace; %'MFS2Therm'; %'Filtered'
 
 axes(handles.(AxesTag));
 roi = drawrectangle;
@@ -734,7 +769,11 @@ while redo
                     if isempty(prevsniff)
                         chunkC = handles.(SniffTag)(nextsniff:end,:);
                         chunkB = thisStretchSniffs;
-                        chunkB(:,4:7) = nan;
+                        if strcmp(handles.primarySniffTS,'SniffsMFS')
+                            chunkB(:,4:7) = nan;
+                        else
+                            chunkB(:,4:7) = repmat(handles.SniffsTS(rows2replace(1),4:7),size(thisStretchSniffs,1),1);
+                        end
                         chunkB(1,3) = chunkC(1,1);
                         handles.(SniffTag) = [chunkB; chunkC];
                     elseif  nextsniff - prevsniff == 1 && size(thisStretchSniffs,1) == 1
@@ -742,7 +781,11 @@ while redo
                         chunkA(end,3) = thisStretchSniffs(1,1);
                         chunkC = handles.(SniffTag)(nextsniff:end,:);
                         chunkB = thisStretchSniffs;
-                        chunkB(:,4:7) = nan;
+                        if strcmp(handles.primarySniffTS,'SniffsMFS')
+                            chunkB(:,4:7) = nan;
+                        else
+                            chunkB(:,4:7) = repmat(handles.SniffsTS(rows2replace(1),4:7),size(thisStretchSniffs,1),1);
+                        end
                         chunkB(1,3) = chunkC(1,1);
                         handles.(SniffTag) = [chunkA; chunkB; chunkC];
                     end
@@ -758,7 +801,11 @@ while redo
                     chunkA = handles.(SniffTag)(1:(rows2replace(1)-1),:);
                     chunkC = handles.(SniffTag)((rows2replace(end)+1):end,:);
                     chunkB = thisStretchSniffs;
-                    chunkB(:,4:7) = nan;
+                    if strcmp(handles.primarySniffTS,'SniffsMFS')
+                        chunkB(:,4:7) = nan;
+                    else
+                        chunkB(:,4:7) = repmat(handles.SniffsTS(rows2replace(1),4:7),size(thisStretchSniffs,1),1);
+                    end
                     chunkB(1,[1 8]) = handles.(SniffTag)(rows2replace(1),[1 8]);
                     chunkB(end,3) = chunkC(1,1);
                     handles.(SniffTag) = [chunkA; chunkB; chunkC];
@@ -806,7 +853,7 @@ function SplitSniff_Callback(hObject, eventdata, handles)
 % hObject    handle to AddSniff (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-axes(handles.MFS2Therm);
+axes(handles.(handles.primaryAxes));
 SniffTag = handles.primarySniffTS;
 zoom off
 [x,y] = ginput(2); % select a pair of peak and valley
@@ -832,7 +879,7 @@ function AddSniff_Callback(hObject, eventdata, handles)
 % hObject    handle to AddSniff (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-axes(handles.MFS2Therm);
+axes(handles.(handles.primaryAxes));
 SniffTag = handles.primarySniffTS;
 zoom off
 [x,y] = ginput(2); % select a pair of peak and valley
@@ -852,42 +899,71 @@ UpdatePeakValleyPlots(hObject, eventdata, handles);
 
 % --- Executes on button press in TempSave.
 function TempSave_Callback(hObject, eventdata, handles)
-MFSDetectionThreshold = str2double(handles.SDfactor.String);
-CuratedMFS_SniffTimestamps = handles.SniffsMFS;
-lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
-save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','lastMFSTimestamp','-append');
-disp(['saved MFS sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    MFSDetectionThreshold = str2double(handles.SDfactor.String);
+    CuratedMFS_SniffTimestamps = handles.SniffsMFS;
+    lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
+    save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','lastMFSTimestamp','-append');
+    disp(['saved MFS sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
+else
+    SniffDetectionThreshold = str2double(handles.SDfactor.String);
+    Curated_SniffTimestamps = handles.SniffsTS;
+    lastTimestamp = floor(handles.SniffingFiltered.XLim(2));
+    save(handles.WhereSession.String,'SniffDetectionThreshold','Curated_SniffTimestamps','lastTimestamp','-append');
+    disp(['saved Thermistor sniffs! @ ',num2str(lastTimestamp), ' seconds']);
+end
 
 % --- Executes on button press in SaveSniffs.
 function SaveSniffs_Callback(hObject, eventdata, handles)
-MFSDetectionThreshold = str2double(handles.SDfactor.String);
-CuratedMFS_SniffTimestamps = handles.SniffsMFS;
-CuratedMFSSniffTimestamps = handles.SniffsMFS;
-lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
-save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','CuratedMFSSniffTimestamps','lastMFSTimestamp','-append');
-disp(['saved sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    MFSDetectionThreshold = str2double(handles.SDfactor.String);
+    CuratedMFS_SniffTimestamps = handles.SniffsMFS;
+    CuratedMFSSniffTimestamps = handles.SniffsMFS;
+    lastMFSTimestamp = floor(handles.SniffingFiltered.XLim(2));
+    save(handles.WhereSession.String,'MFSDetectionThreshold','CuratedMFS_SniffTimestamps','CuratedMFSSniffTimestamps','lastMFSTimestamp','-append');
+    disp(['saved sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
+else
+    SniffDetectionThreshold = str2double(handles.SDfactor.String);
+    Curated_SniffTimestamps = handles.SniffsTS;
+    CuratedSniffTimestamps = handles.SniffsTS;
+    lastTimestamp = floor(handles.SniffingFiltered.XLim(2));
+    save(handles.WhereSession.String,'SniffDetectionThreshold','Curated_SniffTimestamps','CuratedSniffTimestamps','lastTimestamp','-append');
+    disp(['saved sniffs! @ ',num2str(lastTimestamp), ' seconds']);
+end
 
 % --- Executes on button press in RecoverTemp.
 function RecoverTemp_Callback(hObject, eventdata, handles)
-% hObject    handle to RecoverTemp (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-load(handles.WhereSession.String,'CuratedMFS_SniffTimestamps','lastMFSTimestamp');
-if ~exist('lastMFSTimestamp','var')
-    TSdone = input('Timestamp until which data was curated?');
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    load(handles.WhereSession.String,'CuratedMFS_SniffTimestamps','lastMFSTimestamp');
+    if ~exist('lastMFSTimestamp','var')
+        TSdone = input('Timestamp until which data was curated?');
+    else
+        TSdone = lastTimestamp;
+    end
+    whichidx1 = find(CuratedMFS_SniffTimestamps>=TSdone,1,'first');
+    whichidx2 = find(handles.SniffsMFS(:,1)>=TSdone,1,'first');
+    if isequal(CuratedMFS_SniffTimestamps(whichidx1,1:3),handles.SniffsMFS(whichidx2,1:3))
+        handles.SniffsMFS = [CuratedMFS_SniffTimestamps(1:(whichidx1-1),:); handles.SniffsMFS(whichidx2:end,:)];
+    else
+        keyboard;
+    end
 else
-    TSdone = lastTimestamp; 
-end
-whichidx1 = find(CuratedMFS_SniffTimestamps>=TSdone,1,'first');
-whichidx2 = find(handles.SniffsMFS(:,1)>=TSdone,1,'first'); 
-if isequal(CuratedMFS_SniffTimestamps(whichidx1,1:3),handles.SniffsMFS(whichidx2,1:3))
-    handles.SniffsMFS = [CuratedMFS_SniffTimestamps(1:(whichidx1-1),:); handles.SniffsMFS(whichidx2:end,:)]; 
-else
-    keyboard;
+    load(handles.WhereSession.String,'Curated_SniffTimestamps','lastTimestamp');
+    if ~exist('lastTimestamp','var')
+        TSdone = input('Timestamp until which data was curated?');
+    else
+        TSdone = lastTimestamp;
+    end
+    whichidx1 = find(Curated_SniffTimestamps>=TSdone,1,'first');
+    whichidx2 = find(handles.SniffsTS(:,1)>=TSdone,1,'first');
+    if isequal(Curated_SniffTimestamps(whichidx1,1:3),handles.SniffsTS(whichidx2,1:3))
+        handles.SniffsTS = [Curated_SniffTimestamps(1:(whichidx1-1),:); handles.SniffsTS(whichidx2:end,:)];
+    else
+        keyboard;
+    end
 end
 guidata(hObject, handles); 
 UpdatePeakValleyPlots(hObject, eventdata, handles);
-
 
 %% keyboard shortcuts
 % --- Executes on key press with focus on figure1 and none of its controls.
@@ -918,16 +994,16 @@ switch pressedKey
     case 'leftarrow'
         PreviousStretch_Callback(hObject, eventdata, handles);
     case 'm'
-        axes(handles.MFS2Therm);
+        axes(handles.(handles.primaryAxes));
         ModifyPoint_Callback(hObject, eventdata, handles);
     case 'n'
-        axes(handles.MFS2Therm);
+        axes(handles.(handles.primaryAxes));
         AddSniff_Callback(hObject, eventdata, handles);
     case 'b'
-        axes(handles.MFS2Therm);
+        axes(handles.(handles.primaryAxes));
         SplitSniff_Callback(hObject, eventdata, handles);
     case 'r'
-        axes(handles.MFS2Therm);
+        axes(handles.(handles.primaryAxes));
         RedoStretch_Callback(hObject, eventdata, handles);
     case 'o'
         % Call a function or perform an action for 'o' key
