@@ -5,14 +5,16 @@ narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
 params.addParameter('quickmode', false, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('whichsensor', 1, @(x) isnumeric(x) );
 
 % extract values from the inputParser
 params.parse(varargin{:});
 quickmode = params.Results.quickmode;
+sensortype = params.Results.whichsensor;
 
 if ~quickmode
     load(MySession); % loads TracesOut PassiveOut SingleUnits
-    max_sess = 2;
+    max_sess = 1 + exist('PassiveOut','var');
 else
     TracesOut = MySession;
     max_sess = 1;
@@ -30,9 +32,16 @@ for sessionphase = 1:max_sess
     end
 
     %% Sniff Onsets and Offsets
-    Sniffidx = find(diff(abs(Traces.SniffsDigitized{1})));
+    switch sensortype
+        case 1
+            Sniffidx = find(diff([0; abs(Traces.SniffsDigitized{1}); 0]));
+        case 2
+            Sniffidx = find(diff([0; abs(Traces.MFSDigitized{1}); 0]));
+        case 3
+            Sniffidx = find(diff([0; abs(Traces.MFS2ThermDigitized{1}); 0]));
+    end
     Sniffidx = reshape(Sniffidx,2,[])';
-    Sniffidx(:,1) = Sniffidx(:,1) +  1;
+    Sniffidx(:,2) = Sniffidx(:,2) -  1;
     Sniffidx(1:end-1,3) = Sniffidx(2:end,1); % next inhalation index
     Sniffidx(end,:) = [];
 

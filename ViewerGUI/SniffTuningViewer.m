@@ -166,7 +166,7 @@ function [handles] = LoadSession_Callback(hObject, eventdata, handles)
         end
 
         % get a list of sniffs, also get units
-        [handles.AllSniffs, handles.SniffColumnInfo, SingleUnits] = GetAllSniffs(handles.WhereSession.String);
+        [handles.AllSniffs, handles.SniffColumnInfo, SingleUnits] = GetAllSniffs(handles.WhereSession.String,'whichsensor',1);
     else
         % get a list of sniffs, also get units
         [handles.AllSniffs] = QuickSniffTTLMapper_v2(handles.WhereSession.String);

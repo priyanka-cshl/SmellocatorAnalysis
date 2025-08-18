@@ -184,7 +184,7 @@ if exist(handles.WhereSession.String)==2
         handles.datamode = 'cid';
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
-        handles.SDfactor.String = '10';
+        handles.SDfactor.String = '2.5';
     else
         disp('unknown data format');
         return;
@@ -671,7 +671,7 @@ for n = 1:numel(sniffs_of_interest)
             handles.SniffsMFS(whichsniff,5) = handles.SniffsTS(thermInh(1),1);
             handles.SniffsMFS(whichsniff,6) = mfsTrace(handles.SniffsTS(thermInh(1),8));
         elseif handles.SniffsMFS(whichsniff,7) ~= -1
-            handles.SniffsMFS(whichsniff,5:6) = nan; 
+            % handles.SniffsMFS(whichsniff,5:6) = nan; 
         end
     end
 end
