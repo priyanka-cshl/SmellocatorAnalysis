@@ -1,6 +1,15 @@
 function [SniffCoords,SniffProps] = TallyThermistorNPressureSniffs(WhereSession)
-load(WhereSession, '-regexp','\w*SniffTimestamps$');
-SniffCoords = []; SniffProps = [];
+
+load(WhereSession,"SniffCoords","SniffProps");
+if exist("SniffCoords")
+    if ~isempty(SniffProps)
+        return;
+    end
+else
+    load(WhereSession, '-regexp','\w*SniffTimestamps$');
+    SniffCoords = [];
+    SniffProps = [];
+end
 if exist('CuratedMFSSniffTimestamps','var') & exist('CuratedSniffTimestamps','var')
     load(WhereSession,'RespirationData');
 
@@ -33,5 +42,7 @@ if exist('CuratedMFSSniffTimestamps','var') & exist('CuratedSniffTimestamps','va
     if any(diff(SniffProps(:,1)~=-1))
         keyboard;
     end
+
+    save(WhereSession,'SniffCoords','SniffProps','-append');
 end
 end

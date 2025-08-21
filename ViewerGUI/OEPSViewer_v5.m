@@ -22,7 +22,7 @@ function varargout = OEPSViewer_v5(varargin)
 
 % Edit the above text to modify the response to help OEPSViewer_v5
 
-% Last Modified by GUIDE v2.5 07-Aug-2023 15:44:40
+% Last Modified by GUIDE v2.5 19-Aug-2025 10:24:10
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,6 +56,7 @@ function OEPSViewer_v5_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % spike data 
+handles.OEPSSamplingRate = 30000;
 handles.selectedUnit = plot(NaN,NaN,'w.');
 handles.comparedUnit = plot(NaN,NaN,'y.');
 handles.MySelectedUnit = patch(NaN,NaN,'w','EdgeColor','none','FaceAlpha',.8);
@@ -83,14 +84,14 @@ varargout{1} = handles.output;
 
 
 function WindowSize_Callback(hObject, eventdata, handles)
-% hObject    handle to WindowSize (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of WindowSize as text
-%        str2double(get(hObject,'String')) returns contents of WindowSize as a double
-UpdatePlot(hObject, eventdata, handles);
-
+axes(handles.axes1);
+myXLims = get(gca,'XLim');
+if str2double(handles.WindowSize.String)*handles.OEPSSamplingRate <= diff(myXLims)
+    myXLims = myXLims(1) + [0 str2double(handles.WindowSize.String)*handles.OEPSSamplingRate];
+    set(gca,'XLim',myXLims);
+else
+    UpdatePlot(hObject, eventdata, handles);
+end
 % --- Executes on button press in LoadSession.
 function LoadSession_Callback(hObject, eventdata, handles)
 % hObject    handle to LoadSession (see GCBO)
@@ -103,11 +104,17 @@ if isempty(handles.BinaryPath.String)
     
     load(fullfile(handles.BinaryPath.String,'chanMap.mat'),'chanMap');
     handles.NumChans.String = num2str(size(chanMap,2));
-    
+    handles.ChanZoom = mat2str([1 size(chanMap,2)]);
     % load units if available
     if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
-        handles.UnitsPath.String = WhichSession;
+        handles.UnitsPath.String = WhichSession; %fullfile(WhichSession,'cluster_group.tsv');
         handles = LoadUnits_Callback(hObject, eventdata, handles);
+    end
+
+    % load sniffs if available
+    if exist(fullfile(WhichSession,'quickprocesssniffs.mat')) == 2
+        handles.SniffsPath.String = fullfile(WhichSession,'quickprocesssniffs.mat');
+        handles = LoadSniffs_Callback(hObject, eventdata, handles);
     end
 end
 
@@ -137,15 +144,13 @@ end
 if ~isempty(handles.UnitsPath.String)
     [handles.Units.List, handles.Units.spikes] = GetSortingSummary(handles.UnitsPath.String);
     handles.UnitList.Data = handles.Units.List(:,[1 2 6]);
-end
+    handles.UnitList.Data(:,3) = 1:size(handles.Units.List,1);
+ end
 guidata(hObject, handles);
 
 
 % --- Executes on button press in LoadTTLs.
 function LoadTTLs_Callback(hObject, eventdata, handles)
-% hObject    handle to LoadTTLs (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 % To overlay OdorTTLs
 if isempty(handles.TTLPath.String)
     [TTLFile,TTLPath] = uigetfile('*.mat','Select a processed behavior-ephys file');
@@ -155,19 +160,32 @@ if isempty(handles.TTLPath.String)
 end
 if ~isempty(handles.TTLPath.String)
     % Load the relevant variables
-    load(handles.TTLPath.String, 'TTLs', 'SingleUnits');
+    load(handles.TTLPath.String, 'TTLs');
     handles.TTLs = TTLs;
-    handles.SingleUnits = SingleUnits;
+end
+guidata(hObject, handles);
+
+% --- Executes on button press in LoadSniffs.
+function handles = LoadSniffs_Callback(hObject, eventdata, handles)
+% To overlay Sniffs
+if isempty(handles.SniffsPath.String)
+    %load(WhereSession,"SniffCoords","SniffProps");
+    [SniffsFile,SniffsPath] = uigetfile('*.mat','Select a sniffs file');
+    if ~isequal(SniffsFile,0)
+        handles.SniffsPath.String = fullfile(SniffsPath,SniffsFile);
+    end
+end
+if ~isempty(handles.SniffsPath.String)
+    % Load the relevant variables
+    load(handles.SniffsPath.String, "SniffCoords");
+    handles.Sniffs = SniffCoords(:,1);
 end
 guidata(hObject, handles);
 
 % --- Executes on button press in ClearSession.
 function UpdatePlot(hObject, eventdata, handles)
-% hObject    handle to ClearSession (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 % open the binary file
-OEPSSamplingRate = 30000;
+OEPSSamplingRate = handles.OEPSSamplingRate; %30000;
 Nchan       = str2double(handles.NumChans.String);
 Nsamples    = str2double(handles.WindowSize.String)*OEPSSamplingRate;
 
@@ -206,7 +224,7 @@ set(0,'DefaultAxesColorOrder',MyColorOrder);
 axis manual
 plot(int32(MyData) + int32(repmat(channelSpacing*(0:1:Nchan-1),size(MyData,1),1)),'LineWidth',0.11);
 %set(gca,'ColorMap',brewermap(Nchan,'Accent'))
-set(gca,'Color','k','XTick',[], 'YTick',[]); %,'YLim', [-channelSpacing Nchan*channelSpacing] );
+set(gca,'Color','k','XTick',[], 'YTick',[], 'YLim', [-channelSpacing Nchan*channelSpacing] );
 set(0,'DefaultAxesColorOrder','remove')
 
 myXLims = get(gca,'XLim');
@@ -262,6 +280,22 @@ if isfield(handles,'TTLs')
     end
 end
 
+% find Trial TTLs that span this stretch
+if isfield(handles,'Sniffs')
+    SniffStarts = find((handles.Sniffs(:,1)>=myTimeAxis(1))&(handles.Sniffs(:,1)<=myTimeAxis(2)));
+    if ~isempty(SniffStarts)
+        hold on
+        whichTS = handles.Sniffs(SniffStarts,:) + [0 0.05]; % make 50 ms long sniffs
+        for i = 1:size(whichTS,1)
+            x(1) = whichTS(i,1) - myTimeAxis(1);
+            x(2) = whichTS(i,2) - myTimeAxis(1);
+            x = x*OEPSSamplingRate; % in samples
+            Vx = [x(1) x(1) x(2) x(2)];
+            Vy = [myYLims(1) myYLims(2) myYLims(2) myYLims(1)];
+            patch(Vx,Vy,'w','EdgeColor','none','FaceAlpha',.2);
+        end
+    end
+end
 
 if ~handles.firstcall
     axis(mycurrzoom);
@@ -288,28 +322,13 @@ guidata(hObject, handles);
 
 % --- Executes on button press in ClearSession.
 function ClearSession_Callback(hObject, eventdata, handles)
-% hObject    handle to ClearSession (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 handles.BinaryPath.String = '';
 
 % --- Executes on slider movement.
 function TimeScroll_Callback(hObject, eventdata, handles)
-% hObject    handle to TimeScroll (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 UpdatePlot(hObject, eventdata, handles);
 
 function Spacing_Callback(hObject, eventdata, handles)
-% hObject    handle to Spacing (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of Spacing as text
-%        str2double(get(hObject,'String')) returns contents of Spacing as a double
 UpdatePlot(hObject, eventdata, handles);
 
 % --- Executes when selected cell(s) is changed in UnitList.
@@ -414,14 +433,6 @@ end
 
 % --- Executes when entered data in editable cell(s) in whichChan.
 function whichChan_CellEditCallback(hObject, eventdata, handles)
-% hObject    handle to whichChan (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
-%	Indices: row and column indices of the cell(s) edited
-%	PreviousData: previous data for the cell(s) edited
-%	EditData: string(s) entered by the user
-%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
-%	Error: error string when failed to convert EditData to appropriate value for Data
-% handles    structure with handles and user data (see GUIDATA)
 UpdatePlot(hObject, eventdata, handles);
 
 
@@ -452,9 +463,6 @@ guidata(hObject, handles);
 
 % --- Executes on button press in ZoomOn.
 function ZoomOn_Callback(hObject, eventdata, handles)
-% hObject    handle to ZoomOn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 axes(handles.axes1);
 zoom reset
 zoom on
@@ -462,18 +470,12 @@ guidata(hObject, handles);
 
 % --- Executes on button press in ZoomOFF.
 function ZoomOFF_Callback(hObject, eventdata, handles)
-% hObject    handle to ZoomOFF (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 axes(handles.axes1);
 zoom off
 guidata(hObject, handles);
 
 % --- Executes on button press in ZoomOut.
 function ZoomOut_Callback(hObject, eventdata, handles)
-% hObject    handle to ZoomOut (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 axes(handles.axes1);
 zoom off
 set(gca, 'XLim', handles.fullZoom(1,:), 'YLim', handles.fullZoom(2,:));
@@ -481,17 +483,31 @@ zoom on
 zoom reset
 guidata(hObject, handles);
 
-
 % --- Executes when entered data in editable cell(s) in commonSD.
 function commonSD_CellEditCallback(hObject, eventdata, handles)
-% hObject    handle to commonSD (see GCBO)
-% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
-%	Indices: row and column indices of the cell(s) edited
-%	PreviousData: previous data for the cell(s) edited
-%	EditData: string(s) entered by the user
-%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
-%	Error: error string when failed to convert EditData to appropriate value for Data
-% handles    structure with handles and user data (see GUIDATA)
 handles.SDTable.Data(:,2) = handles.commonSD.Data(1,1);
 guidata(hObject, handles);
 UpdatePlot(hObject, eventdata, handles);
+
+
+
+function SniffsPath_Callback(hObject, eventdata, handles)
+% hObject    handle to SniffsPath (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of SniffsPath as text
+%        str2double(get(hObject,'String')) returns contents of SniffsPath as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function SniffsPath_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to SniffsPath (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
