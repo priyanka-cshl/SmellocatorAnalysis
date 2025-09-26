@@ -62,9 +62,9 @@ if ~isempty(SniffCoords)
             DigitalSniffs(idx(m,1):idx(m,2),m) = 1;
         end
     end
-    TracesOut.SniffsDigitized{1} = DigitalSniffs(:,1);
-    TracesOut.MFS2ThermDigitized{1} = DigitalSniffs(:,2);
-    TracesOut.MFSDigitized{1} = DigitalSniffs(:,3);
+    TracesOut.SniffsDigitized{1} = DigitalSniffs(:,1); % thermistor peaks
+    TracesOut.MFS2ThermDigitized{1} = DigitalSniffs(:,2); % mfs to thermistor peaks
+    TracesOut.MFSDigitized{1} = DigitalSniffs(:,3); % mfs zero crossings
 else
     DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
     if size(CuratedSniffTimestamps,2) < 10
@@ -86,7 +86,7 @@ if savemode
     [~,MouseName] = fileparts(fileparts(myKsDir));
     [~,filename] = fileparts(myKsDir);
     filename = [MouseName,'_',regexprep(filename(1,1:10),'-',''),'_r0_processed.mat']; 
-    savepath = '/home/priyanka/Desktop';
+    savepath = '/mnt/data/';
     save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits');
 end
 

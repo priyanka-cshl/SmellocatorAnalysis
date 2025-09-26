@@ -22,7 +22,7 @@ if exist('CuratedMFSSniffTimestamps','var') & exist('CuratedSniffTimestamps','va
     % are there any missed thermistor inhalations
     for i = 1:size(mfs,1)-1
         myTh = mfs(i,5);
-        [deltaT,whichsniff] = min(abs(therm(:,1)-myTh));
+        [deltaT,whichsniff] = min(abs(therm(:,1)-myTh)); % 
         if deltaT>=0.003
             keyboard;
         end

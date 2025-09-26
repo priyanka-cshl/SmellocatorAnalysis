@@ -18,7 +18,11 @@ rectifyFR = params.Results.rectifyFR;
 % start clock
 tic
 
-xdata = [SniffParams SniffPSTHs(:,1) floor(abs(SniffParams(:,9))*1000/binsize)];
+if size(SniffParams,2) == 10
+    xdata = [SniffParams SniffPSTHs(:,1) floor(abs(SniffParams(:,9))*1000/binsize)];
+else
+    xdata = SniffParams;
+end
 ydata = SniffPSTHs(:,2:end);
 
 %% 1 : set up the error minimization

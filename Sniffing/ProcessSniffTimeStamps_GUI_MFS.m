@@ -347,7 +347,7 @@ if strcmp(handles.primarySniffTS,'SniffsMFS')
         end
     end
 else
-    for plotnum = 1:3
+    for plotnum = 1:4
         if isfield(handles.SniffTrace, TraceTag{plotnum})
             set(handles.(['peaks',peaksTag{plotnum}]),...
                 'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(olddetections,8)),...
@@ -938,7 +938,7 @@ if strcmp(handles.primarySniffTS,'SniffsMFS')
     if ~exist('lastMFSTimestamp','var')
         TSdone = input('Timestamp until which data was curated?');
     else
-        TSdone = lastTimestamp;
+        TSdone = lastMFSTimestamp;
     end
     whichidx1 = find(CuratedMFS_SniffTimestamps>=TSdone,1,'first');
     whichidx2 = find(handles.SniffsMFS(:,1)>=TSdone,1,'first');

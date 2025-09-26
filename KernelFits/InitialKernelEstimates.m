@@ -49,10 +49,14 @@ locationcoef    = -0.08; % C(x) = exp(-0.1729/2*location(a.u.))
 ITIKernel(:,(kernellength+1):end) = [];
 ITIKernel = ITIKernel - baseline;
 AirKernel(:,(kernellength+1):end) = [];
-AirKernel = AirKernel - ITIKernel - baseline; % effect of Air alone?
+if any(AirKernel)
+    AirKernel = AirKernel - ITIKernel - baseline; % effect of Air alone?
+end
 for odor = 1:3
     OdorKernel{odor}(:,(kernellength+1):end) = [];
-    OdorKernel{odor} = OdorKernel{odor} - ITIKernel - AirKernel - baseline; % effect of odor alone
+    if any(OdorKernel{odor})
+        OdorKernel{odor} = OdorKernel{odor} - ITIKernel - AirKernel - baseline; % effect of odor alone
+    end
 end
 if notcommon
     StartingKernels = [baseline ITIKernel AirKernel cell2mat(OdorKernel) locationcoef locationcoef locationcoef]; % independent coeffs for each odor
