@@ -13,8 +13,12 @@ end
 if ~isempty(SniffCoords)
     load(WhereSession, 'RespirationData');
 else
-    load(WhereSession, 'CuratedMFSSniffTimestamps','RespirationData');
-    CuratedSniffTimestamps = CuratedMFSSniffTimestamps;
+    try
+        load(WhereSession, 'CuratedMFSSniffTimestamps','RespirationData');
+        CuratedSniffTimestamps = CuratedMFSSniffTimestamps;
+    catch
+        load(WhereSession, 'CuratedSniffTimestamps','RespirationData');
+    end
 end
 
 try
@@ -49,7 +53,9 @@ TracesOut.Motor{1} = TracesOut.Timestamps{1}*0;
 % sniffing specific
 % add a filtered sniff trace
 TracesOut.SniffsFiltered{1}     = RespirationData(:,3);
-TracesOut.MassFlowSensor{1}     = RespirationData(:,4) - 2.5;
+if size(RespirationData,2) == 4
+    TracesOut.MassFlowSensor{1}     = RespirationData(:,4) - 2.5;
+end
 TracesOut.SniffsLocationed{1}   = TracesOut.SniffsFiltered{1}*nan;
 
 if ~isempty(SniffCoords)
