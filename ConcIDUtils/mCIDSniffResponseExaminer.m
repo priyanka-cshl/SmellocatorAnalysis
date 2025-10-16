@@ -3,8 +3,34 @@ function [] = mCIDSniffResponseExaminer() %(myDir,myStimFile)
 myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
 
 %% load sniffs
-if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
-    load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs', 'RespirationData');
+load(fullfile(myKsDir,'quickprocesssniffs.mat'),"SniffCoords");
+if exist("SniffCoords")
+    % make AllSniffs from SniffCoords
+    AllSniffs(:,1:2) = SniffCoords(:,1:2); % if using thermistor peaks
+    AllSniffs(:,11:12) = SniffCoords(:,4:5); % if using thermistor peaks
+    AllSniffs(:,3)   = SniffCoords(:,2) - SniffCoords(:,1);
+    AllSniffs(1:end-1,13) = AllSniffs(2:end,11); 
+    AllSniffs(end,13) = AllSniffs(end,13) + 1; 
+
+    % add odorTTL info
+    load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings');
+    
+    % add the column infos to the sniffs
+    for i = 1:size(TTLs.Trial,1) % everty trial
+        t = TTLs.Trial(i,7:10); % odor1 start, stop, purge start, stop
+        t(end+1) = t(end) + TTLs.Trial(i,9)-TTLs.Trial(i,8); % add a post-purge period the same as the first pulse
+        TS = [t(1:end-1)' t(2:end)' [1 3 2 4]'];
+        for j = 1:size(TS,1)
+            whichsniffs = find( (AllSniffs(:,1)>=TS(j,1)) & (AllSniffs(:,1)<TS(j,2)) );
+            AllSniffs(whichsniffs,5) = TTLs.Trial(i,4); % odor identity
+            AllSniffs(whichsniffs,6) = TS(j,3);
+        end
+    end
+else
+    %%
+    if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
+        load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs', 'RespirationData');
+    end
 end
 
 %% separate session phases if necessary
@@ -32,7 +58,7 @@ if exist(fullfile(myKsDir,'quickprocessOdorTTLs.mat'))
 end
 
 %% figures related
-savefigs = 1;
+savefigs = 0;
 % mycolors = brewermap(10,'YlOrRd');
 % mycolors(1:2,:) = [];
 nRows = 4; nCols = 6;

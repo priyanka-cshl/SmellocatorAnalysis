@@ -667,6 +667,31 @@ for n = 1:numel(sniffs_of_interest)
                 end
             end
         end
+        if isempty(thermInh)
+            set(handles.pointercarat,'XData',handles.SniffsMFS(whichsniff,4),'YData',0.025);
+            answer = questdlg('Ignore thermistor inhalation detection?', ...
+                'Corresponding Thermistor peak', ...
+                'Yes','Pick','Delete','Yes');
+
+            % Handle response
+            switch answer
+                case 'Yes'
+                    thermInh = nan;
+                case 'Pick'
+                    [x] = ginput(1); % select a pair of peak and valley
+                    [~,idx] = min(abs(handles.SniffTrace.Timestamps - x(1)));
+                    handles.SniffsMFS(whichsniff,5) = handles.SniffTrace.Timestamps(idx);
+                    handles.SniffsMFS(whichsniff,6) = mfsTrace(idx);
+                    handles.SniffsMFS(whichsniff,7) = -1; % extra sniff detection that was missed in the thermistor
+                    thermInh = nan;
+                case 'Delete'
+                    handles.SniffsMFS(prevsniff,3) = handles.SniffsMFS(whichsniff+1,1);
+                    handles.SniffsMFS(whichsniff,[4 7]) = -1;
+                    thermInh = nan;
+                case 'Quit'
+                    keyboard;
+            end
+        end
         if ~isnan(thermInh(1))
             handles.SniffsMFS(whichsniff,5) = handles.SniffsTS(thermInh(1),1);
             handles.SniffsMFS(whichsniff,6) = mfsTrace(handles.SniffsTS(thermInh(1),8));
@@ -940,9 +965,11 @@ if strcmp(handles.primarySniffTS,'SniffsMFS')
     else
         TSdone = lastMFSTimestamp;
     end
-    whichidx1 = find(CuratedMFS_SniffTimestamps>=TSdone,1,'first');
+    whichidx1 = find(CuratedMFS_SniffTimestamps(:,1)>=TSdone,1,'first');
     whichidx2 = find(handles.SniffsMFS(:,1)>=TSdone,1,'first');
-    if isequal(CuratedMFS_SniffTimestamps(whichidx1,1:3),handles.SniffsMFS(whichidx2,1:3))
+    if isempty(whichidx1)
+        handles.SniffsMFS = CuratedMFS_SniffTimestamps;
+    elseif isequal(CuratedMFS_SniffTimestamps(whichidx1,1:3),handles.SniffsMFS(whichidx2,1:3))
         handles.SniffsMFS = [CuratedMFS_SniffTimestamps(1:(whichidx1-1),:); handles.SniffsMFS(whichidx2:end,:)];
     else
         keyboard;
@@ -983,7 +1010,7 @@ switch pressedKey
         handles.RemovePoints.BackgroundColor = [0.54 0.94 0.54];
         RemovePoints_Callback(hObject, eventdata, handles);
         handles.RemovePoints.BackgroundColor = [0.94 0.94 0.94];
-    case {'z', 'uparrow'}
+    case {'uparrow'}
         handles.roiPosition = get(handles.SniffingFiltered,'XLim');
         GetZeroCrossings_Callback(hObject, eventdata, handles);
     case {'downarrow'}
@@ -1010,4 +1037,9 @@ switch pressedKey
         disp('Open action triggered!');
         % call open_file_function(handles);
         % Add more cases for other keys
+%     case 'z'
+%         axes(handles.SniffingFiltered);
+%         zoom yon
+%         guidata(hObject, handles);
+
 end

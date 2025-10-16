@@ -22,7 +22,7 @@ else
 end
 
 try
-    load(WhereSession,'quickprocessOdorTTLs.mat');
+    load(fileparts(WhereSession),'quickprocessOdorTTLs.mat');
     if ~exist('TTLs','var')
         TTLs = [];
     end
@@ -65,7 +65,13 @@ if ~isempty(SniffCoords)
         idx = SniffCoords(n,[4 5 9 10 14 15]);
         idx = reshape(idx,2,[])';
         for m = 1:3
-            DigitalSniffs(idx(m,1):idx(m,2),m) = 1;
+            if ~any(isnan(idx(m,:)))
+                if SniffCoords(n,1)>0
+                    DigitalSniffs(idx(m,1):idx(m,2),m) = 1;
+                else
+                    DigitalSniffs(idx(m,1):idx(m,2),m) = -1;
+                end
+            end
         end
     end
     TracesOut.SniffsDigitized{1} = DigitalSniffs(:,1); % thermistor peaks

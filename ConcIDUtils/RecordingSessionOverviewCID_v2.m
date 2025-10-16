@@ -18,6 +18,8 @@
 % downsamplefactor = 100;
 
 myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31';
+myKsDir = '/mnt/data/Sorted/T2/_2025-05-21_09-18-56_2025-05-21_11-11-12_2025-05-21_11-23-51';
+
 
 raster = 1; 
 SpikeHeight = 0.8;
