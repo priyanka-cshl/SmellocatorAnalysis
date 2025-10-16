@@ -61,7 +61,7 @@ for trialID = 1:nTrials
         end
         % flag overlapping sniffs
         %f = find(ismember(SniffTimeStamps(:,1:4),thisTrialSniffs(1,1:4),'rows'));
-        f = find(SniffTimeStamps(:,1)>=thisTrialSniffs(1,1)-0.005);
+        f = find(SniffTimeStamps(:,1)>=thisTrialSniffs(1,1)-0.005,1,'first');
         if ~isempty(f)
             SniffTimeStamps(f:end,7) = -SniffTimeStamps(f:end,7);
         end
