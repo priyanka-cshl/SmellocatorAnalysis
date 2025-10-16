@@ -25,6 +25,9 @@ if exist("SniffCoords")
             AllSniffs(whichsniffs,5) = TTLs.Trial(i,4); % odor identity
             AllSniffs(whichsniffs,6) = TS(j,3);
         end
+        % a hack assign sniffs to a given trial
+        thisTrialsniffs = find( (AllSniffs(:,1)>=TTLs.Trial(i,1)) & (AllSniffs(:,1)<TTLs.Trial(i,2)) );
+        AllSniffs(thisTrialsniffs,7) = TTLs.Trial(i,4);
     end
 else
     %%
