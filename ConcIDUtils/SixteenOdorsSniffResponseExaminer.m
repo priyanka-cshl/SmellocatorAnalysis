@@ -1,14 +1,14 @@
-function [] = mCIDSniffResponseExaminer() %(myDir,myStimFile)
+function [] = SixteenOdorsSniffResponseExaminer() %(myDir,myStimFile)
 
-%myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
-myKsDir = '/mnt/data/Sorted/T2/_2025-05-21_09-18-56_2025-05-21_11-11-12_2025-05-21_11-23-51/';
+myKsDir = '/mnt/data/Sorted/T3/_2025-05-16_13-48-44_2025-05-16_15-40-38_2025-05-16_15-49-31/';
+%myKsDir = '/mnt/data/Sorted/T2/_2025-05-21_09-18-56_2025-05-21_11-11-12_2025-05-21_11-23-51/';
 
 %% load sniffs
 load(fullfile(myKsDir,'quickprocesssniffs.mat'),"SniffCoords");
 if exist("SniffCoords")
     % make AllSniffs from SniffCoords
-%     AllSniffs(:,1:2) = SniffCoords(:,1:2); % if using thermistor peaks
-%     AllSniffs(:,11:12) = SniffCoords(:,4:5); % if using thermistor peaks
+    AllSniffs(:,1:2) = SniffCoords(:,1:2); % if using thermistor peaks
+    AllSniffs(:,11:12) = SniffCoords(:,4:5); % if using thermistor peaks
     AllSniffs(:,1:2) = SniffCoords(:,6:7); % if using mfs2thermistor peaks
     AllSniffs(:,11:12) = SniffCoords(:,9:10); % if using mfs2thermistor peaks
     AllSniffs(:,3)   = SniffCoords(:,2) - SniffCoords(:,1);
@@ -52,7 +52,7 @@ end
 %% group sniffs by odors
 % there are air OFF sniffs here
 AllSniffs(:,4) = 1; % air is always on
-[ParsedSniffs, StimulusList] = ParseSniffsByStimuli(AllSniffs, 'SortBy', 3);
+[ParsedSniffs, StimulusList] = ParseSniffsByStimuli(AllSniffs, 'SortBy', 5); % 5 - sort by session phase, location (conc) and then occurence
 
 %% Load spikes
 SingleUnits = GetSingleUnits(myKsDir, 3);
@@ -65,98 +65,90 @@ end
 
 %% figures related
 savefigs = 1;
-% mycolors = brewermap(10,'YlOrRd');
-% mycolors(1:2,:) = [];
-nRows = 4; nCols = 6;
-mycolors = brewermap(17,'Accent');
+%nRows = 4; nCols = 6;
+unitsPerFig = 10;
+nRows = 1; nCols = unitsPerFig;
+mycolors = brewermap(18,'Accent');
+
 
 for n = 1:nUnits
-    FigureName = ['Unit ',num2str(n)]; % one figure per cell
-    F = figure('Name',FigureName);
+    if rem(n,unitsPerFig) == 1
+        FigureName = ['Unit ',num2str(n),' to Unit ',num2str(n+unitsPerFig-1)]; % one figure per cell
+        figure('Name',FigureName);
+        set(gcf,'Position',[2000   138   1366   700]);
+    end
+    if rem(n,unitsPerFig) == 0
+        whichsubplot = unitsPerFig;
+    else
+        whichsubplot = rem(n,unitsPerFig);
+    end
+    subplot(nRows,nCols,whichsubplot);
+    hold on;
+    sniffsDone = 0;
+
     thisUnitSpikes = SingleUnits(n).spikes;
     
     % plot the air spikes
     Sniffs2Use{1} = ParsedSniffs{2}; % Air sniffs
     Sniffs2Use{1}(:,8) = 1;
-    % resort if necessary
-    Sniffs2Use{1} = sortrows(Sniffs2Use{1},1);
 
-    % odor lines
-    U = unique(Sniffs2Use{1}(:,7));
-    for myodor = 1:numel(U)
-        myOdorLine = Sniffs2Use{1}(:,7);
-        myOdorLine(myOdorLine~=U(myodor),:) = nan;
-    end
-
+    % select only air sniffs that occured before the first trial
+    untilSniff = find(Sniffs2Use{1}(:,1)>=TTLs.Trial(1,1),1,'first');
+    Sniffs2Use{1}(untilSniff:end,:) = [];
+    
+    % get sniff aligned spikes - default window is -0.1 to 1
     [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes);
-    whichsubplots = 1:nCols:(nRows*nCols);
-    subplot(nRows,nCols,whichsubplots);
     plot(SpikeRaster{1}(:,1), SpikeRaster{1}(:,2), '.k','Markersize', 0.5);
-    set(gca,'XTick',[],'YTick',[],'YLim',[0 size(Sniffs2Use{1},1)]);
-    hold on
-    % odor lines
-    U = unique(Sniffs2Use{1}(:,7));
-    for myodor = 1:numel(U)
-        myOdorLine = 1:numel(Sniffs2Use{1}(:,7));
-        myOdorLine(Sniffs2Use{1}(:,7)~=U(myodor)) = nan;
-        p = plot(-0.09*ones(1,numel(myOdorLine)),myOdorLine,'LineWidth',10,'Color',mycolors(U(myodor)+1,:));
-        p.LineJoin = 'miter'; 
-    end
+    sniffsDone = sniffsDone + maxsniffs;
     
     % plot the 10 mini odors
     for odor = 1:numel(StimSettings.miniOdors)
-        if odor > 5
-            subplot(nRows,nCols,odor+2);
-        else
-            subplot(nRows,nCols,odor+1);
-        end
-        
         whichstim = find(StimulusList == StimSettings.miniOdors(odor));
         Sniffs2Use{1} = ParsedSniffs{whichstim+1};
         Sniffs2Use{1} = sortrows(Sniffs2Use{1},[6 1]);
-        [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes);
-        plot(SpikeRaster{1}(:,1), SpikeRaster{1}(:,2), '.k','Markersize', 0.5);
-        set(gca,'XTick',[],'YTick',[]);
+        
+        % select only sniffs that occured in first stimulus (not the purge)
+        untilSniff = find(Sniffs2Use{1}(:,6)>1,1,'first');
+        Sniffs2Use{1}(untilSniff:end,:) = [];
 
-        hold on
-        plot([-0.1 1],[-0.1 -0.1],'LineWidth',4,'Color',mycolors(whichstim+1,:));
+        [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes, sniffsDone);
+        plot(SpikeRaster{1}(:,1), SpikeRaster{1}(:,2), '.k','Markersize', 0.5);
+        
+        % odor Line
+        plot([-0.15 -0.15],sniffsDone+[1 maxsniffs],'LineWidth',4,'Color',mycolors(whichstim+1,:));
+        sniffsDone = sniffsDone + maxsniffs;
     end
     
     % plot the 5 mega odors - skip the blank
-    for odor = 1:(numel(StimSettings.megaOdors)-1)
-        whichsubplots = [13 19] + odor;
-        subplot(nRows,nCols,whichsubplots);
-        
+    for odor = 1:numel(StimSettings.megaOdors)
         whichstim = find(StimulusList == StimSettings.megaOdors(odor));
         Sniffs2Use{1} = ParsedSniffs{whichstim+1};
         Sniffs2Use{1} = sortrows(Sniffs2Use{1},[6 1]);
-        [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes);
-        plot(SpikeRaster{1}(:,1), SpikeRaster{1}(:,2), '.k','Markersize', 0.5);
-        set(gca,'XTick',[],'YTick',[]);
 
-        hold on
-        plot([-0.1 1],[-0.1 -0.1],'LineWidth',4,'Color',mycolors(whichstim+1,:));
+        % select only sniffs that occured in first stimulus (not the purge)
+        untilSniff = find(Sniffs2Use{1}(:,6)>1,1,'first');
+        Sniffs2Use{1}(untilSniff:end,:) = [];
+
+        [SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes, sniffsDone);
+        plot(SpikeRaster{1}(:,1), SpikeRaster{1}(:,2), '.k','Markersize', 0.5);
+
+        % odor Line
+        plot([-0.15 -0.15],sniffsDone+[1 maxsniffs],'LineWidth',4,'Color',mycolors(whichstim+1,:));
+        sniffsDone = sniffsDone + maxsniffs;
     end
 
-    %set(gcf,'Position',[597   234   966   704]);
-    set(gcf,'Position',[2330   138   966   704]);
-    if savefigs
+    set(gca,'TickDir','out','YTick',[]);
+
+    if savefigs && (rem(n,unitsPerFig)==0 || n == unitsPerFig)
         set(gcf,'Color','w');
         set(gcf,'renderer','Painters');
-%         figPosition = [0.3104    0.2157    0.5031    0.7370];
-%         set(gcf, 'Units', 'Normalized', 'OuterPosition', figPosition);
-%         print(fullfile(myKsDir,'OdorMaps',['SniffOdorSummary',num2str(1000+n),'.eps']),'-depsc','-tiff','-r300','-painters');
-        if n == 1
-%             print(F, fullfile(myKsDir,'OdorMaps','GroupSniffOdorSummary.ps'));
-       %     print(fullfile(myKsDir,'OdorMaps','GroupSniffOdorSummary.eps'),'-dpsc','-tiff','-r300','-painters');
+        if n == unitsPerFig
             exportgraphics(gcf, ...
-                fullfile(myKsDir,'OdorMaps','SniffOdorSummary.pdf'),...
+                fullfile(myKsDir,'OdorMaps','SniffOdorSummaryFirstPulse.pdf'),...
                 'ContentType','vector');
         else
-%             print(F, '-append',fullfile(myKsDir,'OdorMaps','GroupSniffOdorSummary.ps'));
-%            print(fullfile(myKsDir,'OdorMaps','GroupSniffOdorSummary.eps'),'-dpsc','-tiff','-r300','-painters','-append');
             exportgraphics(gcf, ...
-                fullfile(myKsDir,'OdorMaps','SniffOdorSummary.pdf'),...
+                fullfile(myKsDir,'OdorMaps','SniffOdorSummaryFirstPulse.pdf'),...
                 'ContentType','vector','Append',true);
         end
         close(gcf);
