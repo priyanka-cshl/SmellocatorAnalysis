@@ -182,6 +182,11 @@ if exist(handles.WhereSession.String)==2
         handles.datamode = 'smellocator';
     elseif ~isempty(strfind(handles.WhereSession.String,'_cid-processed'))
         handles.datamode = 'cid';
+        handles.SniffingFiltered.Visible = 'off';
+        handles.filtTrace.Visible = 'off';
+        handles.peaksFilt.Visible = 'off';
+        handles.valleysFilt.Visible = 'off';
+
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
         handles.SDfactor.String = '2.5';
@@ -197,6 +202,57 @@ else
 end
 
 switch handles.datamode
+
+    case 'cid' % for concentration identity experiments done by Maries
+        % load the Respiration traces and detected sniffs (if any)
+        load(handles.WhereSession.String, 'AllSniffs', 'SniffData', 'TTLs'); % AllSniffs: nx13, SniffData: t x 3(ts, raw, filt) - all MFS
+        handles.SessionLength = SniffData(end,1);
+
+        % make equivalent long traces for plotting
+        handles.SniffTrace.Timestamps   = SniffData(:,1);
+        handles.OdorLocationTrace       = [];
+        handles.SniffTrace.Raw          = SniffData(:,2); % unfiltered MFS trace
+        handles.SniffTrace.Filtered     = SniffData(:,2); % filtered MFS trace
+        handles.SniffTrace.MFS          = SniffData(:,3); % unfiltered MFS trace
+        
+        % predicted thermistor trace
+        % filter
+        fband = [0.1 30];
+        Np    = 4; % filter order
+        [b,a] = butter(Np,fband/(500/2));
+        handles.SniffTrace.MFS2Therm = filtfilt(b,a,cumsum(handles.SniffTrace.MFS));
+        %handles.SniffTrace.MFS          = SniffData(:,3);
+        % load TTLs for trial chunking
+        try
+            load(fullfile(fileparts(handles.WhereSession.String), 'quickprocessOdorTTLs.mat'));
+        catch
+            if ~exist('TTLs','var')
+                warning('no TTLs found');
+            end
+        end
+
+        % load sniff timestamps that have already been curated/detected
+        try 
+            load(handles.WhereSession.String,'CuratedSniffTimestamps');
+            handles.SniffsTS = CuratedSniffTimestamps;
+            handles.SniffsMFS = handles.SniffsTS;
+        catch
+            % detect peaks and valleys on the predicted thermistor trace
+            [SniffTimeStamps] = ChunkWiseSniffs([SniffData(:,1) handles.SniffTrace.MFS2Therm], 'SDfactor', str2double(handles.SDfactor.String)); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
+            % remove nans
+            SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
+
+            % remove overlapping sniffs
+            handles.SniffsMFS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+
+            handles.SniffsMFS(find(isnan(handles.SniffsMFS(:,8))),:) = [];
+            handles.SniffsMFS(find(handles.SniffsMFS(:,8)<=0),:) = [];
+
+            handles.SniffsMFS(:,4:7) = nan;
+
+            handles.SniffsTS = handles.SniffsMFS; % hack to make the GUI work
+        end
+
     case 'onlyEphys'
         load(handles.WhereSession.String, 'AllSniffs', 'RespirationData'); % AllSniffs: nx13, RespirationData: t x 3(ts, raw, filt, MFS)
         handles.SessionLength = RespirationData(end,1);
@@ -267,6 +323,12 @@ TraceTag    = {'Filtered'; 'Raw'; 'MFS'; 'MFS2Therm'};
 PeaksTag    = {'peaksFilt'; 'peaksRaw'; 'peaksmfs'; 'peaksmfs2therm'; 'peaksBmfs'; 'peaksBmfs2therm'};
 ValleysTag  = {'valleysFilt'; 'valleysRaw'; 'valleysmfs'; 'valleysmfs2therm' ;'valleysBmfs'; 'valleysBmfs2therm'};
 
+if strcmp(handles.primarySniffTS,'SniffsMFS')
+    lowest_axes = 4;
+else
+    lowest_axes = 1;
+end
+
 for i = 1:size(AxesTag,1)
     axes(handles.(AxesTag{i}));
     set(handles.(PlotTag{i}),'XData', handles.SniffTrace.Timestamps, 'YData', handles.SniffTrace.(TraceTag{i}));
@@ -276,7 +338,7 @@ for i = 1:size(AxesTag,1)
         'YData',handles.SniffTrace.(TraceTag{i})(handles.SniffsTS(:,8)));
     set(handles.(ValleysTag{i}),'XData',handles.SniffTrace.Timestamps(handles.SniffsTS(:,9)),...
         'YData',handles.SniffTrace.(TraceTag{i})(handles.SniffsTS(:,9)));
-
+ 
     if i > 2
         % overlay MFS detections
         set(handles.(PeaksTag{i+2}),'XData',handles.SniffTrace.Timestamps(handles.SniffsMFS(:,8)),...
@@ -284,11 +346,7 @@ for i = 1:size(AxesTag,1)
         set(handles.(ValleysTag{i+2}),'XData',handles.SniffTrace.Timestamps(handles.SniffsMFS(:,9)),...
             'YData',handles.SniffTrace.(TraceTag{i})(handles.SniffsMFS(:,9)));
     end
-    if strcmp(handles.primarySniffTS,'SniffsMFS')
-        lowest_axes = 4;
-    else
-        lowest_axes = 1;
-    end
+
     % axes limits and labels
     if i == lowest_axes
         set(gca,'XLim',handles.SniffTrace.Timestamps(1)+[0 str2double(handles.WindowSize.String)],'YTick', []);
@@ -626,7 +684,7 @@ for n = 1:numel(sniffs_of_interest)
         end
     end
     % keep track of the inhalation detected on the thermistor side as well
-    if ~isnan(handles.SniffsMFS(whichsniff,4))
+    if ~isnan(handles.SniffsMFS(whichsniff,4)) && ~strcmp(handles.datamode,'cid')
         thermInh = find( (handles.SniffsTS(:,1)>=handles.SniffsMFS(whichsniff,4)) & (handles.SniffsTS(:,1)<=handles.SniffsMFS(whichsniff,2)) );
         if isempty(thermInh)
             % case 1 - thermistor inhalation was before the MFS inhalation
@@ -666,6 +724,9 @@ for n = 1:numel(sniffs_of_interest)
                     end
                 end
             end
+        end
+        if strcmp(handles.datamode,'cid')
+            thermInh = nan;
         end
         if isempty(thermInh)
             set(handles.pointercarat,'XData',handles.SniffsMFS(whichsniff,4),'YData',0.025);
@@ -916,9 +977,14 @@ handles.newSniff(1,[2 9]) = [handles.SniffTrace.Timestamps(idx2) idx2];
 
 % integrate into the current set of sniffs
 whichsniff = find(handles.(SniffTag)(:,1)<=handles.newSniff(1,1),1,'last');
-handles.newSniff(1,3:7) = handles.(SniffTag)(whichsniff,3:7);
-handles.(SniffTag)(whichsniff,3) = handles.newSniff(1,1);
-handles.(SniffTag) = [handles.(SniffTag)(1:whichsniff,:); handles.newSniff; handles.(SniffTag)((whichsniff+1):end,:)];
+if isempty(whichsniff) && (handles.newSniff(1,2) < handles.(SniffTag)(1,1))
+    handles.newSniff(1,3) = handles.(SniffTag)(1,1);
+    handles.(SniffTag) = [handles.newSniff; handles.(SniffTag)];
+else
+    handles.newSniff(1,3:7) = handles.(SniffTag)(whichsniff,3:7);
+    handles.(SniffTag)(whichsniff,3) = handles.newSniff(1,1);
+    handles.(SniffTag) = [handles.(SniffTag)(1:whichsniff,:); handles.newSniff; handles.(SniffTag)((whichsniff+1):end,:)];
+end
 guidata(hObject, handles);
 UpdatePeakValleyPlots(hObject, eventdata, handles); 
 
@@ -1032,6 +1098,8 @@ switch pressedKey
     case 'r'
         axes(handles.(handles.primaryAxes));
         RedoStretch_Callback(hObject, eventdata, handles);
+    case 's'
+        TempSave_Callback(hObject, eventdata, handles);
     case 'o'
         % Call a function or perform an action for 'o' key
         disp('Open action triggered!');

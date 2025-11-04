@@ -12,17 +12,17 @@ FigPath = '/home/priyanka/Desktop/cid/E6/20220610_1';
 TTLs.Trial((TTLs.Trial(:,4)==0),4) =  max(TTLs.Trial(:,4)) + 1;
 
 % find first inhalation start after odor start
-if exist('CuratedSniffTimestamps','var')
-    for t = 1:size(TTLs.Trial,1)
-        TTLs.Trial(t,10) = CuratedSniffTimestamps(find(CuratedSniffTimestamps(:,1)>=TTLs.Trial(t,7),1,'first'),1);
-    end
-end
+% if exist('CuratedSniffTimestamps','var')
+%     for t = 1:size(TTLs.Trial,1)
+%         TTLs.Trial(t,10) = CuratedSniffTimestamps(find(CuratedSniffTimestamps(:,1)>=TTLs.Trial(t,7),1,'first'),1);
+%     end
+% end
 
 nStim = unique(TTLs.Trial(:,4));
 nTypes = unique(TTLs.Trial(:,5));
 nreps = max(TTLs.Trial(:,6));
 nUnits = size(SingleUnits,2);
-savefigs = 1;
+savefigs = 0;
 mycolors = brewermap(10,'YlOrRd');
 mycolors(1:2,:) = [];
 
