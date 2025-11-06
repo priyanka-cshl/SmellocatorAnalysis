@@ -42,6 +42,9 @@ end
 if ~exist('SniffData','var')
     %rawdata = fullfile(Paths.CID.RawFiles,AnimalName,'raw',MyFileName);
     rawdata = fullfile(FilePaths,'raw',MyFileName);
+    if ~exist(rawdata) && exist(fullfile(Paths.CID.RawFiles,AnimalName,MyFileName),'dir')
+        rawdata = fullfile(Paths.CID.RawFiles,AnimalName,MyFileName);
+    end
     GetOepsTTLsAndRespiration_CID(rawdata);
     load(savepath,'SniffData','TTLs');
 end

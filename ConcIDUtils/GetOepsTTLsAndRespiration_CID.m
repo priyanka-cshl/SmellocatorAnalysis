@@ -119,7 +119,14 @@ if ~isempty(stimfile)
     stimlist(1:6,:) = []; % ? pre stim post iti #reps
     trialduration = sum(stimsettings(2:4)/1000);
     stimlist = reshape(stimlist,[],stimsettings(6)); % cols are repeats, rows are stim identities
-    conc_used = [10^-4 3*10^-3 6*10^-3 10^-2];
+
+    if size(stimlist,1) == 20 % concentration experiments
+        conc_used = [10^-4 3*10^-3 6*10^-3 10^-2];
+    elseif size(stimlist,1) == 16 % 16 odor experiments
+        conc_used = 10^-2;
+    else
+        keyboard;
+    end
 
     % first trial seems crap
     TTLs.Trial(find(TTLs.Trial(:,3)<trialduration),:) = []; 
@@ -132,8 +139,13 @@ if ~isempty(stimfile)
     for rep = 1:size(stimlist,2)
         for stim = 1:size(stimlist,1)
             count = count + 1;
-            TTLs.Trial(count,4) = mod(stimlist(stim,rep),5);
-            TTLs.Trial(count,5) = conc_used(ceil(stimlist(stim,rep)/5));
+            if numel(conc_used)>1
+                TTLs.Trial(count,4) = mod(stimlist(stim,rep),5);
+                TTLs.Trial(count,5) = conc_used(ceil(stimlist(stim,rep)/5));
+            else
+                TTLs.Trial(count,4) = stimlist(stim,rep);
+                TTLs.Trial(count,5) = conc_used;
+            end
             TTLs.Trial(count,6) = rep;
             % find the odor valve open and close timestamps that belong to
             % this trial
