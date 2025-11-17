@@ -1,6 +1,6 @@
 function [] = SixteenOdorsSniffResponseExaminer() %(myDir,myStimFile)
 
-whichmouse = 'T2';
+whichmouse = 'T3';
 window = [-0.1 1];
 binsize = 0.01;
 savefigs = 0;
@@ -148,7 +148,7 @@ for n = 1:nUnits
         Sniffs2Use{1} = sortrows(Sniffs2Use{1},[6 1]);
         
         % select only sniffs that occured in first stimulus (not the purge)
-        untilSniff = find(Sniffs2Use{1}(:,6)>1,1,'first');
+        untilSniff = find(Sniffs2Use{1}(:,6)>2,1,'first');
         Sniffs2Use{1}(untilSniff:end,:) = [];
 
         %[SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes, sniffsDone);
@@ -174,7 +174,7 @@ for n = 1:nUnits
         Sniffs2Use{1} = sortrows(Sniffs2Use{1},[6 1]);
 
         % select only sniffs that occured in first stimulus (not the purge)
-        untilSniff = find(Sniffs2Use{1}(:,6)>1,1,'first');
+        untilSniff = find(Sniffs2Use{1}(:,6)>2,1,'first');
         Sniffs2Use{1}(untilSniff:end,:) = [];
 
         %[SpikeRaster, maxsniffs] = GetSniffLockedSpikes(Sniffs2Use, thisUnitSpikes, sniffsDone);

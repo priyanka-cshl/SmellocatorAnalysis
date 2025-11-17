@@ -189,7 +189,7 @@ if exist(handles.WhereSession.String)==2
 
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
-        handles.SDfactor.String = '2.5';
+        handles.SDfactor.String = '5';
     else
         disp('unknown data format');
         return;
@@ -914,6 +914,85 @@ UpdatePeakValleyPlots(hObject, eventdata, handles);
 delete(roi);
 guidata(hObject, handles);
 
+function AdvancePeak_Callback(hObject, eventdata, handles)
+SniffTag = handles.primarySniffTS;
+AxesTag = handles.primaryAxes; %'MFS2Therm'; % 'SniffingFiltered'
+TraceTag = handles.primaryRawSniffTrace; %'mfs2thermTrace'; % 'rawTrace'
+SniffTraceTag = handles.primarySniffTrace; %'MFS2Therm'; %'Filtered'
+
+axes(handles.(AxesTag));
+roi = drawrectangle;
+sniffs_of_interest = intersect(...
+                    find(handles.(SniffTag)(:,1) >= roi.Position(1)), ...
+                        find(handles.(SniffTag)(:,2) <= (roi.Position(1) + roi.Position(3)) ) );
+
+redo = 1;
+while redo
+    redo = redo + 1;
+
+    if ~isempty(sniffs_of_interest)
+        for i = 1:numel(sniffs_of_interest)
+            whichsniff = sniffs_of_interest(i);
+            indices_of_interest = handles.(SniffTag)(whichsniff,8):handles.(SniffTag)(whichsniff,9);
+            stretchTimeStamps = handles.(TraceTag).XData(indices_of_interest)';
+            stretchThermistor = handles.(TraceTag).YData(indices_of_interest)';
+            % find new peaks
+            [pk,loc] = findpeaks(stretchThermistor);
+            thisStretchSniffs(i,:) = handles.(SniffTag)(whichsniff,:);
+            if ~isempty(loc)
+                thisStretchSniffs(i,[1 8]) = [stretchTimeStamps(loc(end)) indices_of_interest(loc(end))];
+            end
+            if i==1
+                %thisStretchSniffs(i-1,3) = thisStretchSniffs(i,1);
+            else
+                thisStretchSniffs(i-1,3) = thisStretchSniffs(i,1);
+            end
+        end
+    end
+
+    if ~isempty(thisStretchSniffs)
+
+        % show points on the plot
+        set(handles.peaksNew, ...
+            'XData',handles.SniffTrace.Timestamps(thisStretchSniffs(:,8)),...
+            'YData',handles.SniffTrace.(SniffTraceTag)(thisStretchSniffs(:,8)) );
+        set(handles.valleysNew, ...
+            'XData',handles.SniffTrace.Timestamps(thisStretchSniffs(:,9)),...
+            'YData',handles.SniffTrace.(SniffTraceTag)(thisStretchSniffs(:,9)) );
+
+        % keep the new detections
+        answer = questdlg('Keep the new detections?', ...
+            'Redo stretch', ...
+            'Yes','Redo','Cancel','Yes');
+
+        % Handle response
+        switch answer
+            case 'Yes'
+                % integrate into the current set of sniffs
+                prevsniff = sniffs_of_interest(1)-1;
+                chunkA = handles.(SniffTag)(1:prevsniff,:);
+                chunkA(end,3) = thisStretchSniffs(1,1);
+                chunkB = thisStretchSniffs;
+                nextsniff = sniffs_of_interest(end)+1;
+                chunkC = handles.(SniffTag)(nextsniff:end,:);
+                handles.(SniffTag) = [chunkA; chunkB; chunkC];
+                redo = 0;
+
+            case 'Redo'
+
+            case 'Cancel'
+                redo = 0;
+
+        end
+        set(handles.peaksNew,'XData',[],'YData',[]);
+        set(handles.valleysNew,'XData',[],'YData',[]);
+    end
+end
+
+UpdatePeakValleyPlots(hObject, eventdata, handles);
+delete(roi);
+guidata(hObject, handles);
+
 % -----------------------------------------------------------------------
 % --- Executes on button press in FlagStretch.
 function FlagStretch_Callback(hObject, eventdata, handles)
@@ -1098,6 +1177,9 @@ switch pressedKey
     case 'r'
         axes(handles.(handles.primaryAxes));
         RedoStretch_Callback(hObject, eventdata, handles);
+    case 'a'
+        axes(handles.(handles.primaryAxes));
+        AdvancePeak_Callback(hObject, eventdata, handles);
     case 's'
         TempSave_Callback(hObject, eventdata, handles);
     case 'o'
