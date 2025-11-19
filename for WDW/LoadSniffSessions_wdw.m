@@ -93,6 +93,36 @@ else
     TracesOut.SniffsDigitized{1} = DigitalSniffs;
 end
 
+%% wheel position data and camera triggers if video was recorded
+[WheelPosition, FrameTriggers] = GetOepsRotaryEncoder(myKsDir);
+if size(WheelPosition,1) <=  size(TracesOut.Timestamps{1},1)
+    nWheel = size(WheelPosition,1);
+    nanWheel = find(~isnan(WheelPosition(:,2)),1,"first");
+    WheelPosition(1:nanWheel,2) = WheelPosition(nanWheel,2);
+    WheelPosition((nWheel+1):size(TracesOut.Timestamps{1},1),2) = WheelPosition(nWheel,2);
+    TracesOut.WheelPosition{1} = WheelPosition(:,2);
+else
+    keyboard;
+end
+
+if any(FrameTriggers(:,4)) % video was recorded
+    % ignore nans
+    nanRows = find(isnan(FrameTriggers(:,1))|isnan(FrameTriggers(:,2)));
+    FrameTriggers(nanRows,:) = [];
+    fakeTriggers = find(FrameTriggers(:,3)<0.2*mode(FrameTriggers(:,3)));
+    FrameTriggers(fakeTriggers,:) = [];
+    TracesOut.VideoTriggers{1} = TracesOut.Timestamps{1}*0;
+    for i = 1:size(FrameTriggers,1)
+        [~,idx1] = min(abs(TracesOut.Timestamps{1}-FrameTriggers(i,1)));
+        [~,idx2] = min(abs(TracesOut.Timestamps{1}-FrameTriggers(i,2)));
+        if FrameTriggers(i,4)
+            TracesOut.VideoTriggers{1}(idx1:idx2) = 1;
+        else
+            TracesOut.VideoTriggers{1}(idx1:idx2) = -1;
+        end
+        %FrameTriggers(i,5:6) = [idx1 idx2];
+    end
+end
 %%
 if savemode
     [~,MouseName] = fileparts(fileparts(myKsDir));

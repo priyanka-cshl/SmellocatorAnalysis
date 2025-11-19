@@ -1,20 +1,14 @@
-function [TTLs,AuxData] = GetOepsRotaryEncoder(myKsDir, varargin)
+function [Position, FrameTriggers] = GetOepsRotaryEncoder(myKsDir, varargin)
 
 %% parse input arguments
 narginchk(1,inf)
 params = inputParser;
 params.CaseSensitive = false;
-params.addParameter('Analog', true, @(x) islogical(x) || x==0 || x==1);
+params.addParameter('SampleRate', 500, @(x) isnumeric(x));
 
 % extract values from the inputParser
 params.parse(varargin{:});
-GetPosition = params.Results.Analog;
-
-%% defaults
-SampleRate = 500; % Behavior Acquisition rate - standard rate at which we downsample analog data
-OEPSSamplingRate = 30000; % needed to read the aux file
-PPR = 1024; % pulses per rotation for the encoder
-angularStep = (1024*4)^-1; % by 4 for the quadrature encoder
+SampleRate = params.Results.SampleRate;
 
 %% Get Encoder clicks from the OpenEphys Events file
 if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
@@ -24,9 +18,9 @@ if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
     info.eventId    = foo.TTLs.info.eventId;
     offset          = foo.TTLs.offset;
 else
-    TTLs = [];
-    AuxData = [];
-    disp('no TTLs found in the sorting folder');
+    FrameTriggers = [];
+    Position = [];
+    disp('no TTLs file found in the sorting folder');
     return
 end
 
@@ -48,6 +42,11 @@ for i = 2:size(EncoderEvents,1)
 
 end
 
+% create an analog position vector with continuous timestamps
+% downsampled to behavior resolution
+Position(:,1) = 0:1/SampleRate:EncoderEvents(end,1);
+Position(:,2) = interp1q(EncoderEvents(:,1),EncoderEvents(:,4),Position(:,1));
+
 %% Get Camera triggers
 On = timestamps(intersect(find(info.eventId),find(data==6)));
 Off = timestamps(intersect(find(~info.eventId),find(data==6)));
@@ -60,67 +59,15 @@ end
 FrameTriggers = [On Off Off-On];
 % find out which triggers were in the recorded video
 VideoTS(:,1) = timestamps(intersect(find(info.eventId),find(data==8)));
-VideoTS(:,2) = timestamps(intersect(find(~info.eventId),find(data==8)));
+if ~isempty(timestamps(intersect(find(~info.eventId),find(data==8))))
+    VideoTS(:,2) = timestamps(intersect(find(~info.eventId),find(data==8)));
+else
+    VideoTS(end,2) = timestamps(end);
+end
 
 for i = 1:size(VideoTS,1)
     whichFrames = find(FrameTriggers(:,1)>VideoTS(i,1) & FrameTriggers(:,2)<VideoTS(i,2));
     FrameTriggers(whichFrames,4) = i;
 end
 
-%% Read the AuxFile
-fid = fopen(fullfile(myKsDir,'myauxfile.dat'));
-AuxData = fread(fid,'*int16');
-
-% get no. of samples from session details
-load(fullfile(myKsDir,'SessionDetails.mat'),'Files');
-NSamples    = Files.Samples;
-nAuxChans   = numel(AuxData)/NSamples;
-plot(AuxData(4:8:end));
-
-
-OEPSSamplingRate = handles.OEPSSamplingRate; %30000;
-Nchan       = str2double(handles.NumChans.String);
-Nsamples    = str2double(handles.WindowSize.String)*OEPSSamplingRate;
-
-TStart      = handles.TimeScroll.Value * 60 * ...
-                str2double(handles.RecordingLength.String) - ...
-                str2double(handles.WindowSize.String);
-TStart = floor(TStart);
-offset = uint64(max(0,2*Nchan * TStart * OEPSSamplingRate)); % 2 bytes per sample
-
-fid = fopen(fullfile(handles.BinaryPath.String,'mybinaryfile.dat'),'r');
-fseek(fid, offset, 'bof');
-MyData = fread(fid, [Nchan Nsamples], '*int16');
-
-AuxData = [];
-if GetAux
-    if UseSortingFolder
-        %if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
-        
-    else
-
-        %% Get analog/digital AuxData from Oeps files - for comparison with behavior data
-        foo = dir(fullfile(myKsDir,'*_ADC1.continuous')); % pressure sensor
-        filename = fullfile(myKsDir,foo.name);
-        [Auxdata1, timestamps, ~] = load_open_ephys_data(filename); % data has channel IDs
-        foo = dir(fullfile(myKsDir,'*_ADC2.continuous')); % thermistor
-        filename = fullfile(myKsDir,foo.name);
-        [Auxdata2, ~, ~] = load_open_ephys_data(filename); % data has channel IDs
-
-        % adjust for clock offset between open ephys and kilosort
-        timestamps = timestamps - offset;
-
-        % downsample to behavior resolution
-
-        AuxData(:,1) = 0:1/SampleRate:max(timestamps);
-        AuxData(:,2) = interp1q(timestamps,Auxdata1,AuxData(:,1)); % pressure sensor
-        AuxData(:,3) = interp1q(timestamps,Auxdata2,AuxData(:,1)); % thermistor
-        % create a continuous TrialOn vector
-        for MyTrial = 1:size(TTLs.Trial,1)
-            [~,start_idx] = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,1)));
-            [~,stop_idx]  = min(abs(AuxData(:,1)-TTLs.Trial(MyTrial,2)));
-            AuxData(start_idx:stop_idx,4) = 1;
-        end
-    end
-end
 end
