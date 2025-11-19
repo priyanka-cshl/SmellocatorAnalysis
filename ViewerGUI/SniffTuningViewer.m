@@ -108,6 +108,7 @@ if ~isempty(varargin)
         end
         [~,FileName] = fileparts(handles.WhereSession.String);
         handles.MouseName = regexprep(FileName,'_(\w+)_processed.mat','');
+        handles.RefreshUnits.Enable = 'on';
     end
 else
     handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW','Q4_20221112_r0_processed.mat');
@@ -170,15 +171,15 @@ function [handles] = LoadSession_Callback(hObject, eventdata, handles)
     else
         % get a list of sniffs, also get units
         [handles.AllSniffs] = QuickSniffTTLMapper_v2(handles.WhereSession.String);
-        if numel(unique(handles.AllSniffs(:,4))) == 1
-            handles.snifftypes = 1;
-            handles.stack_many_units.Value = 0;
-        end
 
         % loading units
         SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
     end
-    
+    if numel(unique(handles.AllSniffs(:,4))) == 1
+        handles.snifftypes = 1;
+        handles.stack_many_units.Value = 0;
+    end
+
     handles.MultiSelectUnits = [];
     handles.selectCount.Data(1) = 0;
     for whichunit = 1:size(SingleUnits,2)
