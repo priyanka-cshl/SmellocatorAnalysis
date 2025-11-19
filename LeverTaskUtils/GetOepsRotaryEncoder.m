@@ -1,4 +1,4 @@
-function [TTLs,ReplayTTLs,EphysTuningTrials,AuxData] = GetOepsRotaryEncoder(myKsDir, varargin)
+function [TTLs,AuxData] = GetOepsRotaryEncoder(myKsDir, varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -11,7 +11,10 @@ params.parse(varargin{:});
 GetPosition = params.Results.Analog;
 
 %% defaults
-global SampleRate; % Behavior Acquisition rate
+SampleRate = 500; % Behavior Acquisition rate - standard rate at which we downsample analog data
+OEPSSamplingRate = 30000; % needed to read the aux file
+PPR = 1024; % pulses per rotation for the encoder
+angularStep = (1024*4)^-1; % by 4 for the quadrature encoder
 
 %% Get Encoder clicks from the OpenEphys Events file
 if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
@@ -22,168 +25,72 @@ if exist(fullfile(myKsDir,'myTTLfile_1.mat'))
     offset          = foo.TTLs.offset;
 else
     TTLs = [];
-    EphysTuningTrials = [];
     AuxData = [];
-    ReplayTTLs = [];
     disp('no TTLs found in the sorting folder');
     return
 end
 
 timestamps = timestamps - offset;
 
-%% Get various events
-TTLTypes = unique(data); % RE clicks are in 3 and 5, 6 is frame triggers, 8 is sync signal?
-Tags = {'EncoderA', 'EncoderB', 'Cam', 'Sync'};
-for i = 1:numel(TTLTypes)
-    On = timestamps(intersect(find(info.eventId),find(data==TTLTypes(i))));
-    Off = timestamps(intersect(find(~info.eventId),find(data==TTLTypes(i))));
+%% Get all Encoder Events
+whichEvents = find(data==3 | data==5);
+EncoderEvents = [timestamps(whichEvents) double(info.eventId(whichEvents)) double(data(whichEvents))];
+EncoderEvents = sortrows(EncoderEvents,1); % sort by time
 
+EncoderEvents(:,4) = nan;
+EncoderEvents(1,4) = 1;
+for i = 2:size(EncoderEvents,1)
+    if EncoderEvents(i,3) ~= EncoderEvents(i-1,3)
+        EncoderEvents(i,4) = EncoderEvents(i-1,4) + 1;
+    else
+        EncoderEvents(i,4) = EncoderEvents(i-1,4) - 1;
+    end
 
-    if Off(1)<On(1) % first off value, preceeds the first On
-        On = vertcat(nan, On);
-    end
-    if On(end)>Off(end) % last on value, exceeds the last Off
-        Off = vertcat(Off, nan);
-    end
-
-%     if length(On)>length(Off)
-%         keyboard;
-%         foo = [On(1:end-1) Off]';
-%         goo = foo(:);
-%         On(find(diff(goo)<0,1,'first')/2,:) = [];
-%     end
-        
-    temp = [On Off Off-On];
-    
-    % ignore any transitions faster than 1 ms - behavior resolution is 2 ms
-    temp(temp(:,3)<0.001,:) = [];
-    
-    % sometimes lines can toggle high low quickly leading to
-    % splitting of one trial into two
-    splitTrials = find(abs(Off(:,1) - circshift(On(:,1),-1))<0.001);
-    if any(splitTrials)
-        disp(['merging ',num2str(numel(splitTrials)),' split ',char(Tags(i)),' Trials']);
-        Off(splitTrials,:)  = [];
-        On(splitTrials+1,:) = [];
-    end
-    
-    temp = [On Off Off-On];
-    TTLs.(char(Tags(i))) = temp;
 end
 
-if size(TTLs.Trial,1)<5
-    TTLs = [];
-    EphysTuningTrials = [];
-    AuxData = [];
-    disp('no valid oeps file found');
-    return
+%% Get Camera triggers
+On = timestamps(intersect(find(info.eventId),find(data==6)));
+Off = timestamps(intersect(find(~info.eventId),find(data==6)));
+if Off(1)<On(1) % first off value, preceeds the first On
+    On = vertcat(nan, On);
+end
+if On(end)>Off(end) % last on value, exceeds the last Off
+    Off = vertcat(Off, nan);
+end
+FrameTriggers = [On Off Off-On];
+% find out which triggers were in the recorded video
+VideoTS(:,1) = timestamps(intersect(find(info.eventId),find(data==8)));
+VideoTS(:,2) = timestamps(intersect(find(~info.eventId),find(data==8)));
+
+for i = 1:size(VideoTS,1)
+    whichFrames = find(FrameTriggers(:,1)>VideoTS(i,1) & FrameTriggers(:,2)<VideoTS(i,2));
+    FrameTriggers(whichFrames,4) = i;
 end
 
-%% mismatch between behavior and oeps trials on first trial
-if ~isempty(BehaviorTrials)
-    if any(abs(BehaviorTrials(1:5,3)-TTLs.Trial(1:5,3))>=0.01)
-        % case 1 : behavior file has an extra trial
-        if ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(1:5,3))>=0.01)
-            % append an extra NaN trial on the Oeps side
-            TTLs.Trial = [NaN*TTLs.Trial(1,:); TTLs.Trial];
-            
-            % case 2 : behavior acq started mid-trial, first trial might be a bit shorter
-        elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(2:6,3))>=0.01)
-            % do nothing
-        elseif ~any(abs(BehaviorTrials(2:6,3)-TTLs.Trial(3:7,3))>=0.01)
-            % OEPS side has an extra trial
-            TTLs.Trial(1,:) = [];
-        end
-    end
-    
-    % Is it the right recording file?
-    if size(TTLs.Trial,1)<size(BehaviorTrials,1)
-        TTLs = [];
-        EphysTuningTrials = [];
-        AuxData = [];
-        disp('behavior and ephys files do not match');
-        return
-    end
-    
-    y = corrcoef(BehaviorTrials(2:20,3),TTLs.Trial(2:20,3));
-    if y(2,1)<0.99
-        TTLs = [];
-        EphysTuningTrials = [];
-        AuxData = [];
-        disp('behavior and ephys files do not match');
-        return
-    end
-end
+%% Read the AuxFile
+fid = fopen(fullfile(myKsDir,'myauxfile.dat'));
+AuxData = fread(fid,'*int16');
 
-%% find the odor ON time 
-count = 0;
-ReplayTTLs = [];
-for i = 1:size(TTLs.Trial,1) % every trial
-    
-     % find the last odor valve ON transition just before this trial start
-     if i > 1
-         t1 = TTLs.Trial(i-1,2);
-     else
-         t1 = 0;
-     end
-     t2 = TTLs.Trial(i,1);
-     
-     ValveEvents = [];
-     for thisOdor = 1:3
-         myEvents = intersect(find(TTLs.(['Odor',num2str(thisOdor)])(:,1)>t1),...
-             find(TTLs.(['Odor',num2str(thisOdor)])(:,1)<t2));
-         myTimeStamps = TTLs.(['Odor',num2str(thisOdor)])(myEvents,:);
-         ValveEvents = vertcat(ValveEvents,...
-             [myTimeStamps thisOdor*ones(numel(myEvents),1)]);
-     end
-     
-     if ~isempty(ValveEvents)         
-         [t3,x] = max(ValveEvents(:,1));
-         TTLs.Trial(i,4:5) = [t3-t2 ValveEvents(x,4)];
-     else
-         TTLs.Trial(i,4:5) = [NaN 0];
-     end
-             
-    % for replay trials
-    %if TTLs.Trial(i,3) > 1 + mode(BehaviorTrials(:,3))
-    if ~isempty(BehaviorTrials)
-        if TTLs.Trial(i,3) > 5*mean(BehaviorTrials(:,3)) % at least 5 trials in the replay
-            tstart = TTLs.Trial(i,1);
-            tstop  = TTLs.Trial(i,2);
-            O1 = intersect(find(TTLs.Odor1(:,1)>tstart),find(TTLs.Odor1(:,1)<tstop));
-            O2 = intersect(find(TTLs.Odor2(:,1)>tstart),find(TTLs.Odor2(:,1)<tstop));
-            O3 = intersect(find(TTLs.Odor3(:,1)>tstart),find(TTLs.Odor3(:,1)<tstop));
-            
-            % keep the odor transition that happened just before trial start
-            if ~isempty(ValveEvents)
-                ValveEvents = ValveEvents(x,:);
-            end
-            for j = 1:3
-                temp = eval(['TTLs.Odor',num2str(j),'(O',num2str(j),',:);']);
-                ValveEvents = vertcat(ValveEvents,...
-                    [temp j*ones(size(temp,1),1)]);
-            end
-            % reference odor transitions w.r.t. trial ON
-            ValveEvents(:,1:2) = ValveEvents(:,1:2) - t2 ;
-            [~,sortID] = sort(ValveEvents(:,1));
-            
-            if size(ValveEvents,1)>5
-                count = count + 1;
-                ReplayTTLs.OdorValve{count} = ValveEvents(sortID,:);
-                ReplayTTLs.TrialID(count)   = i;
-            end
-            
-        end
-    end
-    
-end
+% get no. of samples from session details
+load(fullfile(myKsDir,'SessionDetails.mat'),'Files');
+NSamples    = Files.Samples;
+nAuxChans   = numel(AuxData)/NSamples;
+plot(AuxData(4:8:end));
 
-% Align Passive Tuning trials
-if ~isempty(TuningTrials)
-    [EphysTuningTrials] = AlignPassiveTuningTrials(TuningTrials, TTLs, size(BehaviorTrials,1), TrialSequence);
-else
-    EphysTuningTrials = [];
-end
+
+OEPSSamplingRate = handles.OEPSSamplingRate; %30000;
+Nchan       = str2double(handles.NumChans.String);
+Nsamples    = str2double(handles.WindowSize.String)*OEPSSamplingRate;
+
+TStart      = handles.TimeScroll.Value * 60 * ...
+                str2double(handles.RecordingLength.String) - ...
+                str2double(handles.WindowSize.String);
+TStart = floor(TStart);
+offset = uint64(max(0,2*Nchan * TStart * OEPSSamplingRate)); % 2 bytes per sample
+
+fid = fopen(fullfile(handles.BinaryPath.String,'mybinaryfile.dat'),'r');
+fseek(fid, offset, 'bof');
+MyData = fread(fid, [Nchan Nsamples], '*int16');
 
 AuxData = [];
 if GetAux
