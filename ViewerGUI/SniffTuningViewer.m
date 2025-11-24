@@ -89,6 +89,7 @@ handles.quickmode = 0;
 handles.AllUnits = [];
 handles.RefreshUnits.Enable = 'off';
 handles.snifftypes = 5;
+handles.sortingDir = [];
 
 if ~isempty(varargin)
     if numel(varargin) == 2 && strcmp(varargin{2},'quickprocess')
@@ -100,6 +101,7 @@ if ~isempty(varargin)
         [~,handles.MouseName] = fileparts(fileparts(handles.WhereSession.String));
         handles.quickmode = 1;
         handles.RefreshUnits.Enable = 'on';
+        handles.sortingDir = handles.WhereSession.String;
     else
         if exist(varargin{1}) == 2
             handles.WhereSession.String = varargin{1};
@@ -107,8 +109,12 @@ if ~isempty(varargin)
             handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW',varargin{1});
         end
         [~,FileName] = fileparts(handles.WhereSession.String);
-        handles.MouseName = regexprep(FileName,'_(\w+)_processed.mat','');
+        handles.MouseName = regexprep(FileName,'_(\w+)_processed','');
         handles.RefreshUnits.Enable = 'on';
+        dateIdx = strfind(FileName,'_');
+        dateString = datestr(datetime(FileName(dateIdx(1)+1:dateIdx(2)-1),'InputFormat','yyyyMMdd'),'yyyy-mm-dd');
+        foo = dir(fullfile(Paths.Local.Ephys_processed,handles.MouseName,['*',dateString,'*']));
+        handles.sortingDir = fullfile(foo.folder,foo.name);
     end
 else
     handles.WhereSession.String = fullfile(Paths.Wolf.processed,'forWDW','Q4_20221112_r0_processed.mat');
@@ -390,7 +396,11 @@ function stackMerge_Callback(hObject, eventdata, handles)
 % --- Executes on button press in RefreshUnits.
 function RefreshUnits_Callback(hObject, eventdata, handles)
     % loading units
-    SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
+    if ~isempty(handles.sortingDir)
+        SingleUnits = GetSingleUnits(handles.sortingDir, 3);
+    else
+        SingleUnits = GetSingleUnits(handles.WhereSession.String, 3);
+    end
     handles.AllUnits = [];
     handles.MultiSelectUnits = [];
     handles.selectCount.Data(1) = 0;
