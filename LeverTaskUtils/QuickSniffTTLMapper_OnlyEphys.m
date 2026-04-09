@@ -19,7 +19,8 @@ end
 %     return;
 % end
 if ~exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
-    [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile(myKsDir);
+    [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile_smarter(myKsDir);
+    % [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile(myKsDir);
 else
     load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs', 'RespirationData');
 end

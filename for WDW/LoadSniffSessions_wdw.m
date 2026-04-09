@@ -33,6 +33,11 @@ end
 myKsDir = fileparts(WhereSession);
 SingleUnits = GetSingleUnits(myKsDir, 3);
 
+%% are there units also from kilosort4
+if exist(fullfile(myKsDir,'kilosort4')) == 7
+    KS4SingleUnits = GetSingleUnitsKS4(fullfile(myKsDir,'kilosort4'), 3);
+end
+
 %% Traces
 TracesOut.Timestamps{1}         = RespirationData(:,1);
 % create a corresponding timestamp vector
@@ -129,7 +134,11 @@ if savemode
     [~,filename] = fileparts(myKsDir);
     filename = [MouseName,'_',regexprep(filename(1,1:10),'-',''),'_r0_processed.mat']; 
     savepath = '/mnt/data/';
-    save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits');
+    if exist('KS4SingleUnits','var')
+        save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits','KS4SingleUnits');
+    else
+        save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits');
+    end
 end
 
 end

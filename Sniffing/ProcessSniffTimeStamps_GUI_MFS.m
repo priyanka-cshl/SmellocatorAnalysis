@@ -267,15 +267,22 @@ switch handles.datamode
             load(handles.WhereSession.String,'CuratedSniffTimestamps');
             handles.SniffsTS = CuratedSniffTimestamps;
         catch
-            [SniffTimeStamps] = ChunkWiseSniffs(RespirationData(:,[1 3]), 'SDfactor', str2double(handles.SDfactor.String)); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
-            % remove nans
-            SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
+            if any(RespirationData(:,3))
+                [SniffTimeStamps] = ChunkWiseSniffs(RespirationData(:,[1 3]), 'SDfactor', str2double(handles.SDfactor.String)); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
+                % remove nans
+                SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
 
-            % remove overlapping sniffs
-            handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+                % remove overlapping sniffs
+                handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+            else
+                handles.SniffsTS = [];
+            end
         end
-        handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
-        handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+        
+        if ~isempty(handles.SniffsTS)
+            handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
+            handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+        end 
 
         % make equivalent long traces for plotting
         handles.SniffTrace.Timestamps   = RespirationData(:,1);
@@ -301,10 +308,15 @@ switch handles.datamode
 
             % remove overlapping sniffs
             handles.SniffsMFS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+            
+            if isempty(handles.SniffsTS)
+                handles.SniffsTS = handles.SniffsMFS;
+                handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
+                handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+            end
 
             handles.SniffsMFS(find(isnan(handles.SniffsMFS(:,8))),:) = [];
             handles.SniffsMFS(find(handles.SniffsMFS(:,8)<=0),:) = [];
-
             handles.SniffsMFS(:,4:7) = nan;
         end
         
