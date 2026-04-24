@@ -1,13 +1,14 @@
 % 
 %
 
-SessionName = 'APCB_20220311_r0_processed.mat';
+% SessionName = 'APCB_20220311_r0_processed.mat';
 % SessionName = 'Q3_20221026_r0_processed.mat';
 % SessionName = 'Q4_20221112_r0_processed.mat';
-% SessionName = 'Q5_20221122_r0_processed.mat';
-% SessionName = 'Q8_20221209_r0_processed.mat';
+%SessionName = 'Q5_20221122_r0_processed.mat';
+%SessionName = 'Q8_20221209_r0_processed.mat';
 % SessionName = 'Q9_20221119_r0_processed.mat';
 SessionName = 'T3_20250508_r0_processed.mat';
+%SessionName = 'T2_20250508_r0_processed.mat';
 
 %% Housekeeping
 % Some path handling
@@ -41,6 +42,7 @@ if strfind(SessionName,'Q')
     SniffStarts(:,8) = AllSniffs(2:end-1,4); % manifold state
     SniffStarts(:,9) = AllSniffs(2:end-1,5); % odor state
     SniffStarts(:,10) = AllSniffs(2:end-1,8); % session phase
+    SniffStarts(:,11) = AllSniffs(2:end-1,6); % odor location
 
     SniffStarts(SniffStarts(:,10)~=1,:) = [];
     SniffStarts(SniffStarts(:,8)>0 & SniffStarts(:,8)<1,:) = [];
@@ -83,7 +85,9 @@ elseif isfield(data,'SingleUnits')
 else
     keyboard;
 end
+
 myUnits(:,3) = floor(myUnits(:,2));
+myUnits(:,3) = floor((1:size(myUnits,1))/10)+1;
 % myUnits(:,3) = 1;
 
 %%
@@ -99,10 +103,12 @@ for snifforder = 3 %1:3
             % we can resort SniffStarts by current sniff frequency
             SniffStarts = sortrows(SniffStarts, [10 8 9 7], 'descend');
     end
+
     for whichtetrode = 1:16 %16
         f = find(myUnits(:,3)==whichtetrode);
 %         figure; %(whichtetrode); 
-subplot(5,4,whichtetrode);
+        %subplot(5,4,whichtetrode);
+        subplot(5,2,whichtetrode);
         hold on
 %        subplot(1,3,whichplot); hold on
 %         whichplot = snifforder;
@@ -116,7 +122,7 @@ subplot(5,4,whichtetrode);
             %plot(spikelist(:,2)+offset,spikelist(:,1),'.');
             plot(spikelist(:,2)+offset,spikelist(:,3),'.','MarkerSize',2);
         end
-        set(gca, 'XLim',[0 4])
+        set(gca, 'XLim',[0 11])
     end
     
 end
