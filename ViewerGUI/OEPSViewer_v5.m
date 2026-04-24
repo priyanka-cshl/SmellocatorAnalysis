@@ -101,10 +101,15 @@ if isempty(handles.BinaryPath.String)
         [RecordingFile, WhichSession] = uigetfile('/mnt/data/Sorted/Q8/2022-12-09_14-37-11/mybinaryfile.dat',...
                                 'Select a processed binary file');
     handles.BinaryPath.String = WhichSession;
-    
-    load(fullfile(handles.BinaryPath.String,'chanMap.mat'),'chanMap');
-    handles.NumChans.String = num2str(size(chanMap,2));
-    handles.ChanZoom = mat2str([1 size(chanMap,2)]);
+    try
+        load(fullfile(handles.BinaryPath.String,'chanMap.mat'),'chanMap');
+        handles.NumChans.String = num2str(size(chanMap,2));
+        handles.ChanZoom = mat2str([1 size(chanMap,2)]);
+    catch
+        load(fullfile(handles.BinaryPath.String,'SessionDetails.mat'),'Files');
+        handles.NumChans.String = num2str(Files.Channels(1));
+        handles.ChanZoom = mat2str([1 Files.Channels(1)]);
+    end
     % load units if available
     if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
         handles.UnitsPath.String = WhichSession; %fullfile(WhichSession,'cluster_group.tsv');
