@@ -253,7 +253,7 @@ save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
         % remove overlapping sniffs
         SniffTS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
         % get odor location as well
-        for n = 1:size(SniffTS,2)
+        for n = 1:size(SniffTS,1)
             SniffTS(n,4) = median(LocationTrace(SniffTS(n,8):SniffTS(n,9),1));
         end
 
