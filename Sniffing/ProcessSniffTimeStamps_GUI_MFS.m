@@ -69,6 +69,11 @@ if size(varargin,2) == 2
             handles.primaryRawSniffTrace    = 'rawTrace';
             handles.primarySniffTrace       = 'Filtered';
     end
+elseif ~isempty(regexp(varargin{1},'_r\d.mat'))
+    handles.primarySniffTS          = 'SniffsTS'; % 'SniffsTS'
+    handles.primaryAxes             = 'SniffingFiltered';
+    handles.primaryRawSniffTrace    = 'rawTrace';
+    handles.primarySniffTrace       = 'Filtered';
 else
     handles.primarySniffTS          = 'SniffsMFS'; % 'SniffsTS'
     handles.primaryAxes             = 'MFS2Therm';
@@ -167,9 +172,9 @@ varargout{1} = handles.output;
 
 % --- Executes on button press in LoadSession.
 function LoadSession_Callback(hObject, eventdata, handles)
+[Paths] = WhichComputer();
 % check that a valid session is specified
 if isempty(handles.WhereSession.String)
-    [Paths] = WhichComputer();
         [WhichSession, SessionPath] = uigetfile(...
                                 fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat'),...
                                 'Select Behavior or Recording Session');
@@ -194,6 +199,8 @@ if exist(handles.WhereSession.String)==2
         disp('unknown data format');
         return;
     end
+elseif ~isempty(regexp(handles.WhereSession.String,'_r\d.mat'))
+    handles.datamode = 'smellocator_raw';
 elseif strcmp(handles.WhereSession.String,'direct traces')
     handles.datamode = 'smellocator_raw';
 else
@@ -202,7 +209,45 @@ else
 end
 
 switch handles.datamode
+    case 'smellocator_raw'
+        % load the thermistor data from the raw behavior file
+        [Traces, TrialInfo, AllData, DataTags] = PreprocessSmellocatorDataLite(handles.WhereSession.String);
+        RespirationData = AllData(:,[1 find(ismember(DataTags,'thermistor'))]);
+        handles.SessionLength = RespirationData(end,1);
 
+        % filter
+        fband = [0.1 30];
+        Np    = 4; % filter order
+        [b,a] = butter(Np,fband/(500/2));
+        RespirationData(:,3) = filtfilt(b,a,RespirationData(:,2));
+
+        try
+            load(handles.WhereSession.String,'CuratedSniffTimestamps');
+            handles.SniffsTS = CuratedSniffTimestamps;
+        catch
+            if any(RespirationData(:,3))
+                [SniffTimeStamps] = ChunkWiseSniffs(RespirationData(:,[1 3]), 'SDfactor', str2double(handles.SDfactor.String)); % [sniffstart sniffstop nextsniff ~ ~ ~ trialID]
+                % remove nans
+                SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
+
+                % remove overlapping sniffs
+                handles.SniffsTS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+            else
+                handles.SniffsTS = [];
+            end
+        end
+
+        if ~isempty(handles.SniffsTS)
+            handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
+            handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+        end
+
+        % make equivalent long traces for plotting
+        handles.SniffTrace.Timestamps   = RespirationData(:,1);
+        handles.OdorLocationTrace       = [];
+        handles.SniffTrace.Raw          = RespirationData(:,2); % unfiltered thermistor trace
+        handles.SniffTrace.Filtered     = RespirationData(:,3); % filtered thermistor trace
+        
     case 'cid' % for concentration identity experiments done by Maries
         % load the Respiration traces and detected sniffs (if any)
         load(handles.WhereSession.String, 'AllSniffs', 'SniffData', 'TTLs'); % AllSniffs: nx13, SniffData: t x 3(ts, raw, filt) - all MFS
@@ -320,8 +365,8 @@ switch handles.datamode
             handles.SniffsMFS(:,4:7) = nan;
         end
         
-end
 
+end
 handles.SessionDuration.String = num2str(handles.SessionLength);
 
 % update all trace plots
