@@ -1,4 +1,4 @@
-function [SniffTS, RespirationData] = ReadThermistorData(FileName,plotting)
+function [SniffTS, RespirationData, LocationData] = ReadThermistorData(FileName,plotting)
 
 if nargin<2
     plotting = 0;

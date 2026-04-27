@@ -9,6 +9,9 @@ function [AllSniffs] = QuickSniffTTLMapper_v2(myKsDir)
 
 % where to look
 [Paths] = WhichComputer();
+if contains(myKsDir,'kilosort4')
+    myKsDir = fileparts(myKsDir);
+end
 if strcmp(myKsDir(end),filesep)
     myKsDir = myKsDir(1:end-1);
 end
@@ -76,7 +79,9 @@ end
 
 %% create a timestamps trace @2ms resolution, ephys timebase to use for
 % creating other behavior related traces
-TraceTS = (0:0.002:(TTLs.Trial(end,2)+1));
+
+    TraceTS = (0:0.002:(TTLs.Trial(end,2)+1));
+
 % also create a blank  digitized and locationed sniff trace
 DigitalSniffs = TraceTS*0;
 LocationSniffs = TraceTS*0;
@@ -179,7 +184,8 @@ save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
         trial_idx = find(diff([0; MyTrialBinary; 0]));
         trial_idx = reshape(trial_idx,2,[])';
         if trial_idx(end) > size(session_data.timestamps,1)
-            trial_idx(end) = size(session_data.timestamps,1);
+            trial_idx(end,:) = [];
+           % trial_idx(end) = size(session_data.timestamps,1);
         end
         trial_TS = session_data.timestamps(trial_idx);
         trial_TS(:,3) = diff(trial_TS')'; % trial durations
@@ -227,26 +233,43 @@ save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
     
     function [ValveTrace] = TStoValveTrace(ValveTS,ValveTrace,ONvalue,TraceTS) 
         for v = 1:size(ValveTS,1)
-            vx(1) = find(TraceTS>=ValveTS(v,1),1,'first');
-            vx(2) = find(TraceTS> ValveTS(v,2),1,'first') - 1;
-            ValveTrace(vx(1):vx(2)) = ONvalue;
+            if (max(ValveTS(v,1:2))<=max(TraceTS))
+                vx(1) = find(TraceTS>=ValveTS(v,1),1,'first');
+                vx(2) = find(TraceTS> ValveTS(v,2),1,'first') - 1;
+                ValveTrace(vx(1):vx(2)) = ONvalue;
+%             else
+%                 keyboard;
+            end
         end
     end
 
     function [DigitalSniffs, LocationSniffs, SessionLength] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs)
         % process sniff trace and create a digitized trace
-        [SniffTS, RespTrace] = ReadThermistorData(BehaviorPath);
+        [~, RespTrace, LocationTrace] = ReadThermistorData(BehaviorPath);
+        SniffTimeStamps = ChunkWiseSniffs(RespTrace(:,[1 3]));
+        % remove nans
+        SniffTimeStamps(find(isnan(SniffTimeStamps(:,1))),:) = [];
+
+        % remove overlapping sniffs
+        SniffTS = SniffTimeStamps(find(SniffTimeStamps(:,7)>0),:);
+        % get odor location as well
+        for n = 1:size(SniffTS,2)
+            SniffTS(n,4) = median(LocationTrace(SniffTS(n,8):SniffTS(n,9),1));
+        end
+
         % convert timestamps to ephys timestamps
         SniffTS(:,1:3) = SniffTS(:,1:3) + SniffTS(:,1:3)*TSadjust(1) + TSadjust(2); % convert timestamps to OEPS
         RespTrace(:,1) = RespTrace(:,1) + RespTrace(:,1)*TSadjust(1) + TSadjust(2); % convert timestamps to OEPS
         SessionLength = RespTrace(end,1);
 
         for n = 1:size(SniffTS,1)
-            idx(1) = find(TraceTS>=SniffTS(n,1),1,'first');
-            idx(2) = find(TraceTS> SniffTS(n,2),1,'first') - 1;
-            DigitalSniffs(idx(1):idx(2)) = 1;
-            location = SniffTS(n,4);
-            LocationSniffs(idx(1):idx(2)) = location;
+            if (max(SniffTS(n,1:2))<=max(TraceTS))
+                idx(1) = find(TraceTS>=SniffTS(n,1),1,'first');
+                idx(2) = find(TraceTS> SniffTS(n,2),1,'first') - 1;
+                DigitalSniffs(idx(1):idx(2)) = 1;
+                location = SniffTS(n,4);
+                LocationSniffs(idx(1):idx(2)) = location;
+            end
         end
     end
 
