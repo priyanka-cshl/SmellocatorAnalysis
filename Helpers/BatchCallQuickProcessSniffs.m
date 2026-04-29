@@ -1,12 +1,16 @@
 Mice = {'Q3', 'Q4', 'Q5', 'Q8', 'Q9'};
-for m = 5:5
+for m = 1:5
     SortingMain = fullfile('/mnt/storage/Sorted',Mice{m});
     AllFolders = dir(SortingMain);
     for x = 1:size(AllFolders,1)
         if ~strcmp(AllFolders(x).name,'.')&&~strcmp(AllFolders(x).name,'..')&&~contains(AllFolders(x).name,'*')
         thisDir = fullfile(SortingMain,AllFolders(x).name,'kilosort4');
         disp(thisDir);
-        QuickSniffTTLMapper_v2(thisDir);
+        try
+            QuickSniffTTLMapper_v2(thisDir,1);
+        catch
+            keyboard;
+        end
         HDMain = fullfile('/media/priyanka/ABC-ntfs/EphysSorted',Mice{m},AllFolders(x).name);
         copyfile(fullfile(SortingMain,AllFolders(x).name,'quickprocesssniffs.mat'), ...
             fullfile(HDMain,'quickprocesssniffs.mat'));

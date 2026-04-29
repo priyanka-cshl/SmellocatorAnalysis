@@ -1,8 +1,10 @@
-function [AllSniffs] = QuickSniffTTLMapper_v2(myKsDir)
+function [AllSniffs] = QuickSniffTTLMapper_v2(myKsDir,overwrite)
 % myKsDir = '/Users/Priyanka/Desktop/LABWORK_II/Data/Smellocator/Processed/Ephys/Q9/2022-11-19_17-14-37/';
 % location where the sorted output is - contains cluster info and a TTL
 % file generated during Kilosort
-
+if nargin<2
+    overwrite = 0;
+end
 %% 1: Where is the corresponding behavior/tuning file
 %   - need this to load trials to calculate timestamp difference
 %   - and then process respiration with corrected timestamps
@@ -16,6 +18,7 @@ if strcmp(myKsDir(end),filesep)
     myKsDir = myKsDir(1:end-1);
 end
 
+if ~overwrite
 % have sniffs already been processed
 if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
     load (fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
@@ -23,6 +26,7 @@ if exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
         AllSniffs(find(AllSniffs(:,1)>9000),:) = [];
     end
     return;
+end
 end
 
 [~,ephysfile] = fileparts(myKsDir);
@@ -79,8 +83,7 @@ end
 
 %% create a timestamps trace @2ms resolution, ephys timebase to use for
 % creating other behavior related traces
-
-    TraceTS = (0:0.002:(TTLs.Trial(end,2)+1));
+TraceTS = (0:0.002:(TTLs.Trial(end,2)+1));
 
 % also create a blank  digitized and locationed sniff trace
 DigitalSniffs = TraceTS*0;
@@ -164,7 +167,7 @@ for s = 1:numel(SessMarker)-1
     AllSniffs(f:end,8) = AllSniffs(f:end,8) + 1;
 end
 
-save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs');
+save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs','TTLs','Traces','TSadjust');
 
 %% function definitions
 
