@@ -1,29 +1,38 @@
+function [] = SniffTuningOverview(SessionName)
 %% script for loading the quick sorted sessions for early Smellocator data
 %  and ephys
 
 %% Path handling
 % SessionName = 'Q3_20220906';
-SessionName = 'Q5_20220907';
-% SessionName = 'Q8_20220928';
-% SessionName = 'Q4_20220906';
-SessionName = 'Q9_20220927';
-SessionName = 'Q9_20221001';
+% SessionName = 'Q5_20220907';
+% % SessionName = 'Q8_20220928';
+% % SessionName = 'Q4_20220906';
+% SessionName = 'Q9_20220927';
+% SessionName = 'Q9_20221001';
 if ~contains(SessionName,'.mat')
     if contains(mfilename('fullpath'),'opt') % Linux desktops
         basePath = '/opt/';
-        FileSplit = strsplit(SessionName,'_');
-        if regexp(FileSplit{1},'Q\d') 
-            MouseName = FileSplit{1};
-            if regexp(FileSplit{2},'\d*') % date
-                DateStr = FileSplit{2};
-                DateToken = [DateStr(1:4),'-',DateStr(5:6),'-',DateStr(7:8)];
+        if exist(SessionName,'dir')
+            if contains(SessionName,'kilosort4')
+            sessionPath = fileparts(SessionName);
+            end
+        else
+            FileSplit = strsplit(SessionName,'_');
+            if regexp(FileSplit{1},'Q\d')
+                MouseName = FileSplit{1};
+                if regexp(FileSplit{2},'\d*') % date
+                    DateStr = FileSplit{2};
+                    DateToken = [DateStr(1:4),'-',DateStr(5:6),'-',DateStr(7:8)];
 
-                % find the ephys dir
-                EphysDir = dir(fullfile('/mnt/storage/Sorted',MouseName,[DateToken,'*']));
-                sessionPath = fullfile(EphysDir.folder,EphysDir.name);
+                    % find the ephys dir
+                    EphysDir = dir(fullfile('/mnt/storage/Sorted',MouseName,[DateToken,'*']));
+                    sessionPath = fullfile(EphysDir.folder,EphysDir.name);
+                end
             end
         end
     end
+else
+    keyboard;
 end
 
 %% Housekeeping
@@ -163,6 +172,6 @@ end
 end
 
 
-
+end
 
 
