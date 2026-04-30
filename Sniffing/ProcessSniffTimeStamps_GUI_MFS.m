@@ -74,6 +74,11 @@ elseif ~isempty(regexp(varargin{1},'_r\d.mat'))
     handles.primaryAxes             = 'SniffingFiltered';
     handles.primaryRawSniffTrace    = 'rawTrace';
     handles.primarySniffTrace       = 'Filtered';
+elseif contains(varargin{1},'quickprocesssniffs.mat')
+    handles.primarySniffTS          = 'SniffsTS'; % 'SniffsTS'
+    handles.primaryAxes             = 'SniffingFiltered';
+    handles.primaryRawSniffTrace    = 'rawTrace';
+    handles.primarySniffTrace       = 'Filtered';
 else
     handles.primarySniffTS          = 'SniffsMFS'; % 'SniffsTS'
     handles.primaryAxes             = 'MFS2Therm';
@@ -194,7 +199,7 @@ if exist(handles.WhereSession.String)==2
 
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
-        handles.SDfactor.String = '5';
+        %handles.SDfactor.String = '5';
     else
         disp('unknown data format');
         return;
@@ -300,6 +305,10 @@ switch handles.datamode
 
     case 'onlyEphys'
         load(handles.WhereSession.String, 'AllSniffs', 'RespirationData'); % AllSniffs: nx13, RespirationData: t x 3(ts, raw, filt, MFS)
+        if ~exist('RespirationData','var')
+            load(handles.WhereSession.String,'Traces');
+            RespirationData = Traces.Sniffs{1};
+        end
         handles.SessionLength = RespirationData(end,1);
 
         try

@@ -120,7 +120,7 @@ start_from = 1; % first session so start looking from the beginning of the trial
 [TSadjust] = matchtrialsandclockdiff(behavior_TS, TTLs.Trial, start_from);
 
 %% process the respiration data from the matlab file, detect peaks/valleys, convert TS to OEPS and return digitized and locationed sniff traces
-[DigitalSniffs, LocationSniffs, SessMarker(1)] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
+[DigitalSniffs, LocationSniffs, SessMarker(1), RespTraces] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
 
 %% get Trials from the matlab tuning file to calculate the TS correction for tuning sniffs
 if ~isempty(TuningFiles) %& size(TuningFiles,1) == 1
@@ -132,7 +132,7 @@ if ~isempty(TuningFiles) %& size(TuningFiles,1) == 1
     [TSadjust, trialsdone] = matchtrialsandclockdiff(tuning_TS, TTLs.Trial, start_from);
 
     %% process the respiration data from the matlab file, detect peaks/valleys, convert TS to OEPS and return digitized and locationed sniff traces
-    [DigitalSniffs, LocationSniffs, SessMarker(2)] = SniffProcess(TuningPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
+    [DigitalSniffs, LocationSniffs, SessMarker(2), RespTraces] = SniffProcess(TuningPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
 end
 
 %% if there's another round of behavior stuff?
@@ -142,14 +142,14 @@ if size(BehaviorFiles,1) == 2
 
     % process respiration
     BehaviorPath = fullfile(rootfolder,BehaviorFiles(2).name);
-    [DigitalSniffs, LocationSniffs, SessMarker(3)] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
+    [DigitalSniffs, LocationSniffs, SessMarker(3), RespTraces] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
 
     %% another round of tuning as well?
     if size(TuningFiles,1) == 2
         TuningPath = fullfile(rootfolder,TuningFiles(2).name);
         [tuning_TS] = TrialsfromMatFile(TuningPath);
         [TSadjust, trialsdone] = matchtrialsandclockdiff(tuning_TS, TTLs.Trial, trialsdone);
-        [DigitalSniffs, LocationSniffs, SessMarker(4)] = SniffProcess(TuningPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
+        [DigitalSniffs, LocationSniffs, SessMarker(4), RespTraces] = SniffProcess(TuningPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs);
 
     end
 end
@@ -158,6 +158,7 @@ end
 Traces.Timestamps{1} = TraceTS';
 Traces.SniffsDigitized{1} = DigitalSniffs';
 Traces.SniffsLocationed{1} = LocationSniffs';
+Traces.Sniffs{1} = RespTraces;
 
 %% Get Sniffs sorted for analyzing sniff tuning
 [AllSniffs, ColumnInfo] = GetAllSniffs(Traces, 'quickmode', 1);
@@ -246,7 +247,7 @@ save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs','TTLs','Traces','TSa
         end
     end
 
-    function [DigitalSniffs, LocationSniffs, SessionLength] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs)
+    function [DigitalSniffs, LocationSniffs, SessionLength, RespTrace] = SniffProcess(BehaviorPath,TSadjust,TraceTS,DigitalSniffs,LocationSniffs)
         % process sniff trace and create a digitized trace
         [~, RespTrace, LocationTrace] = ReadThermistorData(BehaviorPath);
         SniffTimeStamps = ChunkWiseSniffs(RespTrace(:,[1 3]));

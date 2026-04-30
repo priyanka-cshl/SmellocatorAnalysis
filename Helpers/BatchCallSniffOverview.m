@@ -1,11 +1,14 @@
 Mice = {'Q3', 'Q4', 'Q5', 'Q8', 'Q9'};
 for m = 1:5
-    figure;
-    SortingMain = fullfile('/mnt/storage/Sorted',Mice{m});
+    %figure;
+    %SortingMain = fullfile('/mnt/storage/Sorted',Mice{m});
+    %SortingMain = fullfile('/mnt/data/EarlySorted',Mice{m});
+    SortingMain = fullfile('/media/priyanka/ABC-ntfs/EphysSorted',Mice{m});
     AllFolders = dir(SortingMain);
     y = 0;
     for x = 1:size(AllFolders,1)
-        if ~strcmp(AllFolders(x).name,'.')&&~strcmp(AllFolders(x).name,'..')&&~contains(AllFolders(x).name,'*')
+        if ~strcmp(AllFolders(x).name,'.')&&~strcmp(AllFolders(x).name,'..')...
+                &&~contains(AllFolders(x).name,'*')&&~contains(AllFolders(x).name,'~')
         thisDir = fullfile(SortingMain,AllFolders(x).name,'kilosort4');
         disp(thisDir);
         y = y + 1;
@@ -43,7 +46,7 @@ for m = 1:5
         end
 
         %% Keep only a subset of sniffs
-        subplot(1,5,y); hold on
+        %subplot(1,5,y); hold on
         for whichsniffs = -2:1:3
             switch whichsniffs
                 case -1 % only keep the ITI sniffs : manifold off, air on
@@ -63,13 +66,15 @@ for m = 1:5
             end
 
             ValidSniffs = SniffStarts(f,:);
-            H(:,whichsniffs+3) = histcounts(ValidSniffs(:,6),[0:1:12]);
+            H(:,whichsniffs+3,y) = histcounts(ValidSniffs(:,6),[0:1:12]);
             %histogram(ValidSniffs(:,6));
         end
-        plot(H);
+        %plot(H);
 
         %%
         %SniffTuningOverview(thisDir);
+        
+
 %         try
 %             QuickSniffTTLMapper_v2(thisDir,1);
 %         catch
@@ -79,5 +84,18 @@ for m = 1:5
 %         copyfile(fullfile(SortingMain,AllFolders(x).name,'quickprocesssniffs.mat'), ...
 %             fullfile(HDMain,'quickprocesssniffs.mat'));
         end
+
+    end
+    figure;
+    for c = 1:y
+        subplot(5,1,c); hold on
+        plot(H(:,:,c));
     end
 end
+
+
+% Q3 - 2nd
+% Q4 - 1st, last, 2nd also good
+% Q5 - 1st, last
+% Q8 - 1st
+% Q9 - 1st

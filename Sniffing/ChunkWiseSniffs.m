@@ -17,9 +17,10 @@ ChunkDuration = params.Results.ChunkDuration; % in seconds
 
 % make a matrix of trial On-Off times for sniff detection
 SessionLength = RespTraces(end,1); % last timestamp
-MaxSessionLength = 3*ceil(SessionLength/3);
+MaxSessionLength = 3*ceil(SessionLength/3) - RespTraces(1,1);
 Chunks(:,2) = (3*ChunkDuration):(3*ChunkDuration):MaxSessionLength;
 Chunks(2:end,1) = Chunks(1:end-1,2) - 1;
+Chunks = Chunks + RespTraces(1,1);
 nTrials = size(Chunks,1);
 
 % make trace snippets for each chunk
