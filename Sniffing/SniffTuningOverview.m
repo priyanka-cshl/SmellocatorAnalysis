@@ -49,16 +49,21 @@ end
 myUnits = [[AllUnits.id]' [AllUnits.tetrode]' [AllUnits.quality]'];
 myUnits(:,4) = 1:size(myUnits,1);
 
+
 if strcmp(unittag,'KS4SingleUnits') && isempty(dir(fullfile(sessionPath,'kilosort4','cluster_info*')))
     % session wasn't curated in phy, keep only 'good' units
     myUnits(find(myUnits(:,3)~=2),:) = [];
 end
 % myUnits(:,3) = floor(myUnits(:,2));
 % myUnits(:,3) = floor((1:size(myUnits,1))/10)+1;
+disp(['found ',num2str(size(myUnits,1)),' good units']);
+
 
 %% Load the sniffs
 if exist(fullfile(sessionPath, 'quickprocesssniffs.mat'))
+    
     RespData = load(fullfile(sessionPath, 'quickprocesssniffs.mat'));
+    
     % pass info into SniffStarts
     SniffStarts = [];
     SniffStarts(:,3) = RespData.AllSniffs(1:end-2,1); % TS of prev inh
@@ -70,21 +75,28 @@ if exist(fullfile(sessionPath, 'quickprocesssniffs.mat'))
 
     SniffStarts(:,6) = (SniffStarts(:,5) - SniffStarts(:,4)).^-1; % this sniff freq
     SniffStarts(:,7) = (SniffStarts(:,4) - SniffStarts(:,3)).^-1; % prev sniff freq
+    
+    if ~exist(fullfile(sessionPath, 'quickprocessOdorTTLs.mat'))
 
-    SniffStarts(:,11) = RespData.AllSniffs(2:end-1,4); % odor location
-    SniffStarts(:,10) = 1; % session phase
+        SniffStarts(:,11) = RespData.AllSniffs(2:end-1,4); % odor location
+        SniffStarts(:,10) = 1; % session phase
 
-    % get manifold and odor state from the ephys TTLs
-    if isfield(RespData,'Traces')
-        TS = RespData.Traces.Timestamps{1};
-        Manifold = RespData.Traces.Manifold{1};
-        Odor = RespData.Traces.Odor{1};
-        for i = 1:size(SniffStarts,1)
-            x1 = find(TS>=SniffStarts(i,1),1,"first");
-            x2 = find(TS>=SniffStarts(i,2),1,"first");
-            SniffStarts(i,8) = mode(Manifold(x1:x2)); % manifold state
-            SniffStarts(i,9) = mode(Odor(x1:x2)); % manifold state
+        % get manifold and odor state from the ephys TTLs
+        if isfield(RespData,'Traces')
+            TS = RespData.Traces.Timestamps{1};
+            Manifold = RespData.Traces.Manifold{1};
+            Odor = RespData.Traces.Odor{1};
+            for i = 1:size(SniffStarts,1)
+                x1 = find(TS>=SniffStarts(i,1),1,"first");
+                x2 = find(TS>=SniffStarts(i,2),1,"first");
+                SniffStarts(i,8) = mode(Manifold(x1:x2)); % manifold state
+                SniffStarts(i,9) = mode(Odor(x1:x2)); % odor state
+            end
         end
+    else
+        SniffStarts(:,8) = 1; 
+        SniffStarts(:,9) = RespData.AllSniffs(2:end-1,5); % odor 
+        SniffStarts(:,11) = RespData.AllSniffs(2:end-1,6); % odor concentration
     end
     
     % SniffStarts(SniffStarts(:,9)<0,:) = [];
@@ -93,7 +105,7 @@ else
 end
 
 %% Keep only a subset of sniffs
-whichsniffs = -1;
+whichsniffs = 4;
 switch whichsniffs
     case -1 % only keep the ITI sniffs : manifold off, air on
         f = (find(SniffStarts(:,8)==0 & SniffStarts(:,9)==0));
@@ -131,7 +143,7 @@ for snifforder = 3 %1:3
             ValidSniffs = sortrows(ValidSniffs, [10 8 9 6], 'descend');
         case 3
             % we can resort ValidSniffs by previous sniff frequency
-            ValidSniffs = sortrows(ValidSniffs, [10 8 9 7], 'descend');
+            ValidSniffs = sortrows(ValidSniffs, [10 8 9 7 11], 'descend');
     end
 
     for whichtetrode = 1:nTetrodes

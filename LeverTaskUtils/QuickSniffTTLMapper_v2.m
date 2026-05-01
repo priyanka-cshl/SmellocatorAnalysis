@@ -73,6 +73,10 @@ end
 BehaviorPath = fullfile(rootfolder,BehaviorFiles(1).name);
 [behavior_TS] = TrialsfromMatFile(BehaviorPath);
 
+if contains(myKsDir,'Q4/2022-09-07_14-47-05')
+    behavior_TS(1:2,:) = [];
+end
+
 %% get Trial Off Timestamps from the ephys side
 if size(BehaviorFiles,1) == 2
     BehaviorTrials_multi{1}.TimeStamps = behavior_TS;
@@ -104,6 +108,9 @@ Air = TraceTS*0;
 ValveTS = TTLs.Air;
 if isnan(ValveTS(1)) % hack
     ValveTS(1) = 0;
+end
+if contains(myKsDir,'Q9/2022-09-27_16-47-51')
+    ValveTS(end,:) = [];
 end
 [Air] = TStoValveTrace(ValveTS,Air,1,TraceTS);
 
@@ -169,6 +176,12 @@ for s = 1:numel(SessMarker)-1
 end
 
 save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs','TTLs','Traces','TSadjust');
+
+% Save units if you find them
+if exist(fullfile(myKsDir, 'kilosort4'),'dir')
+    KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
+    save(fullfile(myKsDir,'quickprocesssniffs.mat'),'KS4Units','-append');
+end
 
 %% function definitions
 

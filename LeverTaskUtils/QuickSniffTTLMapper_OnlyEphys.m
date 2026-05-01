@@ -19,30 +19,49 @@ end
 %     return;
 % end
 if ~exist(fullfile(myKsDir,'quickprocesssniffs.mat'))
-    [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile_smarter(myKsDir);
+    [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile_smarter(myKsDir,3);
     % [~, RespirationData, AllSniffs] = GetSniffsFrom_myauxfile(myKsDir);
 else
     load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs', 'RespirationData');
 end
 
 % add odor TTL info if available
-if exist(fullfile(myKsDir,'quickprocessOdorTTLs.mat'))
+if ~exist(fullfile(myKsDir,'quickprocessOdorTTLs.mat'))
+    [TTLs, StimSettings] = makeTTLs_CID(myKsDir);
+else
     load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings');
-    
-    % add the column infos to the sniffs
-    for i = 1:size(TTLs.Trial,1) % everty trial
-        t = TTLs.Trial(i,7:10); % odor1 start, stop, purge start, stop
-        t(end+1) = t(end) + TTLs.Trial(i,9)-TTLs.Trial(i,8); % add a post-purge period the same as the first pulse
-        TS = [t(1:end-1)' t(2:end)' [1 3 2 4]'];
-        for j = 1:size(TS,1)
-            whichsniffs = find( (AllSniffs(:,1)>=TS(j,1)) & (AllSniffs(:,1)<TS(j,2)) );
-            AllSniffs(whichsniffs,5) = TTLs.Trial(i,4); % odor identity
-            AllSniffs(whichsniffs,6) = TS(j,3);
+end
+
+% add the column infos to the sniffs
+switch StimSettings.SessionType
+    case 'newCID'
+        for i = 1:size(TTLs.Trial,1) % everty trial
+            t = TTLs.Trial(i,7:10); % odor1 start, stop, purge start, stop
+            t(end+1) = t(end) + TTLs.Trial(i,9)-TTLs.Trial(i,8); % add a post-purge period the same as the first pulse
+            TS = [t(1:end-1)' t(2:end)' [1 3 2 4]'];
+            for j = 1:size(TS,1)
+                whichsniffs = find( (AllSniffs(:,1)>=TS(j,1)) & (AllSniffs(:,1)<TS(j,2)) );
+                AllSniffs(whichsniffs,5) = TTLs.Trial(i,4); % odor identity
+                AllSniffs(whichsniffs,6) = TS(j,3);
+            end
         end
-    end
-    
+    case {'ConcentrationSeries', '16_Odors'}
+        for i = 1:size(TTLs.Trial,1) % everty trial
+            TS = TTLs.Trial(i,7:8);
+            whichsniffs = find( (AllSniffs(:,1)>=TS(1)) & (AllSniffs(:,1)<TS(2)) );
+            AllSniffs(whichsniffs,5) = TTLs.Trial(i,4); % odor identity
+            AllSniffs(whichsniffs,6) = TTLs.Trial(i,5); % odor intensity
+        end
+    otherwise
+        keyboard;
 end
 
 save(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs', 'RespirationData');
+
+% Save units if you find them
+if exist(fullfile(myKsDir, 'kilosort4'),'dir')
+    KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
+    save(fullfile(myKsDir,'quickprocesssniffs.mat'),'KS4Units','-append');
+end
 
 end

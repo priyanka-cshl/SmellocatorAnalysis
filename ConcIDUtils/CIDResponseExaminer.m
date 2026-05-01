@@ -1,6 +1,6 @@
 % load the data
-load('/mnt/grid-hs/mdussauz/CID/Processed/E6/2022-06-10_11-40-39_cid-processed.mat');
-FigPath = '/home/priyanka/Desktop/cid/E6/20220610_1';
+% load('/mnt/grid-hs/mdussauz/CID/Processed/E6/2022-06-10_11-40-39_cid-processed.mat');
+% FigPath = '/home/priyanka/Desktop/cid/E6/20220610_1';
 
 % load('/mnt/grid-hs/mdussauz/CID/Processed/E3/2022-06-14_11-36-14_cid-processed.mat');
 % FigPath = '/home/priyanka/Desktop/cid/E3/20220614';
@@ -8,6 +8,18 @@ FigPath = '/home/priyanka/Desktop/cid/E6/20220610_1';
 % load('/mnt/grid-hs/mdussauz/CID/Processed/E2/2022-06-11_13-57-38_cid-processed.mat');
 % FigPath = '/home/priyanka/Desktop/cid/E2/20220611';
 
+myKsDir = '/mnt/storage/Sorted/Q4/2022-12-19_11-27-47';
+load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs','KS4Units');
+load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings');
+
+if exist('KS4Units') && isempty(dir(fullfile(myKsDir,'kilosort4','cluster_info*')))
+    myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
+    myUnits(:,4) = 1:size(myUnits,1);
+    % session wasn't curated in phy, keep only 'good' units
+    myUnits(find(myUnits(:,3)~=2),:) = [];
+    disp(['found ',num2str(size(myUnits,1)),' good units']);
+    SingleUnits = KS4Units(myUnits(:,4));
+end
 
 TTLs.Trial((TTLs.Trial(:,4)==0),4) =  max(TTLs.Trial(:,4)) + 1;
 
