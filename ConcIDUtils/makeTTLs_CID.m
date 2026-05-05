@@ -44,12 +44,12 @@ temp = load(fullfile(myKsDir,'myTTLfile_1.mat'));
 ch = temp.TTLs.data;
 states = temp.TTLs.info.eventId;
 EventTS = temp.TTLs.timestamps;
-EventTS = EventTS - temp.TTLs.offset; % subtract start timestamp to align with spikes
 
 if mean(diff(EventTS))>1000
     keyboard;
     EventTS = EventTS/30000; % convert to timestamps
 end
+EventTS = EventTS - temp.TTLs.offset; % subtract start timestamp to align with spikes
 
 % older recordings have channels as 0 and 1
 trialCh = 1;
