@@ -8,11 +8,31 @@
 % load('/mnt/grid-hs/mdussauz/CID/Processed/E2/2022-06-11_13-57-38_cid-processed.mat');
 % FigPath = '/home/priyanka/Desktop/cid/E2/20220611';
 
-myKsDir = '/mnt/storage/Sorted/Q4/2022-12-19_11-27-47';
+% Q Batch
+CIDFiles{1} = '/mnt/storage/Sorted/Q4/2022-12-19_11-27-47';
+CIDFiles{2} = '/mnt/storage/Sorted/Q5/2022-12-16_15-22-50';
+CIDFiles{3} = '/mnt/storage/Sorted/Q5/2022-12-18_10-46-53';
+CIDFiles{4} = '/mnt/storage/Sorted/Q8/2022-12-19_15-41-55';
+CIDFiles{5} = '/mnt/storage/Sorted/Q9/2022-12-15_16-28-22';
+CIDFiles{6} = '/mnt/storage/Sorted/Q9/2022-12-17_13-14-20';
+
+
+myKsDir = CIDFiles{2};
+clear KS4Units;
+%myKsDir = '/mnt/storage/Sorted/Q8/2022-12-19_15-41-55';
+myKsDir = '/media/priyanka/ABC-ntfs/EphysSorted/Q9/2022-12-15_16-28-22';
 load(fullfile(myKsDir,'quickprocesssniffs.mat'),'AllSniffs','KS4Units');
 load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings');
 
 if exist('KS4Units') && isempty(dir(fullfile(myKsDir,'kilosort4','cluster_info*')))
+    myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
+    myUnits(:,4) = 1:size(myUnits,1);
+    % session wasn't curated in phy, keep only 'good' units
+    myUnits(find(myUnits(:,3)~=2),:) = [];
+    disp(['found ',num2str(size(myUnits,1)),' good units']);
+    SingleUnits = KS4Units(myUnits(:,4));
+else
+    KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
     myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
     myUnits(:,4) = 1:size(myUnits,1);
     % session wasn't curated in phy, keep only 'good' units

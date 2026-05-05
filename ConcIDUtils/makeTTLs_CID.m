@@ -28,12 +28,14 @@ if nargin < 2
                 TimeTag(n) = str2double(Split{2})*60 + str2double(Split{3});
             end
             TimeTagEphys = str2double(Filename{2}(1:2))*60 + str2double(Filename{2}(4:5));
-            [deltaTime,whichFile] = min(TimeTag - TimeTagEphys);
+            [deltaTime,whichFile] = min(abs(TimeTag - TimeTagEphys));
             if abs(deltaTime)>30
                 keyboard;
             else
                 myStimFile = fullfile(StimFiles(whichFile).folder,StimFiles(whichFile).name);
             end
+        else
+            myStimFile = fullfile(StimFiles(1).folder,StimFiles(1).name);
         end
     end
 end
