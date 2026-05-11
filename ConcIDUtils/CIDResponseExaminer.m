@@ -45,6 +45,15 @@ nTypes = unique(TTLs.Trial(:,5));
 nreps = max(TTLs.Trial(:,6));
 nUnits = size(SingleUnits,2);
 
+%StimSettings.SessionType = 'AllTrials';
+if any(nStim == -1)
+    f = find(TTLs.Trial(:,4)==-1);
+    TTLs.Trial(f,5) = nTypes(2);
+    nTypes(1,:) = [];
+    TTLs.Trial(f,7) = TTLs.Trial(f,1) + StimSettings.timing(2)/1000;
+    TTLs.Trial(f,8) = TTLs.Trial(f,7) + StimSettings.timing(3)/1000;
+end
+
 switch StimSettings.SessionType
     case 'ConcentrationSeries'
 
@@ -69,19 +78,24 @@ switch StimSettings.SessionType
                     SpikesPlot = [];
 
                     whichTrials = intersect(find(TTLs.Trial(:,4)==nStim(odor)),find(TTLs.Trial(:,5)==nTypes(conc)));
-                    for rep = 1:numel(whichTrials)
-                        ts = TTLs.Trial(whichTrials(rep),[1 2 7 8]); % trial start, stop, odor start, stop
-                        if size(TTLs.Trial,2) == 10
-                            ts(5) = TTLs.Trial(whichTrials(rep), 10);
-                        else
-                            ts(5) = ts(3);
+                    if ~isempty(whichTrials)
+                        for rep = 1:numel(whichTrials)
+                            ts = TTLs.Trial(whichTrials(rep),[1 2 7 8]); % trial start, stop, odor start, stop
+                            if ts(3) == 0
+                                ts(3:4) = ts(1:2);
+                            end
+                            if size(TTLs.Trial,2) == 10
+                                ts(5) = TTLs.Trial(whichTrials(rep), 10);
+                            else
+                                ts(5) = ts(3);
+                            end
+                            thistrialspikes = intersect(find(thisUnitSpikes>=ts(1)),find(thisUnitSpikes<ts(2)));
+                            thistrialspikes = thisUnitSpikes(thistrialspikes) - ts(5);
+                            odorON = vertcat(odorON, [ts(3)-ts(5) , (rep + (conc-1)*nreps)]);
+                            SpikesPlot = vertcat(SpikesPlot, [thistrialspikes (rep + (conc-1)*nreps)*ones(numel(thistrialspikes),1) conc*ones(numel(thistrialspikes),1)]);
                         end
-                        thistrialspikes = intersect(find(thisUnitSpikes>=ts(1)),find(thisUnitSpikes<ts(2)));
-                        thistrialspikes = thisUnitSpikes(thistrialspikes) - ts(5);
-                        odorON = vertcat(odorON, [ts(3)-ts(5) , (rep + (conc-1)*nreps)]);
-                        SpikesPlot = vertcat(SpikesPlot, [thistrialspikes (rep + (conc-1)*nreps)*ones(numel(thistrialspikes),1) conc*ones(numel(thistrialspikes),1)]);
+                        plot(SpikesPlot(:,1), SpikesPlot(:,2)/500, '.k','Markersize', 2, 'color', mycolors(conc*2,:));
                     end
-                    plot(SpikesPlot(:,1), SpikesPlot(:,2)/500, '.k','Markersize', 2, 'color', mycolors(conc*2,:));
                 end
                 set(gca,'XTick',[],'YTick',[],'XLim',[-6 4],'YLim',[0 0.056]);
                 %         line([0 0],[0 0.056],'color','k');
@@ -147,10 +161,10 @@ switch StimSettings.SessionType
                 end
             end
             set(gca,'XTick',[],'YTick',[],'XLim',[-6 4],'YLim',[0 0.226]);
-                %         line([0 0],[0 0.056],'color','k');
-                %         line([2 2],[0 0.056],'color','k');
-                plot(odorON(:,1),odorON(:,2)/500,'k');
-                plot(odorON(:,1)+2,odorON(:,2)/500,'k');
+            %         line([0 0],[0 0.056],'color','k');
+            %         line([2 2],[0 0.056],'color','k');
+            plot(odorON(:,1),odorON(:,2)/500,'k');
+            plot(odorON(:,1)+2,odorON(:,2)/500,'k');
 
             if ~mod(n,10)
                 set(gcf,'Position',[2150 80 1350 900]);
