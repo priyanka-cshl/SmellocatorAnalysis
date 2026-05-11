@@ -75,12 +75,20 @@ while size(EventTS(ch==odorCh & ~states,1),1) > size(TTLs.Odor,1)
     TTLs.Odor(end,:) = [];
 end
 TTLs.Odor(:,2) = EventTS(ch==odorCh & ~states,1);
-TTLs.Odor(1,:) = [];
+if ~(TTLs.Odor(1,2) < TTLs.Trial(1,2))
+    TTLs.Odor(1,:) = [];
+end
 
 % Get stimulus info from the odor machine file
 StimFile = readmatrix(myStimFile);
 StimSettings.timing = StimFile(1:6)'; % [whichmachine(0=16 odors) pre-stim stim post-stim iti reps]
 StimFile(1:6,:) = [];
+% sometimes there are trailing zeros at the end
+if find(flipud(StimFile),1,'first') ~= 1
+    keyboard;
+    todelete = length(StimFile) - find(flipud(StimFile),1,'first') + 2;
+    StimFile(todelete:end) = [];
+end
 
 % some info about number of stimuli and various reps etc
 nStim = unique(StimFile);
@@ -140,7 +148,11 @@ if str2double(ephysfile(1:4))<2025
         for stim = 1:numel(nStim)
             count = count + 1;
             if numel(conc_used)>1
-                TTLs.Trial(count,4) = mod(stimlist(stim,rep),5); % which odor (divide by bank)
+                if mod(stimlist(stim,rep),5)
+                    TTLs.Trial(count,4) = mod(stimlist(stim,rep),5); % which odor (divide by bank)
+                else
+                    TTLs.Trial(count,4) = 5;
+                end
                 TTLs.Trial(count,5) = conc_used(ceil(stimlist(stim,rep)/5)); % intensity
             else
                 TTLs.Trial(count,4) = stimlist(stim,rep); % which odor
@@ -163,6 +175,18 @@ if str2double(ephysfile(1:4))<2025
         copyfile(myStimFile,myKsDir);
 
 
+        StimSettings.Odors = nStim;
+        StimSettings.Reps = nReps;
+        StimSettings.SessionType = SessionType;
+        StimSettings.Dilutions = conc_used;
+    elseif exist('todelete','var') || find(TTLs.Trial(:,7),1,'last') == length(StimFile)
+        unknown = find(TTLs.Trial(:,7),1,'last') + 1;
+        TTLs.Trial(unknown:end,4) = -1;
+
+        disp('photoncerber stimulus file had missing entries!');
+
+        % copy to local path
+        copyfile(myStimFile,myKsDir);
         StimSettings.Odors = nStim;
         StimSettings.Reps = nReps;
         StimSettings.SessionType = SessionType;
