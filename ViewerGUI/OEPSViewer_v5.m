@@ -22,7 +22,7 @@ function varargout = OEPSViewer_v5(varargin)
 
 % Edit the above text to modify the response to help OEPSViewer_v5
 
-% Last Modified by GUIDE v2.5 19-Aug-2025 10:24:10
+% Last Modified by GUIDE v2.5 13-May-2026 14:16:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -106,14 +106,20 @@ if isempty(handles.BinaryPath.String)
         handles.NumChans.String = num2str(size(chanMap,2));
         handles.ChanZoom = mat2str([1 size(chanMap,2)]);
     catch
-        load(fullfile(handles.BinaryPath.String,'SessionDetails.mat'),'Files');
-        handles.NumChans.String = num2str(Files.Channels(1));
-        handles.ChanZoom = mat2str([1 Files.Channels(1)]);
+        try
+            load(fullfile(handles.BinaryPath.String,'SessionDetails.mat'),'Files');
+            handles.NumChans.String = num2str(Files.Channels(1));
+            handles.ChanZoom = mat2str([1 Files.Channels(1)]);
+        catch
+            handles.NumChans.String = num2str(32);
+        end
     end
+    if handles.LoadSingleUnits.Value
     % load units if available
     if exist(fullfile(WhichSession,'cluster_group.tsv')) == 2 % sssion was curated
         handles.UnitsPath.String = WhichSession; %fullfile(WhichSession,'cluster_group.tsv');
         handles = LoadUnits_Callback(hObject, eventdata, handles);
+    end
     end
 
     % load sniffs if available
@@ -516,3 +522,12 @@ function SniffsPath_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in LoadSingleUnits.
+function LoadSingleUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to LoadSingleUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of LoadSingleUnits

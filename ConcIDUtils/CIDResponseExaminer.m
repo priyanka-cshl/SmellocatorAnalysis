@@ -54,6 +54,8 @@ if any(nStim == -1)
     TTLs.Trial(f,8) = TTLs.Trial(f,7) + StimSettings.timing(3)/1000;
 end
 
+%StimSettings.SessionType = 'ByRepeats';
+
 switch StimSettings.SessionType
     case 'ConcentrationSeries'
 
@@ -184,4 +186,99 @@ switch StimSettings.SessionType
             end
         end
 
+    case 'ByRepeats'
+        if numel(nStim) == 6
+            maps = {'Greys','Blues','Oranges','Greens','Purples','Reds'};
+        else
+            maps = {'Blues','Oranges','Greens','Purples','Reds'};
+        end
+
+        for c = 1:numel(nStim)
+            colors = brewermap(6,maps{c});
+            mycolors(c) = {colors};    
+        end
+        
+        ureps = flipud(unique(TTLs.Trial(:,6)));
+        trialsperrep = 20;
+        for n = 1:nUnits
+            if mod(n,10) == 1
+                FigureName = ['Units ',num2str(n),'-',num2str(n+9)];
+                figure('Name',FigureName);
+            end
+            whichplot = mod(n,10);
+            if ~whichplot
+                whichplot = 10;
+            end
+            thisUnitSpikes = SingleUnits(n).spikes;
+            subplot(2,5,whichplot);
+            hold on
+            odorON = [];
+            for thisrep = 1:numel(ureps)
+                SpikesPlot = [];
+                whichTrials = find(TTLs.Trial(:,6)==ureps(thisrep));
+                for rep = 1:numel(whichTrials)
+                    ts = TTLs.Trial(whichTrials(rep),[1 2 7 8]); % trial start, stop, odor start, stop
+                    if size(TTLs.Trial,2) == 10
+                        ts(5) = TTLs.Trial(whichTrials(rep), 10);
+                    else
+                        ts(5) = ts(3);
+                    end
+                    thistrialspikes = intersect(find(thisUnitSpikes>=ts(1)),find(thisUnitSpikes<ts(2)));
+                    thistrialspikes = thisUnitSpikes(thistrialspikes) - ts(5);
+                    odorON = vertcat(odorON, [ts(3)-ts(5) , (rep + (thisrep-1)*trialsperrep)]);
+                    SpikesPlot = vertcat(SpikesPlot, [thistrialspikes (rep + (thisrep-1)*trialsperrep)*ones(numel(thistrialspikes),1)]); % conc*ones(numel(thistrialspikes),1)]);
+                end
+                plot(SpikesPlot(:,1), SpikesPlot(:,2)/500, '.k','Markersize', 2, 'color', mycolors{thisrep}(end,:));
+            end
+            set(gca,'XTick',[],'YTick',[],'XLim',[-6 4],'YLim',[0 0.4]);
+            %         line([0 0],[0 0.056],'color','k');
+            %         line([2 2],[0 0.056],'color','k');
+            plot(odorON(:,1),odorON(:,2)/500,'k');
+            plot(odorON(:,1)+2,odorON(:,2)/500,'k');
+
+            if ~mod(n,10)
+                set(gcf,'Position',[2150 80 1350 900]);
+                if savefigs
+                    saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
+                    close(gcf);
+                end
+            end
+        end
+
+        % last figure
+        if mod(n,10) ~= 0
+            set(gcf,'Position',[2150 80 1350 900]);
+            if savefigs
+                saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
+                close(gcf);
+            end
+        end
+
+
+    case 'AllOdors'
+        
+        for n = 1:nUnits
+            SpikesPlot = [];
+            thisUnitSpikes = SingleUnits(n).spikes;
+            for t = 1:size(TTLs.Trial,1)
+                if TTLs.Trial(t,4)>0
+                    % every trial
+                    ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
+                    if size(TTLs.Trial,2) == 10
+                        ts(5) = TTLs.Trial(t, 10);
+                    else
+                        ts(5) = ts(3);
+                    end
+                    thistrialspikes = intersect(find(thisUnitSpikes>=ts(1)),find(thisUnitSpikes<ts(2)));
+                    thistrialspikes = thisUnitSpikes(thistrialspikes) - ts(5);
+                    multiplier = t;
+                    SpikesPlot = vertcat(SpikesPlot, ...
+                        [thistrialspikes multiplier*ones(numel(thistrialspikes),1)]); 
+                end
+            end
+            AllSpikes(n) = {SpikesPlot};
+        end
+            
+        
+        
 end
