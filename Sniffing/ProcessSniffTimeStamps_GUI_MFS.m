@@ -199,7 +199,7 @@ if exist(handles.WhereSession.String)==2
 
     elseif ~isempty(strfind(handles.WhereSession.String,'quickprocesssniffs'))
         handles.datamode = 'onlyEphys';
-        %handles.SDfactor.String = '5';
+        handles.SDfactor.String = '10';
     else
         disp('unknown data format');
         return;
@@ -618,6 +618,10 @@ guidata(hObject, handles);
 
 function WindowSize_Callback(hObject, eventdata, handles)
 currlims = get(handles.SniffingFiltered,'XLim');
+if any(isletter(handles.WindowSize.String))
+    myletter = find(isletter(handles.WindowSize.String));
+    handles.WindowSize.String(myletter) = [];
+end
 newLims = currlims(1) + [0 str2double(handles.WindowSize.String)];
 set(handles.SniffingRaw,'XLim',newLims);
 set(handles.SniffingFiltered,'XLim',newLims);
