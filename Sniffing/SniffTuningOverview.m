@@ -105,7 +105,7 @@ else
 end
 
 %% Keep only a subset of sniffs
-whichsniffs = 4;
+whichsniffs = -1;
 switch whichsniffs
     case -1 % only keep the ITI sniffs : manifold off, air on
         f = (find(SniffStarts(:,8)==0 & SniffStarts(:,9)==0));

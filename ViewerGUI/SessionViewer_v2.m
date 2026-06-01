@@ -59,7 +59,13 @@ handles.output = hObject;
 handles.SampleRate = 500;
 handles.SessionLength.String = '100';
 [Paths] = WhichComputer();
-handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat');
+if isempty(handles.WhereSession.String)
+    if varargin{1}
+        handles.WhereSession.String = varargin{1};
+    else
+        handles.WhereSession.String = fullfile(Paths.ProcessedSessions,'O3/O3_20210922_r0_processed.mat');
+    end
+end
 handles.TimeWindow.String = '20';
 handles.RespirationScaling.Data = [6 0.5];
 

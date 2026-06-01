@@ -14,7 +14,7 @@ if exist('KS4Units') && isempty(dir(fullfile(myKsDir,'kilosort4','cluster_info*'
     myUnits(:,4) = 1:size(myUnits,1);
     % session wasn't curated in phy, keep only 'good' units
     myUnits(find(myUnits(:,3)~=2),:) = [];
-    disp(['found ',num2str(size(myUnits,1)),' good units']);
+    disp(['found ',num2str(size(myUnits,1)),' good units; ', num2str(size(KS4Units,2)),' total units; ']);
     SingleUnits = KS4Units(myUnits(:,4));
 else
     KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
