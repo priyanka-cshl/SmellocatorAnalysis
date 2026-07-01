@@ -1,6 +1,6 @@
-% general settings
-savefigs = 0;
-align2sniffs = 1; % first sniff, second sniff
+%% general settings
+savefigs = 1;
+align2sniffs = 0; % first sniff, second sniff
 stackUnits = 1;
 plotStyle = 'sniffwise';
 
@@ -11,26 +11,38 @@ clear KS4Units;
 load(fullfile(myKsDir,'quickprocesssniffs.mat')); % sniff times, KS4Units
 load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings'); % odorTTLs
 
-if exist('KS4Units') && isempty(dir(fullfile(myKsDir,'kilosort4','cluster_info*')))
-    myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
-    myUnits(:,4) = 1:size(myUnits,1);
-    % session wasn't curated in phy, keep only 'good' units
-    myUnits(find(myUnits(:,3)~=2),:) = [];
-    disp(['found ',num2str(size(myUnits,1)),' good units']);
-    SingleUnits = KS4Units(myUnits(:,4));
-else
-    KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
-    myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
-    myUnits(:,4) = 1:size(myUnits,1);
-    % session wasn't curated in phy, keep only 'good' units
-    myUnits(find(myUnits(:,3)~=2),:) = [];
-    disp(['found ',num2str(size(myUnits,1)),' good units']);
-    SingleUnits = KS4Units(myUnits(:,4));
+if savefigs
+    FigPath = strrep(myKsDir,'/mnt/data/Sorted','/home/priyanka/Desktop/cid');
+    if ~exist("FigPath",'dir')
+        mkdir(FigPath);
+    end
 end
 
+% % load units from kilosort4 if available
+% if exist('KS4Units') && isempty(dir(fullfile(myKsDir,'kilosort4','cluster_info*')))
+%     myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
+%     myUnits(:,4) = 1:size(myUnits,1);
+%     % session wasn't curated in phy, keep only 'good' units
+%     myUnits(find(myUnits(:,3)~=2),:) = [];
+%     disp(['found ',num2str(size(myUnits,1)),' good units']);
+%     SingleUnits = KS4Units(myUnits(:,4));
+% else
+%     keyboard;
+%     KS4Units = GetSingleUnits(fullfile(myKsDir, 'kilosort4'));
+%     myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
+%     myUnits(:,4) = 1:size(myUnits,1);
+%     % session wasn't curated in phy, keep only 'good' units
+%     myUnits(find(myUnits(:,3)~=2),:) = [];
+%     disp(['found ',num2str(size(myUnits,1)),' good units']);
+%     SingleUnits = KS4Units(myUnits(:,4));
+% end
+SingleUnits = LoadKS4Units(myKsDir,'minSpikes',0.25);
+disp(['found ',num2str(size(SingleUnits,2)),' good, >0.25Hz units']);
+
+% make air trials as last stimulus?
 TTLs.Trial((TTLs.Trial(:,4)==0),4) =  max(TTLs.Trial(:,4)) + 1;
 
-% FigPath = '/home/priyanka/Desktop/cid/E2/20220611';
+
 
 %% stimulus settings for plotting
 nStim = unique(TTLs.Trial(:,4));
@@ -288,7 +300,10 @@ switch StimSettings.SessionType
     case '16_Odors'
         %%
         mycolors = brewermap(16,'Dark2');
-        unitsPerPlot = 6;
+        %unitsPerPlot = 30;
+        plots_rows = 3; plots_cols = 15;
+        unitsPerPlot = plots_rows*plots_cols;
+        FigPosition = [2150 80 1750 900];
         if ~stackUnits
             for n = 1:nUnits
                 if mod(n,unitsPerPlot) == 1
@@ -370,7 +385,7 @@ switch StimSettings.SessionType
                 end
 
                 if ~mod(n,unitsPerPlot)
-                    set(gcf,'Position',[2150 80 1350 900]);
+                    set(gcf,'Position',FigPosition);
                     if savefigs
                         saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
                         close(gcf);
@@ -380,7 +395,7 @@ switch StimSettings.SessionType
 
             % last figure
             if mod(n,unitsPerPlot) ~= 0
-                set(gcf,'Position',[2150 80 1350 900]);
+                set(gcf,'Position',FigPosition);
                 if savefigs
                     saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
                     close(gcf);
@@ -390,7 +405,7 @@ switch StimSettings.SessionType
         else
             for n = 1:nUnits
                 if mod(n,unitsPerPlot) == 1
-                    FigureName = ['Units ',num2str(n),'-',num2str(n+9)];
+                    FigureName = ['Units ',num2str(n),'-',num2str(n+unitsPerPlot-1)];
                     figure('Name',FigureName);
                 end
                 whichplot = mod(n,unitsPerPlot);
@@ -398,7 +413,7 @@ switch StimSettings.SessionType
                     whichplot = unitsPerPlot;
                 end
 
-                subplot(2,5,whichplot);
+                subplot(plots_rows,plots_cols,whichplot);
                 hold on
                 odorON = [];
 
@@ -430,7 +445,7 @@ switch StimSettings.SessionType
                 plot(odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
 
                 if ~mod(n,unitsPerPlot)
-                    set(gcf,'Position',[2150 80 1350 900]);
+                    set(gcf,'Position',FigPosition);
                     if savefigs
                         saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
                         close(gcf);
@@ -440,7 +455,7 @@ switch StimSettings.SessionType
 
             % last figure
             if mod(n,unitsPerPlot) ~= 0
-                set(gcf,'Position',[2150 80 1350 900]);
+                set(gcf,'Position',FigPosition);
                 if savefigs
                     saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
                     close(gcf);
@@ -528,6 +543,7 @@ switch StimSettings.SessionType
 
 end
 
+%%
 function [SpikesPlot, odorON] = spikesOut(whichtrials, rowoffset, UnitSpikes, TrialWiseSniffs, plotStyle, align2sniffs, TTLs, StimSettings)
 if nargin<2
     rowoffset = 0;
