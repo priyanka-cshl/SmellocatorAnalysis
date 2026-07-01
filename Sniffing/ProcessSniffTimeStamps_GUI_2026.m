@@ -397,16 +397,20 @@ switch handles.datamode
                 for i = 1:numel(sortorder)
                     whichunit = find([SingleUnits.id]==sortorder(i));
                     thisUnitSpikes = SingleUnits(whichunit).spikes;
-                    AllSpikes = vertcat(AllSpikes,[thisUnitSpikes i+(thisUnitSpikes*0)]);
+                    tt = floor(SingleUnits(whichunit).tetrode);
+                    AllSpikes = vertcat(AllSpikes,[thisUnitSpikes i+(thisUnitSpikes*0) tt+(thisUnitSpikes*0)]);
                 end
                 %handles.SpikeRaster.Visible = 'on';
                 axes(handles.SpikeRaster);
                 plot(AllSpikes(:,1),AllSpikes(:,2),'.k');
+                %scatter(AllSpikes(:,1),AllSpikes(:,2),[],AllSpikes(:,3),'.');
+                %colormap("copper");
             end
             set(gca,'XGrid', 'on'); %,'XTick',[]);
             set(gca,'XTick', handles.SniffsTS(:,1));
             handles.SpikeRaster.XTickLabel = {};
             handles.MFS.XTick = handles.SniffsTS(:,1);
+            handles.SniffingRaw.XTick = handles.SniffsTS(:,1);
         end
 
 end
