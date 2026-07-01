@@ -87,6 +87,7 @@ else
 end
 
 handles.SpikeRaster.Visible     = 'off';
+handles.SpikeRaster.XGrid       = 'on';
 handles.SniffTrace.Raw          = [];
 handles.SniffTrace.Filtered     = [];
 handles.SniffTrace.Timestamps   = [];
@@ -158,6 +159,9 @@ if strcmp(handles.primarySniffTS,'SniffsTS')
         set(handles.(AxesTag{i}),'Position',handles.axesPositions(i,:));
     end
 end
+
+axes(handles.FlaggedAxes);
+handles.flagged      = plot(nan,nan,'color',Plot_Colors('o'));
 
 % For loading the processed session
 [Paths] = WhichComputer();
@@ -377,28 +381,32 @@ switch handles.datamode
 
         if exist('KS4Units','var')
             if exist(fullfile(fileparts(handles.WhereSession.String),'isort.npy'))
+                myKsDir = fileparts(handles.WhereSession.String);
                 if ~exist('readNPY')
                     addpath(genpath('/opt/npy-matlab/'));
                 end                    
-                sortorder = 1+double(readNPY('/mnt/data/Sorted/E3/2022-07-07_16-47-23/isort.npy'));
-                % load units
-                myUnits = [[KS4Units.id]' [KS4Units.tetrode]' [KS4Units.quality]'];
-                myUnits(:,4) = 1:size(myUnits,1);
-                % session wasn't curated in phy, keep only 'good' units
-                myUnits(find(myUnits(:,3)~=2),:) = [];
-                disp(['found ',num2str(size(myUnits,1)),' good units']);
-                SingleUnits = KS4Units(myUnits(sortorder,4));
+                sortorder = 1+double(readNPY(fullfile(myKsDir,'isort.npy')));
+                % load unsorted unitIDs
+                load(fullfile(myKsDir,'unsortedUnitIds.mat')); %unsortedUnitIds
+                sortorder = unsortedUnitIds(sortorder);
 
+                SingleUnits = LoadKS4Units(myKsDir);
+                
                 % One giant matrix for all spikes
                 AllSpikes = [];
-                for i = 1:size(SingleUnits,2)
-                    thisUnitSpikes = SingleUnits(i).spikes;
+                for i = 1:numel(sortorder)
+                    whichunit = find([SingleUnits.id]==sortorder(i));
+                    thisUnitSpikes = SingleUnits(whichunit).spikes;
                     AllSpikes = vertcat(AllSpikes,[thisUnitSpikes i+(thisUnitSpikes*0)]);
                 end
                 %handles.SpikeRaster.Visible = 'on';
                 axes(handles.SpikeRaster);
                 plot(AllSpikes(:,1),AllSpikes(:,2),'.k');
             end
+            set(gca,'XGrid', 'on'); %,'XTick',[]);
+            set(gca,'XTick', handles.SniffsTS(:,1));
+            handles.SpikeRaster.XTickLabel = {};
+            handles.MFS.XTick = handles.SniffsTS(:,1);
         end
 
 end
@@ -519,6 +527,7 @@ if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
     set(handles.valleysNew, ...
         'XData',handles.SniffTrace.Timestamps(handles.SniffsTSnew(newdetections,9)),...
         'YData',handles.SniffTrace.(handles.primarySniffTrace)(handles.SniffsTSnew(newdetections,9)));
+
 else
     handles.new_detections.Data = [];
     set(handles.peaksNew, ...
@@ -528,6 +537,18 @@ else
         'XData',[],...
         'YData',[]);
 end
+set(handles.SpikeRaster,'XTick', handles.(SniffTag)(:,1));
+
+% dealing with flagged stretches
+flaggedStretches = [handles.(SniffTag)(:,1) handles.(SniffTag)(:,8)<0];
+if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
+    flaggedStretches = vertcat(flaggedStretches,...
+        [handles.SniffsTSnew(:,1) handles.SniffsTSnew(:,9)<0]);
+end
+flaggedStretches = sortrows(flaggedStretches,1);
+
+handles.flagged.XData = flaggedStretches(:,1);
+handles.flagged.YData = flaggedStretches(:,2);
 guidata(hObject, handles);
 
 % --- Executes on button press in RemovePoints.
@@ -1210,6 +1231,7 @@ if strcmp(handles.primarySniffTS,'SniffsMFS')
     else
         TSdone = lastMFSTimestamp;
     end
+    disp(['recovered sniffs! @ ',num2str(lastMFSTimestamp), ' seconds']);
     whichidx1 = find(CuratedMFS_SniffTimestamps(:,1)>=TSdone,1,'first');
     whichidx2 = find(handles.SniffsMFS(:,1)>=TSdone,1,'first');
     if isempty(whichidx1)
@@ -1305,7 +1327,9 @@ function ShowSpikeRaster_Callback(hObject, eventdata, handles)
 if get(hObject,'Value')==1
     handles.SpikeRaster.Visible = 'on';
     handles.SpikeRaster.XLim = get(handles.SniffingFiltered,'XLim');
+
     axes(handles.SpikeRaster);
+
 else
     handles.SpikeRaster.Visible = 'off';
 end
