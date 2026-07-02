@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI_2026(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI_2026
 
-% Last Modified by GUIDE v2.5 30-Jun-2026 14:10:18
+% Last Modified by GUIDE v2.5 02-Jul-2026 15:32:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -86,8 +86,13 @@ else
     handles.primarySniffTrace       = 'MFS2Therm';
 end
 
+axes(handles.SpikeRaster);
+hold on
+handles.SpikeData = plot(nan,nan,'.k');
 handles.SpikeRaster.Visible     = 'off';
 handles.SpikeRaster.XGrid       = 'on';
+handles.selectedUnitLine        = plot(nan,nan,'r');
+
 handles.SniffTrace.Raw          = [];
 handles.SniffTrace.Filtered     = [];
 handles.SniffTrace.Timestamps   = [];
@@ -159,9 +164,6 @@ if strcmp(handles.primarySniffTS,'SniffsTS')
         set(handles.(AxesTag{i}),'Position',handles.axesPositions(i,:));
     end
 end
-
-axes(handles.FlaggedAxes);
-handles.flagged      = plot(nan,nan,'color',Plot_Colors('o'));
 
 % For loading the processed session
 [Paths] = WhichComputer();
@@ -402,7 +404,7 @@ switch handles.datamode
                 end
                 %handles.SpikeRaster.Visible = 'on';
                 axes(handles.SpikeRaster);
-                plot(AllSpikes(:,1),AllSpikes(:,2),'.k');
+                set(handles.SpikeData,'XData',AllSpikes(:,1),'YData',AllSpikes(:,2));
                 %scatter(AllSpikes(:,1),AllSpikes(:,2),[],AllSpikes(:,3),'.');
                 %colormap("copper");
             end
@@ -542,17 +544,7 @@ else
         'YData',[]);
 end
 set(handles.SpikeRaster,'XTick', handles.(SniffTag)(:,1));
-
-% dealing with flagged stretches
-flaggedStretches = [handles.(SniffTag)(:,1) handles.(SniffTag)(:,8)<0];
-if isfield(handles,'SniffsTSnew') & ~isempty(handles.SniffsTSnew)
-    flaggedStretches = vertcat(flaggedStretches,...
-        [handles.SniffsTSnew(:,1) handles.SniffsTSnew(:,9)<0]);
-end
-flaggedStretches = sortrows(flaggedStretches,1);
-
-handles.flagged.XData = flaggedStretches(:,1);
-handles.flagged.YData = flaggedStretches(:,2);
+ShowRaster_Callback(hObject, eventdata, handles);
 guidata(hObject, handles);
 
 % --- Executes on button press in RemovePoints.
@@ -683,6 +675,7 @@ if isfield(handles.SniffTrace,'MFS2Therm')
     set(handles.MFS2Therm,'XLim',newLims);
 end
 set(handles.SpikeRaster,'XLim',newLims);
+ShowRaster_Callback(hObject, eventdata, handles);
 guidata(hObject, handles);
 
 % --- Executes on button press in ClearSession.
@@ -721,6 +714,7 @@ if isfield(handles.SniffTrace,'MFS2Therm')
 end
 set(handles.SpikeRaster,'XLim',newLims);
 handles.Scroller.Value = newLims(1)/(handles.SessionLength - str2double(handles.WindowSize.String));
+ShowRaster_Callback(hObject, eventdata, handles)
 % Update handles structure
 guidata(hObject, handles);
 
@@ -737,6 +731,7 @@ if isfield(handles.SniffTrace,'MFS2Therm')
 end
 set(handles.SpikeRaster,'XLim',newLims);
 handles.Scroller.Value = newLims(1)/(handles.SessionLength - str2double(handles.WindowSize.String));
+ShowRaster_Callback(hObject, eventdata, handles)
 % Update handles structure
 guidata(hObject, handles);
 
@@ -1308,6 +1303,9 @@ switch pressedKey
         AdvancePeak_Callback(hObject, eventdata, handles);
     case 's'
         TempSave_Callback(hObject, eventdata, handles);
+    case 'p'
+        axes(handles.SpikeRaster);
+        
     case 'o'
         % Call a function or perform an action for 'o' key
         disp('Open action triggered!');
@@ -1336,4 +1334,72 @@ if get(hObject,'Value')==1
 
 else
     handles.SpikeRaster.Visible = 'off';
+end
+
+
+
+function SelectedUnit_Callback(hObject, eventdata, handles)
+% hObject    handle to SelectedUnit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of SelectedUnit as text
+%        str2double(get(hObject,'String')) returns contents of SelectedUnit as a double
+ShowRaster_Callback(hObject, eventdata, handles);
+
+% --- Executes during object creation, after setting all properties.
+function SelectedUnit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to SelectedUnit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in ShowRaster.
+function ShowRaster_Callback(hObject, eventdata, handles)
+% hObject    handle to ShowRaster (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of ShowRaster
+if handles.ShowRaster.Value && isnumeric(str2double(handles.SelectedUnit.String))
+    myUnit = str2double(handles.SelectedUnit.String);
+    mySpikes = handles.SpikeData.XData(find(handles.SpikeData.YData==myUnit))';
+    myLims = get(handles.SniffingFiltered,'XLim');
+    mySpikes(mySpikes<myLims(1)|mySpikes>myLims(2)) = [];
+
+    snifftimes = handles.(handles.primarySniffTS)(:,1);
+    snifftimes(snifftimes<myLims(1)|snifftimes>myLims(2)) = [];
+    
+    spikelist = [];
+    for s = 1:size(snifftimes,1)-1
+        t = snifftimes(s,1) + [-0.1 0.75]; % snifftimes(s+1,1)];
+        thisSniffSpikes = mySpikes(mySpikes>=t(1)&mySpikes<t(2));
+        thisSniffSpikes(:,2) = thisSniffSpikes - snifftimes(s,1);
+        thisSniffSpikes(:,3) = s + 0*thisSniffSpikes(:,1);
+        spikelist = vertcat(spikelist, thisSniffSpikes);
+    end
+    axes(handles.SniffRaster);
+    plot(spikelist(:,2),spikelist(:,3),'.r');
+    axes(handles.SpikeRaster);
+    set(handles.selectedUnitLine,'XData',myLims,'YData',[myUnit myUnit]);
+    
+end
+
+
+% --- Executes on mouse press over axes background.
+function SpikeRaster_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to SpikeRaster (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+clickType = get(handles.figure1, 'SelectionType');
+if strcmp(clickType, 'alt')
+    handles.SelectedUnit.String = num2str(round(eventdata.IntersectionPoint(2)));
+    guidata(hObject, handles);
+    ShowRaster_Callback(hObject, eventdata, handles);
 end

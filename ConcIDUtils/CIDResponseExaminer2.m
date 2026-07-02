@@ -1,5 +1,5 @@
 %% general settings
-savefigs = 1;
+savefigs = 0;
 align2sniffs = 0; % first sniff, second sniff
 stackUnits = 1;
 plotStyle = 'sniffwise';
