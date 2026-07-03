@@ -22,7 +22,7 @@ function varargout = ProcessSniffTimeStamps_GUI_2026(varargin)
 
 % Edit the above text to modify the response to help ProcessSniffTimeStamps_GUI_2026
 
-% Last Modified by GUIDE v2.5 02-Jul-2026 15:32:31
+% Last Modified by GUIDE v2.5 03-Jul-2026 14:40:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1403,3 +1403,12 @@ if strcmp(clickType, 'alt')
     guidata(hObject, handles);
     ShowRaster_Callback(hObject, eventdata, handles);
 end
+
+
+% --- Executes on button press in Expander.
+function Expander_Callback(hObject, eventdata, handles)
+% hObject    handle to Expander (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+keyboard;
+% Hint: get(hObject,'Value') returns toggle state of Expander
