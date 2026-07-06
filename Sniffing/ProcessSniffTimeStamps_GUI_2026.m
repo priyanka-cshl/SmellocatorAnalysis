@@ -413,6 +413,9 @@ switch handles.datamode
             handles.SpikeRaster.XTickLabel = {};
             handles.MFS.XTick = handles.SniffsTS(:,1);
             handles.SniffingRaw.XTick = handles.SniffsTS(:,1);
+            if ~strcmp(handles.primaryAxes,'SniffingFiltered')
+                handles.SniffingFiltered.XTick = handles.SniffsTS(:,1);
+            end
         end
 
 end
@@ -543,7 +546,9 @@ else
         'XData',[],...
         'YData',[]);
 end
-set(handles.SpikeRaster,'XTick', handles.(SniffTag)(:,1));
+try
+    set(handles.SpikeRaster,'XTick', handles.(SniffTag)(:,1));
+end
 ShowRaster_Callback(hObject, eventdata, handles);
 guidata(hObject, handles);
 
@@ -1410,5 +1415,22 @@ function Expander_Callback(hObject, eventdata, handles)
 % hObject    handle to Expander (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-keyboard;
+%keyboard;
+% 
+Lims(1,:) = get(handles.MFS,'Position');
+Lims(2,:) = get(handles.SniffingRaw,'Position');
+[~,whichLims] = max(Lims(:,2));
+if isequal(get(handles.SpikeRaster,'Position'),Lims(whichLims,:))
+    if strcmp(handles.primaryAxes,'SniffingFiltered')
+        Lims(3,:) = get(handles.MFS2Therm,'Position');
+    else
+        Lims(3,:) = get(handles.SniffingFiltered,'Position');
+    end
+    Lims(3,4) = Lims(1,4) + Lims(2,4);
+    set(handles.SpikeRaster,'Position',Lims(3,:));
+else
+    set(handles.SpikeRaster,'Position',Lims(whichLims,:));
+end
+axes(handles.SpikeRaster);
+guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of Expander
