@@ -343,6 +343,13 @@ switch handles.datamode
         if ~isempty(handles.SniffsTS)
             handles.SniffsTS(find(isnan(handles.SniffsTS(:,8))),:) = [];
             handles.SniffsTS(find(handles.SniffsTS(:,8)<=0),:) = [];
+            if ~isempty( find(diff(handles.SniffsTS(:,1))<=0) )
+                keyboard;
+%             f = find(diff(handles.SniffsTS(:,1))<0);
+%             handles.SniffsTS([f;f+1],:) = [];
+%             handles.SniffsTS(f(1:2)+1,:) = [];
+%             handles.SniffsTS(f(3)+0,:) = [];
+            end
         end 
 
         % make equivalent long traces for plotting
@@ -764,6 +771,9 @@ for n = 1:numel(sniffs_of_interest)
     whichsniff = sniffs_of_interest(n);
     if isnan(handles.SniffsMFS(whichsniff,4))
         traceidx = handles.SniffsMFS(whichsniff,8);
+        if traceidx<0
+            keyboard;
+        end
         if abs(timeTrace(traceidx) - handles.SniffsMFS(whichsniff,1)) > 0.0025
             keyboard;
         end
