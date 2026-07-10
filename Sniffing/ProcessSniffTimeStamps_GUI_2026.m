@@ -400,7 +400,10 @@ switch handles.datamode
                 sortorder = unsortedUnitIds(sortorder);
 
                 SingleUnits = LoadKS4Units(myKsDir);
-                
+%                 SingleUnits = LoadKS4Units(myKsDir,'allUnits',1);
+%                 f2 = find(~ismember([SingleUnits.id]',sortorder));
+%                 sortorder = [sortorder; [SingleUnits(f2).id]'];
+%                 
                 % One giant matrix for all spikes
                 AllSpikes = [];
                 for i = 1:numel(sortorder)
@@ -1324,6 +1327,7 @@ switch pressedKey
     case 'o'
         % Call a function or perform an action for 'o' key
         disp('Open action triggered!');
+        keyboard;
         % call open_file_function(handles);
         % Add more cases for other keys
 %     case 'z'

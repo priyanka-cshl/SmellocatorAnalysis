@@ -1,7 +1,7 @@
 %% general settings
 savefigs = 0;
 align2sniffs = 0; % first sniff, second sniff
-stackUnits = 1;
+stackUnits = 0;
 plotStyle = 'sniffwise';
 
 % load the data
@@ -42,13 +42,15 @@ disp(['found ',num2str(size(SingleUnits,2)),' good, >0.25Hz units']);
 % make air trials as last stimulus?
 TTLs.Trial((TTLs.Trial(:,4)==0),4) =  max(TTLs.Trial(:,4)) + 1;
 
-
-
 %% stimulus settings for plotting
 nStim = unique(TTLs.Trial(:,4));
 nTypes = unique(TTLs.Trial(:,5));
 nreps = max(TTLs.Trial(:,6));
 nUnits = size(SingleUnits,2);
+
+if size(TTLs.Odor,1) == 2*size(TTLs.Trial,1)
+    StimSettings.SessionType = 'newCID';
+end
 
 %StimSettings.SessionType = 'AllTrials';
 if any(nStim == -1)
@@ -116,7 +118,6 @@ for n = 1:nUnits
 end
 
 %%
-
 switch StimSettings.SessionType
     case 'ConcentrationSeries'
         mycolors = brewermap(2*(numel(find(nTypes~=0))+1),'YlOrRd');
@@ -193,9 +194,7 @@ switch StimSettings.SessionType
             end
             
         %%
-        else
-
-
+        else % conc series - unstacked
             for n = 1:nUnits
                 if mod(n,10) == 1
                     FigureName = ['Units ',num2str(n),'-',num2str(n+9)];
@@ -297,14 +296,14 @@ switch StimSettings.SessionType
 
         end
         %%
-    case '16_Odors'
+    case {'16_Odors', 'newCID'}
         %%
         mycolors = brewermap(16,'Dark2');
         %unitsPerPlot = 30;
         plots_rows = 3; plots_cols = 15;
         unitsPerPlot = plots_rows*plots_cols;
         FigPosition = [2150 80 1750 900];
-        if ~stackUnits
+        if stackUnits
             for n = 1:nUnits
                 if mod(n,unitsPerPlot) == 1
                     FigureName = ['Units ',num2str(n),'-',num2str(n+9)];
@@ -421,6 +420,9 @@ switch StimSettings.SessionType
                     for conc = 1:numel(nTypes)
                         SpikesPlot = [];
                         whichtrials = intersect(find(TTLs.Trial(:,4)==nStim(odor)),find(TTLs.Trial(:,5)==nTypes(conc)));
+                        if nreps == 0 & ~isempty(whichtrials)
+                            nreps = numel(whichtrials);
+                        end
                         for rep = 1:numel(whichtrials)
                             thisTrial = whichtrials(rep);
                             thistrialspikes = [];
