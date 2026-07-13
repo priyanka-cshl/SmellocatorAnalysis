@@ -402,6 +402,12 @@ switch StimSettings.SessionType
             end
 
         else
+            trialsPerStim = size(TTLs.Trial,1);
+            if strcmp(StimSettings.SessionType,'newCID')
+                plotWidth = [-6 (StimSettings.timing(3)*4)/1000];
+            else
+                plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
+            end
             for n = 1:nUnits
                 if mod(n,unitsPerPlot) == 1
                     FigureName = ['Units ',num2str(n),'-',num2str(n+unitsPerPlot-1)];
@@ -415,14 +421,13 @@ switch StimSettings.SessionType
                 subplot(plots_rows,plots_cols,whichplot);
                 hold on
                 odorON = [];
+                repsDone = 0;
 
                 for odor = 1:numel(nStim)
                     for conc = 1:numel(nTypes)
                         SpikesPlot = [];
                         whichtrials = intersect(find(TTLs.Trial(:,4)==nStim(odor)),find(TTLs.Trial(:,5)==nTypes(conc)));
-                        if nreps == 0 & ~isempty(whichtrials)
-                            nreps = numel(whichtrials);
-                        end
+                        nreps = numel(whichtrials);
                         for rep = 1:numel(whichtrials)
                             thisTrial = whichtrials(rep);
                             thistrialspikes = [];
@@ -430,19 +435,22 @@ switch StimSettings.SessionType
                             thistrialspikes = AllSpikes{n}(thistrialspikes,1);
                             SpikesPlot = vertcat(SpikesPlot, ...
                                 [thistrialspikes ...
-                                (rep + (odor-1)*nreps)*ones(numel(thistrialspikes),1)]...
+                                (rep + repsDone)*ones(numel(thistrialspikes),1)]...
                                 );
                             if size(TTLs.Trial,2) == 11 && align2sniffs
-                                odorON = vertcat(odorON, [TTLs.Trial(thisTrial,11) , (rep + (odor-1)*nreps)]);
+                                odorON = vertcat(odorON, [TTLs.Trial(thisTrial,11) , (rep + repsDone)]);
                             else
-                                odorON = vertcat(odorON, [0 , (rep + (odor-1)*nreps)]);
+                                odorON = vertcat(odorON, [0 , (rep + repsDone)]);
                             end
                         end
+                        repsDone = repsDone + nreps;
                         plot(SpikesPlot(:,1), SpikesPlot(:,2)/500, '.k','Markersize', 2, 'color', mycolors(odor,:));
                     end
                 end
-
-                set(gca,'XTick',[],'YTick',[],'XLim',[-6 4],'YLim',[0 0.226]);
+                
+                %set(gca,'XTick',[],'YTick',[],'XLim',[-6 4],'YLim',[0 0.226]);
+                plotHeight = (max(odorON(:,2))+1)/500;
+                set(gca,'XTick',[],'YTick',[],'XLim',plotWidth,'YLim',[0 plotHeight]);
                 plot(odorON(:,1),odorON(:,2)/500,'k');
                 plot(odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
 
