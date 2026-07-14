@@ -3,12 +3,26 @@
 %myKsDir = '/media/priyanka/ABC-ntfs/EphysSorted/Q9/2022-12-15_16-28-22';
 
 %% Plotting/Figure related settings
-savefigs = 0;
-align2sniffs = 0; % first sniff, second sniff
+
+% align to sniffs or not, and which sensor to use
+align2sniffs = 0; % 1 = first sniff, 2 = second sniff 
 whichSniffSensor = 2; % 1 = thermistor, 2 = MFS
-stackUnits = 0;
-stackConcs = 1;
-% plotStyle = 'sniffwise';
+
+% plotting options
+stackUnits = 0; % default, alternative is not coded
+
+% for conc. series expts only: 
+% can plot each odor as separate plot (0), or one plot per odor (1 or 2)
+% if one plot per odor, group all concentrations of one odor together (1), 
+% or group all odors at one concentration together (2)
+stackConcs = 1; % 0 = separate plots, 1 = stack concs, 2 = stackodors
+
+% for new conc. series expts
+% plot both stim pulses or just one
+bothPulses = 1;
+
+% saving figures to pdf
+savefigs = 0;
 if savefigs
     FigPath = strrep(myKsDir,'/mnt/data/Sorted','/home/priyanka/Desktop/cid');
     if ~exist("FigPath",'dir')
@@ -16,18 +30,35 @@ if savefigs
     end
 end
 
+
+
 %% load the data
 clear KS4Units;
 load(fullfile(myKsDir,'quickprocesssniffs.mat')); % sniff times, KS4Units
 load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings'); % odorTTLs
-SingleUnits = LoadKS4Units(myKsDir,'minSpikes',0.25);
+SingleUnits = LoadKS4Units(myKsDir,'minSpikes',0.25,'allUnits',0);
 disp(['found ',num2str(size(SingleUnits,2)),' good, >0.25Hz units']);
 nUnits = size(SingleUnits,2);
+% for new CID experiments
+if size(TTLs.Odor,1) == 2*size(TTLs.Trial,1)
+    StimSettings.SessionType = 'newCID';
+    if bothPulses
+        TTLs.Trial(:,2) = TTLs.Trial(:,2) + 2;
+    end
+end
 
 %% stimulus settings for plotting
-if stackConcs
+if stackConcs == 2
     if strcmp(StimSettings.SessionType,'ConcentrationSeries')
         newStimCol = (TTLs.Trial(:,5)*10^4) + TTLs.Trial(:,4);
+        newTypesCol = TTLs.Trial(:,5)*0;
+        TTLs.Trial(:,4:5) = [newStimCol newTypesCol];
+        StimSettings.SessionType = '16_Concs*';
+    end
+end
+if stackConcs == 1
+    if strcmp(StimSettings.SessionType,'ConcentrationSeries')
+        newStimCol = TTLs.Trial(:,5) + TTLs.Trial(:,4);
         newTypesCol = TTLs.Trial(:,5)*0;
         TTLs.Trial(:,4:5) = [newStimCol newTypesCol];
         StimSettings.SessionType = '16_Concs';
@@ -48,11 +79,6 @@ if any(nStim == -1)
     nStim(nStim<0,:) = [];
     TTLs.Trial(f,7) = TTLs.Trial(f,1) + StimSettings.timing(2)/1000;
     TTLs.Trial(f,8) = TTLs.Trial(f,7) + StimSettings.timing(3)/1000;
-end
-
-% for new CID experiments
-if size(TTLs.Odor,1) == 2*size(TTLs.Trial,1)
-    StimSettings.SessionType = 'newCID';
 end
 
 if ~isfield(StimSettings,'SessionType')
@@ -135,8 +161,11 @@ if ~stackUnits
             plots_cols = 6; %15;
             panelsPerPlot = plots_rows*plots_cols; % one per unit
             unitsPerPlot = panelsPerPlot;
-            % plotWidth = [-6 (StimSettings.timing(3)*4)/1000];
-            plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
+            if bothPulses
+                plotWidth = [-4 (StimSettings.timing(3)*5)/1000];
+            else
+                plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
+            end
 
         case '16_Odors'
             mycolors = brewermap(numel(nStim),'Dark2');
@@ -148,15 +177,33 @@ if ~stackUnits
             plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
             %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
 
-        case '16_Concs'
-            mycolors = brewermap(5,'Dark2');
-            for c = 1:4
-                mycolors = vertcat(mycolors + (1 - mycolors)*c*0.2, ...
-                    mycolors);
+        case '16_Concs*'
+            basecolors = brewermap(5,'Dark2');
+            mycolors = [];
+            for c = 0:0.2:0.6
+                lighter = basecolors + (1 - basecolors)*c;
+                mycolors = vertcat(lighter, mycolors);
             end
             trialsPerUnit = size(TTLs.Trial,1);
             plots_rows = 4;
-            plots_cols = 5;
+            plots_cols = 10;
+            panelsPerPlot = plots_rows*plots_cols; % one per unit
+            unitsPerPlot = panelsPerPlot;
+            plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
+            %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
+            StimSettings.SessionType = '16_Odors';
+
+        case '16_Concs'
+            basecolors = brewermap(5,'Dark2');
+            mycolors = [];
+            scale = 0.6:-0.2:0;
+            for c = 1:4
+                mycolors(:,:,c) = basecolors + (1 - basecolors)*scale(c);
+            end
+            mycolors = reshape(permute(mycolors, [3 1 2]), 20, 3);      % rows: [color1's N shades; color2's N shades; ...]
+            trialsPerUnit = size(TTLs.Trial,1);
+            plots_rows = 4;
+            plots_cols = 10;
             panelsPerPlot = plots_rows*plots_cols; % one per unit
             unitsPerPlot = panelsPerPlot;
             plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
@@ -226,6 +273,14 @@ if ~stackUnits
             set(gca,'XTick',[],'YTick',[],'XLim',plotWidth,'YLim',[0 plotHeight]);
             plot(odorON(:,1),odorON(:,2)/500,'k');
             plot(odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
+            % plot second odor pulse if needed
+            if strcmp(StimSettings.SessionType,'newCID') 
+                if bothPulses
+                    pulseOffset = 1+ (StimSettings.timing(3) + StimSettings.timing(4))/1000;
+                    plot(pulseOffset+odorON(:,1),odorON(:,2)/500,'k');
+                    plot(pulseOffset+odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
+                end
+            end
         end
 
         % if conc. series, loop by conc. per odor per unit for one subplot
