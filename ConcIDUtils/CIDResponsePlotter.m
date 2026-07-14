@@ -4,9 +4,13 @@
 
 %% Plotting/Figure related settings
 
+% units
+UnitFilter = 0; % -1: non-good, 0: good (default), 1: all
+
 % align to sniffs or not, and which sensor to use
-align2sniffs = 0; % 1 = first sniff, 2 = second sniff 
+align2sniffs = 1; % 1 = first sniff, 2 = second sniff 
 whichSniffSensor = 2; % 1 = thermistor, 2 = MFS
+addSniffPlot = 1;
 
 % plotting options
 stackUnits = 0; % default, alternative is not coded
@@ -19,7 +23,7 @@ stackConcs = 1; % 0 = separate plots, 1 = stack concs, 2 = stackodors
 
 % for new conc. series expts
 % plot both stim pulses or just one
-bothPulses = 1;
+bothPulses = 0;
 
 % saving figures to pdf
 savefigs = 0;
@@ -30,13 +34,11 @@ if savefigs
     end
 end
 
-
-
 %% load the data
 clear KS4Units;
 load(fullfile(myKsDir,'quickprocesssniffs.mat')); % sniff times, KS4Units
 load(fullfile(myKsDir,'quickprocessOdorTTLs.mat'),'TTLs','StimSettings'); % odorTTLs
-SingleUnits = LoadKS4Units(myKsDir,'minSpikes',0.25,'allUnits',0);
+SingleUnits = LoadKS4Units(myKsDir,'minSpikes',0,'allUnits',UnitFilter);
 disp(['found ',num2str(size(SingleUnits,2)),' good, >0.25Hz units']);
 nUnits = size(SingleUnits,2);
 % for new CID experiments
@@ -86,7 +88,7 @@ if ~isfield(StimSettings,'SessionType')
 end
 
 %% process sniffs
-if align2sniffs
+if align2sniffs || addSniffPlot
     % find first inhalation start after odor start
     if whichSniffSensor==1 && exist('CuratedSniffTimestamps','var')
         MySniffTimeStamps = CuratedSniffTimestamps(:,1:3);
@@ -102,8 +104,9 @@ if align2sniffs
             % find all sniffs
             thisTrialSniffs = intersect(find(MySniffTimeStamps(:,1)>=ts(1)),find(MySniffTimeStamps(:,1)<ts(2)));
             firstsniff = find(MySniffTimeStamps(thisTrialSniffs,1)>=ts(3),1,'first');
-            TTLs.Trial(t,10) = MySniffTimeStamps(thisTrialSniffs(firstsniff+(align2sniffs-1)),1); % time of first sniff (true time)
-            TTLs.Trial(t,11) = TTLs.Trial(t,7) - TTLs.Trial(t,10); % % time of first sniff from odor Onset
+            firstpostsniff = find(MySniffTimeStamps(thisTrialSniffs,1)>=ts(4),1,'first');
+            TTLs.Trial(t,11) = MySniffTimeStamps(thisTrialSniffs(firstsniff+(align2sniffs-1)),1); % time of first sniff (true time)
+            TTLs.Trial(t,12) = TTLs.Trial(t,7) - TTLs.Trial(t,11); % % time of first sniff from odor Onset
             thisTrialSniffs = MySniffTimeStamps(thisTrialSniffs,1:3) - ts(3); % odor start
             % now lets index every sniff
             thisTrialSniffs(:,4) = t;
@@ -112,20 +115,34 @@ if align2sniffs
             thisTrialSniffs(beforesniffs,5) = -flipud(beforesniffs(:));
             thisTrialSniffs(aftersniffs,5)  = (1:numel(aftersniffs))-1;
             thisTrialSniffs(:,6) = ts(3); % useful to get back actual value
+            % add sniff phase
+            thisTrialSniffs(beforesniffs,7) = 0;
+            thisTrialSniffs(aftersniffs,7) = 1;
+            postodorsniffs = find(thisTrialSniffs(:,1)>=(ts(4)-ts(3)));
+            thisTrialSniffs(postodorsniffs,7) = 1.5;
+            if strcmp(StimSettings.SessionType,'newCID')
+                secondOdor = TTLs.Trial(t,[9 10]) - ts(3);
+                postOdorTwo = find(thisTrialSniffs(:,1)>=(secondOdor(1)));
+                thisTrialSniffs(postOdorTwo,7) = 2;
+                postOdorTwo = find(thisTrialSniffs(:,1)>=(secondOdor(2)));
+                thisTrialSniffs(postOdorTwo,7) = 2.5;
+            end
             TrialWiseSniffs = vertcat(TrialWiseSniffs, thisTrialSniffs);
         end
     end
 end
 
 % TTLs.Trial has now sniff info in additional columns
-% 10    : true time of first (or nth) sniff after odor ON
-% 11    : relative time of first (or nth) sniff after odor ON
+% 11    : true time of first (or nth) sniff after odor ON
+% 12    : relative time of first (or nth) sniff after odor ON
 
 % TrialWiseSniffs: Columns
 % 1 to 3: inh start, end, next w.r.t. this Trial's odor Onset
 % 4     : trial index
 % 5     : sniff index within a trial, 0 = first sniff after odor onset
 % 6     : actual odor ON time
+% 7     : trial phase : 0 - pre-odor, 1 - odor, 1.5 - second odor pulse, 
+%                       2 - post-odor, 2.5 - post second odor pulse
 
 %% Make  trial-aligned Spike Plot
 for n = 1:nUnits
@@ -135,8 +152,8 @@ for n = 1:nUnits
         if TTLs.Trial(t,4)>0
             % every trial
             ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
-            if size(TTLs.Trial,2) >= 10 && align2sniffs
-                ts(5) = TTLs.Trial(t, 10);
+            if size(TTLs.Trial,2) > 10 && align2sniffs
+                ts(5) = TTLs.Trial(t, 11);
             else
                 ts(5) = ts(3);
             end
@@ -148,6 +165,29 @@ for n = 1:nUnits
         end
     end
     AllSpikes(n) = {SpikesPlot};
+end
+
+if addSniffPlot
+    % add a fake unit with sniff times instead of spikes
+    SpikesPlot = [];
+    thisUnitSpikes = TrialWiseSniffs(:,1) + TrialWiseSniffs(:,6);
+    for t = 1:size(TTLs.Trial,1)
+        if TTLs.Trial(t,4)>0
+            % every trial
+            ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
+            if size(TTLs.Trial,2) > 10 && align2sniffs
+                ts(5) = TTLs.Trial(t, 11);
+            else
+                ts(5) = ts(3);
+            end
+            thistrialspikes = intersect(find(thisUnitSpikes>=ts(1)),find(thisUnitSpikes<ts(2)));
+            thistrialspikes = thisUnitSpikes(thistrialspikes) - ts(5);
+            multiplier = t;
+            SpikesPlot = vertcat(SpikesPlot, ...
+                [thistrialspikes multiplier*ones(numel(thistrialspikes),1)]);
+        end
+    end
+    AllSpikes(n+1) = {SpikesPlot};
 end
 
 %% Actual Plotting
@@ -225,7 +265,7 @@ if ~stackUnits
     end
     FigPosition = [2150 80 1750 900];
 
-    for n = 1:nUnits
+    for n = 1:(nUnits+addSniffPlot)
         % Figure/subplot handling
         if mod(n,panelsPerPlot) == 1
             FigureName = ['Units ',num2str(n),'-',num2str(n+unitsPerPlot-1)];
@@ -258,8 +298,8 @@ if ~stackUnits
                             [thistrialspikes ...
                             (rep + repsDone)*ones(numel(thistrialspikes),1)]...
                             );
-                        if size(TTLs.Trial,2) == 11 && align2sniffs
-                            odorON = vertcat(odorON, [TTLs.Trial(thisTrial,11) , (rep + repsDone)]);
+                        if size(TTLs.Trial,2) == 12 && align2sniffs
+                            odorON = vertcat(odorON, [TTLs.Trial(thisTrial,12) , (rep + repsDone)]);
                         else
                             odorON = vertcat(odorON, [0 , (rep + repsDone)]);
                         end
@@ -279,6 +319,11 @@ if ~stackUnits
                     pulseOffset = 1+ (StimSettings.timing(3) + StimSettings.timing(4))/1000;
                     plot(pulseOffset+odorON(:,1),odorON(:,2)/500,'k');
                     plot(pulseOffset+odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
+                end
+            end
+            if n <= nUnits
+                if SingleUnits(n).quality == 2
+                    set(gca,'Box','on');
                 end
             end
         end
@@ -310,8 +355,8 @@ if ~stackUnits
                             [thistrialspikes ...
                             (rep + repsDone)*ones(numel(thistrialspikes),1)]...
                             );
-                        if size(TTLs.Trial,2) == 11 && align2sniffs
-                            odorON = vertcat(odorON, [TTLs.Trial(thisTrial,11) , (rep + repsDone)]);
+                        if size(TTLs.Trial,2) == 12 && align2sniffs
+                            odorON = vertcat(odorON, [TTLs.Trial(thisTrial,12) , (rep + repsDone)]);
                         else
                             odorON = vertcat(odorON, [0 , (rep + repsDone)]);
                         end
@@ -324,6 +369,10 @@ if ~stackUnits
                 set(gca,'XTick',[],'YTick',[],'XLim',plotWidth,'YLim',[0 plotHeight]);
                 plot(odorON(:,1),odorON(:,2)/500,'k');
                 plot(odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
+
+                if SingleUnits(n).quality == 2
+                    set(gca,'Box','on');
+                end
             end
         end
 
