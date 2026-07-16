@@ -1,5 +1,11 @@
 
-[StimSettings, TTLs, SingleUnits, AllSpikes, TrialWiseSniffs, SniffsPlot] = CIDResponsePrepper(myKsDir);
+%[StimSettings, TTLs, SingleUnits, AllSpikes, TrialWiseSniffs, SniffsPlot] = CIDResponsePrepper(myKsDir);
+
+plots_rows = 3;
+plots_cols = 12; %15;
+%UnitList = [SingleUnits.id]';
+%UnitList = [0 63 66 8 12 18 76 33 35 38 24 22 32 39 90 85 88 48 57 44 51 61 60 112 120 123 114 108 109 125 105 127];
+UnitList =  [76 48 44 51 120 105 127 0 60 125 112 114 12 90 61 32 39 38 85 88 109 123 63 35 66 18 33 57 24 22 8 108];
 
 % for saving figures to pdf
 savefigs = 0;
@@ -10,56 +16,44 @@ if savefigs
     end
 end
 
-nUnits = size(SingleUnits,2);
+nUnits = numel(UnitList);
 nStim = StimSettings.nStim;
 nTypes = StimSettings.nTypes;
 align2sniffs = StimSettings.align2sniffs;
 
-if ~isempty(SniffsPlot)
-    addSniffPlot = 1;
-    AllSpikes(nUnits+1) = {SniffsPlot};
-end
+addSniffPlot = 0;
+% if ~isempty(SniffsPlot)
+%     addSniffPlot = 1;
+%     AllSpikes(nUnits+1) = {SniffsPlot};
+% end
 
 %% Actual Plotting
 % general settings
+FigPosition = [2150 80 1750 900];
+trialsPerUnit = size(TTLs.Trial,1);
+panelsPerPlot = plots_rows*plots_cols; % one per unit
+unitsPerPlot = panelsPerPlot;
+if strcmp(StimSettings.SessionType,'newCID')
+    if bothPulses
+        plotWidth = [-4 (StimSettings.timing(3)*5)/1000];
+    else
+        plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
+    end
+else
+    plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
+end
+
 switch StimSettings.SessionType
-    case 'newCID'
+    case {'newCID', '16_Odors'}
         mycolors = brewermap(numel(nStim),'Dark2');
-        trialsPerUnit = size(TTLs.Trial,1);
-        plots_rows = 2;
-        plots_cols = 6; %15;
-        panelsPerPlot = plots_rows*plots_cols; % one per unit
-        unitsPerPlot = panelsPerPlot;
-        if bothPulses
-            plotWidth = [-4 (StimSettings.timing(3)*5)/1000];
-        else
-            plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
-        end
 
-    case '16_Odors'
-        mycolors = brewermap(numel(nStim),'Dark2');
-        trialsPerUnit = size(TTLs.Trial,1);
-        plots_rows = 2;
-        plots_cols = 5;
-        panelsPerPlot = plots_rows*plots_cols; % one per unit
-        unitsPerPlot = panelsPerPlot;
-        plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
-        %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
-
-    case '16_Concs*'
+    case {'16_Concs*'}
         basecolors = brewermap(5,'Dark2');
         mycolors = [];
         for c = 0:0.2:0.6
             lighter = basecolors + (1 - basecolors)*c;
             mycolors = vertcat(lighter, mycolors);
         end
-        trialsPerUnit = size(TTLs.Trial,1);
-        plots_rows = 4;
-        plots_cols = 10;
-        panelsPerPlot = plots_rows*plots_cols; % one per unit
-        unitsPerPlot = panelsPerPlot;
-        plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
-        %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
         StimSettings.SessionType = '16_Odors';
 
     case '16_Concs'
@@ -70,13 +64,6 @@ switch StimSettings.SessionType
             mycolors(:,:,c) = basecolors + (1 - basecolors)*scale(c);
         end
         mycolors = reshape(permute(mycolors, [3 1 2]), 20, 3);      % rows: [color1's N shades; color2's N shades; ...]
-        trialsPerUnit = size(TTLs.Trial,1);
-        plots_rows = 4;
-        plots_cols = 10;
-        panelsPerPlot = plots_rows*plots_cols; % one per unit
-        unitsPerPlot = panelsPerPlot;
-        plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
-        %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
         StimSettings.SessionType = '16_Odors';
 
     case 'otherwise'
@@ -92,21 +79,24 @@ switch StimSettings.SessionType
         %plotWidth = [-6 (StimSettings.timing(3)*2)/1000];
         plotWidth = (StimSettings.timing(3)*2)/1000*[-0.5 1];
 end
-FigPosition = [2150 80 1750 900];
 
-
-
-for n = 1:(nUnits+addSniffPlot)
+%% Actual Plotting
+for m = 1:(nUnits+addSniffPlot)
     % Figure/subplot handling
-    if mod(n,panelsPerPlot) == 1
-        FigureName = ['Units ',num2str(n),'-',num2str(n+unitsPerPlot-1)];
+    if mod(m,panelsPerPlot) == 1
+        FigureName = ['Units ',num2str(m),'-',num2str(m+unitsPerPlot-1)];
         figure('Name',FigureName);
         set(gcf,'Position',FigPosition);
     end
-
+    
+    if m <= nUnits
+        n = find([SingleUnits.id]==UnitList(m));
+    else
+        n = m;
+    end
     % if 16 odors, loop by odors per unit for one subplot,
     if strcmp(StimSettings.SessionType,'newCID')|strcmp(StimSettings.SessionType,'16_Odors')
-        whichplot = mod(n,panelsPerPlot);
+        whichplot = mod(m,panelsPerPlot);
         if ~whichplot
             whichplot = panelsPerPlot;
         end
@@ -114,7 +104,11 @@ for n = 1:(nUnits+addSniffPlot)
         hold on
         odorON = [];
         repsDone = 0;
-
+        if m <= nUnits
+            title(['Unit id: ',num2str(SingleUnits(n).id)]);
+        else
+            title('Sniff Raster');
+        end
         for odor = 1:numel(nStim)
             for conc = 1:numel(nTypes) % this is just one
                 SpikesPlot = [];
@@ -152,7 +146,7 @@ for n = 1:(nUnits+addSniffPlot)
                 plot(pulseOffset+odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
             end
         end
-        if n <= nUnits
+        if m <= nUnits
             if SingleUnits(n).quality == 2
                 set(gca,'Box','on');
             end
@@ -161,7 +155,7 @@ for n = 1:(nUnits+addSniffPlot)
 
     % if conc. series, loop by conc. per odor per unit for one subplot
     if strcmp(StimSettings.SessionType,'ConcentrationSeries')
-        whichRow = mod(n,unitsPerPlot);
+        whichRow = mod(m,unitsPerPlot);
         if ~whichRow
             whichRow = unitsPerPlot;
         end
@@ -208,7 +202,7 @@ for n = 1:(nUnits+addSniffPlot)
     end
 
     % if last panel for the figure
-    if ~mod(n,panelsPerPlot)
+    if ~mod(m,panelsPerPlot)
         if savefigs
             saveas(gcf,fullfile(FigPath,[FigureName,'.png']));
             close(gcf);

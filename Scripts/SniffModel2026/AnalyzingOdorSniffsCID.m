@@ -1,4 +1,5 @@
 % run after running CID Response Prepper 
+[StimSettings, TTLs, SingleUnits, AllSpikes, TrialWiseSniffs, SniffsPlot] = CIDResponsePrepper(myKsDir);
 
 % TTLs.Trial : Columns
 % 1 to 2: Trial Start, Stop
@@ -30,8 +31,71 @@ TrialWiseSniffs(2:end,8) = (TrialWiseSniffs(1:end-1,3)==TrialWiseSniffs(2:end,1)
 
 %%
 % Let's work with an example unit
-whichunit = 48;
-window = [-0.1 medianSniff];
+%whichunit = 48;
+unitID = 76;
+whichunit = find([SingleUnits.id]==unitID);
+window = [0 medianSniff];
+sniffwindows = linspace(0,medianSniff,4);
+sniffwindows(2,1:3) = sniffwindows(1,2:4);
+sniffwindows(:,4) = [];
+equalTimeBlocks = 1;
+chunkByPrevOdor = 0;
+if equalTimeBlocks
+    cutOff = [-StimSettings.timing(3)/1000 (StimSettings.timing(3)+StimSettings.timing(4))/1000];
+end
+
+%% for every trial, every sniff get a spike count per sniff?
+SniffStats = [];
+for t = 1:size(TTLs.Trial,1)
+    % validsniffs 
+    whichsniffs = find( (TrialWiseSniffs(:,4)==t) & (TrialWiseSniffs(:,1)>cutOff(1)) & (TrialWiseSniffs(:,1)<cutOff(2)));
+    whichsniffs = TrialWiseSniffs(whichsniffs,:);
+    for i = 1:size(whichsniffs,1)
+        % spike counts
+        thisSniffStart = whichsniffs(i,1) + whichsniffs(i,6); % actual sniff time
+        thisSniffEnd   = min((whichsniffs(i,3) + whichsniffs(i,6)), (thisSniffStart + window(2)));
+        thisSniffWindow = [thisSniffStart+window(1)  thisSniffEnd];
+        % find spikes
+        thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
+        thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
+        for s = 1:size(sniffwindows,2)
+            spikecounts(s) = numel( find( (thisSniffSpikes>=sniffwindows(1,s)) & (thisSniffSpikes<sniffwindows(2,s)) ) );
+        end
+        thisSniffStats = [spikecounts whichsniffs(i,[4 5 7 9 10 8]) whichsniffs(i,3)-whichsniffs(i,1)];
+        SniffStats      = vertcat(SniffStats, thisSniffStats);
+    end
+end
+
+% SniffStats : Columns
+% 1 to 3: SniffCounts in sniffwindows
+% 4     : trial index
+% 5     : sniff index within a trial, 0 = first sniff after odor onset
+% 6     : trial phase : 0 - pre-odor, 1 - odor, 1.5 - second odor pulse, 
+%                       2 - post-odor, 2.5 - post second odor pulse
+% 7     : Stimulus identity (or mixed if conc. series)
+% 8     : Prev Stimulus identity
+% 9     : Prev Sniff Duration
+% 10     : this Sniff Duration
+
+
+% plot stim wise
+figure; 
+for s = 1:numel(nStim) 
+    subplot(numel(nStim),1,s);
+    plot(SniffStats(SniffStats(:,7)==nStim(s),5),sum(SniffStats(SniffStats(:,7)==nStim(s),[1:3]),2),'.','Color',mycolors(s,:));
+    set(gca,'XLim',[-10 25]);
+end
+
+for x = 1:3
+    figure;
+    for s = 1:numel(nStim)
+        subplot(numel(nStim),1,s);
+        plot(SniffStats(SniffStats(:,7)==nStim(s),5),SniffStats(SniffStats(:,7)==nStim(s),x),'.','Color',mycolors(s,:));
+        set(gca,'XLim',[-10 25]);
+    end
+end
+
+%%
 
 figure;
 hold on
@@ -52,17 +116,33 @@ for subSortCase = 0:1:(sortcases-1)
         for p = 1:numel(phases)
             % select sniffs
             if sortbyPhase
-                whichsniffs = find( (TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)==phases(p)));
+                if chunkByPrevOdor
+                    whichsniffs = find( (TrialWiseSniffs(:,10)==nStim(o)) & (TrialWiseSniffs(:,7)==phases(p)));
+                else
+                    whichsniffs = find( (TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)==phases(p)));
+                end
                 subplot(1,numel(phases)*sortcases,p+numel(phases)*subSortCase);
                 %            subplot(1,numel(phases),p);
                 hold on
             else
-                whichsniffs = find(TrialWiseSniffs(:,9)==nStim(o));
+                if chunkByPrevOdor
+                    whichsniffs = find(TrialWiseSniffs(:,10)==nStim(o));
+                else
+                    whichsniffs = find(TrialWiseSniffs(:,9)==nStim(o));
+                end
             end
 
             whichsniffs = TrialWiseSniffs(whichsniffs,:);
             % only keep sniffs for which the previous sniff exists
             whichsniffs(whichsniffs(:,8)==0,:) = [];
+
+            if equalTimeBlocks
+                if phases(p)==0
+                    whichsniffs(whichsniffs(:,1)<cutOff(1),:) = [];
+                elseif phases(p)==1.5
+                    whichsniffs(whichsniffs(:,1)>cutOff(2),:) = [];
+                end
+            end
 
             switch subSortCase
                 case 0
@@ -116,105 +196,3 @@ for subSortCase = 0:1:(sortcases-1)
     end
 end
 %%
-
-nStim = unique(TTLs.Trial(:,4));
-mycolors = brewermap(numel(nStim),'Dark2');
-medianSniff = median(TrialWiseSniffs(:,3)-TrialWiseSniffs(:,1));
-TrialWiseSniffs(:,9) = TTLs.Trial(TrialWiseSniffs(:,4),4); % stimulus identity
-TrialWiseSniffs(2:end,8) = (TrialWiseSniffs(1:end-1,3)==TrialWiseSniffs(2:end,1)).*(TrialWiseSniffs(1:end-1,3)-TrialWiseSniffs(1:end-1,1)); % prev. sniff duration
-
-
-% Let's work with an example unit
-whichunit = 25;
-window = [-0.1 medianSniff];
-
-figure;
-hold on
-phases = [0 1 1.5];
-sniffsDone = 0;
-
-for o = 1:numel(nStim)
-    for p = 1:numel(phases)
-        % select sniffs
-        whichsniffs = find((TrialWiseSniffs(:,7)==phases(p))&(TrialWiseSniffs(:,4)==nStim(o)));
-        whichsniffs = TrialWiseSniffs(whichsniffs,:);
-        % only keep sniffs for which the previous sniff exists
-        whichsniffs(whichsniffs(:,8)==0,:) = [];
-
-        % sort by duration of previous sniff
-        preSniffDuration = whichsniffs(1:end-1,3)-whichsniffs(1:end-1,1);
-        whichsniffs(1,:) = [];
-        stimIdentity = TTLs.Trial(whichsniffs(:,4),4);
-        whichsniffs = [whichsniffs preSniffDuration stimIdentity];
-        whichsniffs = sortrows(whichsniffs,[9 8]);
-
-        % build spikepplot
-        SpikesPlot = [];
-        for i = 1:size(whichsniffs,1)
-            thisSniffStart = whichsniffs(i,1) + whichsniffs(i,6); % actual sniff time
-            thisSniffEnd   = whichsniffs(i,3) + whichsniffs(i,6);
-            thisSniffWindow = [thisSniffStart+window(1)  thisSniffEnd];
-            % find spikes
-            thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
-            thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
-            SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes i+0*thisSniffSpikes]);
-        end
-        % stacking mode
-        if phases(p) ~= 1
-            plot(SpikesPlot(:,1),sniffsDone+SpikesPlot(:,2),'.k');
-        else
-            plot(SpikesPlot(:,1),sniffsDone+SpikesPlot(:,2),'.b');
-        end
-        sniffsDone = sniffsDone + i;
-    end
-end
-
-%%
-% get all pre-odor sniffs
-figure;
-subplot(1,3,1);
-PreOdorsniffs = find(TrialWiseSniffs(:,7)==0);
-% only keep sniffs for which the previous sniff exists
-PreOdorsniffs = TrialWiseSniffs(PreOdorsniffs,:);
-f = find(PreOdorsniffs(2:end,1)-PreOdorsniffs(1:end-1,3));
-PreOdorsniffs(f+1,:) = [];
-preSniffDuration = PreOdorsniffs(1:end-1,3)-PreOdorsniffs(1:end-1,1);
-PreOdorsniffs(1,:) = [];
-PreOdorsniffs = [PreOdorsniffs preSniffDuration];
-
-PreOdorsniffs = sortrows(PreOdorsniffs,8);
-
-SpikesPlot = [];
-for i = 1:size(PreOdorsniffs,1)
-    thisSniffStart = PreOdorsniffs(i,1) + PreOdorsniffs(i,6); % actual sniff time
-    thisSniffWindow = thisSniffStart + window;
-    % find spikes
-    thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
-    thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
-    SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes i+0*thisSniffSpikes]);
-end
-plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k');
-
-subplot(1,3,2);
-Odorsniffs = find(TrialWiseSniffs(:,7)==1);
-% % only keep sniffs for which the previous sniff exists
-Odorsniffs = TrialWiseSniffs(Odorsniffs,:);
-f = find(Odorsniffs(2:end,1)-Odorsniffs(1:end-1,3));
-Odorsniffs(f+1,:) = [];
-preSniffDuration = Odorsniffs(1:end-1,3)-Odorsniffs(1:end-1,1);
-Odorsniffs(1,:) = [];
-Odorsniffs = [Odorsniffs preSniffDuration];
-
-Odorsniffs = sortrows(Odorsniffs,8);
-
-SpikesPlot = [];
-for i = 1:size(Odorsniffs,1)
-    thisSniffStart = Odorsniffs(i,1) + Odorsniffs(i,6); % actual sniff time
-    thisSniffWindow = thisSniffStart + window;
-    % find spikes
-    thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
-    thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
-    SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes i+0*thisSniffSpikes]);
-end
-plot(SpikesPlot(:,1),SpikesPlot(:,2),'.k');
-

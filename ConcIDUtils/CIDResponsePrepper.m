@@ -105,6 +105,16 @@ if align2sniffs || addSniffPlot
     for t = 1:size(TTLs.Trial,1)
         if TTLs.Trial(t,4)>0 % every valid trial
             ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
+            if ~strcmp(StimSettings.SessionType,'newCID')
+                if t < size(TTLs.Trial,1)
+                    ts(2) = TTLs.Trial(t+1,1);
+                else
+                    ts(2) = ts(2) + (StimSettings.timing(5)/1000);
+                end
+            else
+                disp('decide what to do here');
+                keyboard;
+            end
             % find all sniffs
             thisTrialSniffs = intersect(find(MySniffTimeStamps(:,1)>=ts(1)),find(MySniffTimeStamps(:,1)<ts(2)));
             firstsniff = find(MySniffTimeStamps(thisTrialSniffs,1)>=ts(3),1,'first');
@@ -119,6 +129,7 @@ if align2sniffs || addSniffPlot
             thisTrialSniffs(beforesniffs,5) = -flipud(beforesniffs(:));
             thisTrialSniffs(aftersniffs,5)  = (1:numel(aftersniffs))-1;
             thisTrialSniffs(:,6) = ts(3); % useful to get back actual value
+            
             % add sniff phase
             thisTrialSniffs(beforesniffs,7) = 0;
             thisTrialSniffs(aftersniffs,7) = 1;
@@ -145,8 +156,9 @@ end
 % 4     : trial index
 % 5     : sniff index within a trial, 0 = first sniff after odor onset
 % 6     : actual odor ON time
-% 7     : trial phase : 0 - pre-odor, 1 - odor, 1.5 - second odor pulse,
-%                       2 - post-odor, 2.5 - post second odor pulse
+% 7     : trial phase : 0 - pre-odor, 1 - odor, 2 - second odor pulse,
+%                       1.5 - post-odor, 2.5 - post second odor pulse
+%                       3 - ITI
 
 %% Make  trial-aligned Spike Plot
 for n = 1:nUnits
