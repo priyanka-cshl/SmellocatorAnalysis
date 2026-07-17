@@ -1,5 +1,5 @@
 % run after running CID Response Prepper 
-[StimSettings, TTLs, SingleUnits, AllSpikes, TrialWiseSniffs, SniffsPlot] = CIDResponsePrepper(myKsDir);
+%[StimSettings, TTLs, SingleUnits, AllSpikes, TrialWiseSniffs, SniffsPlot] = CIDResponsePrepper(myKsDir);
 
 % TTLs.Trial : Columns
 % 1 to 2: Trial Start, Stop
@@ -23,6 +23,8 @@
 %%
 nStim = unique(TTLs.Trial(:,4));
 mycolors = brewermap(numel(nStim),'Dark2');
+foo = round(numel(nStim)/2)+1;
+mycolors(foo:end,:) = mycolors(foo:end,:)/2;
 medianSniff = median(TrialWiseSniffs(:,3)-TrialWiseSniffs(:,1));
 TrialWiseSniffs(:,9) = TTLs.Trial(TrialWiseSniffs(:,4),4); % stimulus identity
 odorList = [0; TTLs.Trial(:,4)];
@@ -32,7 +34,7 @@ TrialWiseSniffs(2:end,8) = (TrialWiseSniffs(1:end-1,3)==TrialWiseSniffs(2:end,1)
 %%
 % Let's work with an example unit
 %whichunit = 48;
-unitID = 76;
+unitID = 12;
 whichunit = find([SingleUnits.id]==unitID);
 window = [0 medianSniff];
 sniffwindows = linspace(0,medianSniff,4);
@@ -61,7 +63,8 @@ for t = 1:size(TTLs.Trial,1)
         for s = 1:size(sniffwindows,2)
             spikecounts(s) = numel( find( (thisSniffSpikes>=sniffwindows(1,s)) & (thisSniffSpikes<sniffwindows(2,s)) ) );
         end
-        thisSniffStats = [spikecounts whichsniffs(i,[4 5 7 9 10 8]) whichsniffs(i,3)-whichsniffs(i,1)];
+        timeFromOdor = thisSniffStart - TTLs.Trial(whichsniffs(i,4),7);
+        thisSniffStats = [spikecounts whichsniffs(i,[4 5 7 9 10 8]) whichsniffs(i,3)-whichsniffs(i,1) timeFromOdor];
         SniffStats      = vertcat(SniffStats, thisSniffStats);
     end
 end
@@ -75,25 +78,30 @@ end
 % 7     : Stimulus identity (or mixed if conc. series)
 % 8     : Prev Stimulus identity
 % 9     : Prev Sniff Duration
-% 10     : this Sniff Duration
+% 10    : this Sniff Duration
+% 11    : this Sniff time from odor onset
 
 
 % plot stim wise
-figure; 
-for s = 1:numel(nStim) 
+stackmode = 1; sniffmax = 6;
+figure;
+for s = 1:numel(nStim)
     subplot(numel(nStim),1,s);
-    plot(SniffStats(SniffStats(:,7)==nStim(s),5),sum(SniffStats(SniffStats(:,7)==nStim(s),[1:3]),2),'.','Color',mycolors(s,:));
-    set(gca,'XLim',[-10 25]);
-end
-
-for x = 1:3
-    figure;
-    for s = 1:numel(nStim)
-        subplot(numel(nStim),1,s);
-        plot(SniffStats(SniffStats(:,7)==nStim(s),5),SniffStats(SniffStats(:,7)==nStim(s),x),'.','Color',mycolors(s,:));
-        set(gca,'XLim',[-10 25]);
+    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<6));
+    plot(SniffStats(selectsniffs,5),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
+    H = get(gca,'YLim');
+    line([0 0],H,'Color','k','Linewidth',0.5);
+    hold on
+    plot(SniffStats(selectsniffs,5),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
+    if stackmode
+        for x = 1:3
+            line((sniffmax*2)*x+[0 0],H,'Color','k','Linewidth',0.5);
+            selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<6));
+            plot((sniffmax*2)*x+ SniffStats(selectsniffs,5),SniffStats(selectsniffs,x),'.','Color',mycolors(s,:));
+        end
     end
 end
+
 
 %%
 
@@ -188,7 +196,7 @@ for subSortCase = 0:1:(sortcases-1)
             %subplot(1,numel(phases),p);
             set(gca,'YLim',[0 sniffsDone(p)]);
             if phases(p)==1
-                set(gca,'Box','on');
+                set(gca,'Box','on','LineWidth',2);
             end
         end
     else

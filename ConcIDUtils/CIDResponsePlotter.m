@@ -46,6 +46,8 @@ end
 switch StimSettings.SessionType
     case {'newCID', '16_Odors'}
         mycolors = brewermap(numel(nStim),'Dark2');
+        foo = round(numel(nStim)/2)+1;
+        mycolors(foo:end,:) = mycolors(foo:end,:)/2; 
 
     case {'16_Concs*'}
         basecolors = brewermap(5,'Dark2');
