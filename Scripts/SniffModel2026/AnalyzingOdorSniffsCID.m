@@ -34,7 +34,7 @@ TrialWiseSniffs(2:end,8) = (TrialWiseSniffs(1:end-1,3)==TrialWiseSniffs(2:end,1)
 %%
 % Let's work with an example unit
 %whichunit = 48;
-unitID = 12;
+unitID = 38;
 whichunit = find([SingleUnits.id]==unitID);
 window = [0 medianSniff];
 sniffwindows = linspace(0,medianSniff,4);
@@ -46,7 +46,7 @@ if equalTimeBlocks
     cutOff = [-StimSettings.timing(3)/1000 (StimSettings.timing(3)+StimSettings.timing(4))/1000];
 end
 
-%% for every trial, every sniff get a spike count per sniff?
+% for every trial, every sniff get a spike count per sniff?
 SniffStats = [];
 for t = 1:size(TTLs.Trial,1)
     % validsniffs 
@@ -86,22 +86,40 @@ end
 stackmode = 1; sniffmax = 6;
 figure;
 for s = 1:numel(nStim)
-    subplot(numel(nStim),1,s);
-    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<6));
+    %subplot(numel(nStim),1,s);
+    subplot(numel(nStim)/4,numel(nStim)/4,s);
+    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<sniffmax));
     plot(SniffStats(selectsniffs,5),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
     H = get(gca,'YLim');
     line([0 0],H,'Color','k','Linewidth',0.5);
     hold on
-    plot(SniffStats(selectsniffs,5),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
+    plot(SniffStats(selectsniffs,5),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:),'MarkerSize',10);
     if stackmode
         for x = 1:3
             line((sniffmax*2)*x+[0 0],H,'Color','k','Linewidth',0.5);
             selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<6));
-            plot((sniffmax*2)*x+ SniffStats(selectsniffs,5),SniffStats(selectsniffs,x),'.','Color',mycolors(s,:));
+            plot((sniffmax*2)*x+ SniffStats(selectsniffs,5),SniffStats(selectsniffs,x),'.','Color',mycolors(s,:),'MarkerSize',10);
         end
     end
 end
 
+figure;
+for s = 1:numel(nStim)
+    %subplot(numel(nStim),1,s);
+    subplot(numel(nStim)/4,numel(nStim)/4,s);
+    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<sniffmax));
+    %plot(SniffStats(selectsniffs,11),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
+    plot(SniffStats(selectsniffs,11),sum(SniffStats(selectsniffs,[1:3]),2),'o','MarkerFaceColor','none','MarkerEdgeColor',mycolors(s,:),'MarkerSize',3);
+    H = get(gca,'YLim');
+    line([0 0],H,'Color','k','Linewidth',0.5);
+    hold on    
+    % highlight the first sniff
+    firstsniffs = find((SniffStats(:,7)==nStim(s))&(SniffStats(:,5)==0));
+       plot(SniffStats(firstsniffs,11),sum(SniffStats(firstsniffs,[1:3]),2),'o','MarkerFaceColor',mycolors(s,:),'MarkerEdgeColor','k','MarkerSize',5,'LineWidth',1);
+    firstsniffs = find((SniffStats(:,7)==nStim(s))&(SniffStats(:,5)==1));
+
+     plot(SniffStats(firstsniffs,11),sum(SniffStats(firstsniffs,[1:3]),2),'.','Color',mycolors(s,:),'MarkerSize',16);
+end
 
 %%
 
