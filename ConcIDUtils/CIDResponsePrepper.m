@@ -168,6 +168,16 @@ for n = 1:nUnits
         if TTLs.Trial(t,4)>0
             % every trial
             ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
+            if ~strcmp(StimSettings.SessionType,'newCID')
+                if t < size(TTLs.Trial,1)
+                    ts(2) = TTLs.Trial(t+1,1);
+                else
+                    ts(2) = ts(2) + (StimSettings.timing(5)/1000);
+                end
+            else
+                disp('decide what to do here');
+                keyboard;
+            end
             if size(TTLs.Trial,2) > 10 && align2sniffs
                 ts(5) = TTLs.Trial(t, 11);
             else
@@ -191,6 +201,16 @@ if addSniffPlot
         if TTLs.Trial(t,4)>0
             % every trial
             ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
+            if ~strcmp(StimSettings.SessionType,'newCID')
+                if t < size(TTLs.Trial,1)
+                    ts(2) = TTLs.Trial(t+1,1);
+                else
+                    ts(2) = ts(2) + (StimSettings.timing(5)/1000);
+                end
+            else
+                disp('decide what to do here');
+                keyboard;
+            end
             if size(TTLs.Trial,2) > 10 && align2sniffs
                 ts(5) = TTLs.Trial(t, 11);
             else
