@@ -1,46 +1,8 @@
 function [TTLs,StimSettings] = makeTTLs_CID(myKsDir,myStimFile) %(myDir,myStimFile)
 
 % myKsDir = '/mnt/data/Sorted/T2/_2025-05-21_09-18-56_2025-05-21_11-11-12_2025-05-21_11-23-51/';
-% myStimFile = fullfile(myKsDir,'250521_9_24.txt');
-%
-[~,ephysfile] = fileparts(myKsDir);
-if nargin < 2
-    % find the stim file
-    serverpath = '/mnt/grid-hs/mdussauz/PhotonCerber_Stimuli_on_server';
-    if ~exist(serverpath)
-        keyboard;
-    end
 
-    % recording
-    [~,MouseName] = fileparts(fileparts(myKsDir));
-    Filename = strsplit(ephysfile,'_'); % splits date and timestamp
-    FolderName = regexprep(Filename{1},'-',''); % removes dashes from date
-    StimFiles = dir(fullfile(serverpath,FolderName(3:end),'*.txt'));
-    if isempty(StimFiles) && strcmp(FolderName(end-1),'0')
-        StimFiles = dir(fullfile(serverpath,FolderName([3:end-2 end]),'*.txt'));
-    end
-    if isempty(StimFiles)
-        keyboard;
-    else
-        if size(StimFiles,1)>1
-            for n = 1:size(StimFiles,1)
-                Split = strsplit(StimFiles(n).name,{'_','.'});
-                TimeTag(n) = str2double(Split{2})*60 + str2double(Split{3});
-            end
-            TimeTagEphys = str2double(Filename{2}(1:2))*60 + str2double(Filename{2}(4:5));
-            [deltaTime,whichFile] = min(abs(TimeTag - TimeTagEphys));
-            if abs(deltaTime)>30
-                keyboard;
-            else
-                myStimFile = fullfile(StimFiles(whichFile).folder,StimFiles(whichFile).name);
-            end
-        else
-            myStimFile = fullfile(StimFiles(1).folder,StimFiles(1).name);
-        end
-    end
-end
-
-
+%% TTLs
 % get trial and odor valve transitions
 temp = load(fullfile(myKsDir,'myTTLfile_1.mat'));
 ch = temp.TTLs.data;
@@ -77,6 +39,59 @@ end
 TTLs.Odor(:,2) = EventTS(ch==odorCh & ~states,1);
 if ~(TTLs.Odor(1,2) < TTLs.Trial(1,2))
     TTLs.Odor(1,:) = [];
+end
+
+%% Stimulus file
+% myStimFile = fullfile(myKsDir,'250521_9_24.txt');
+%
+[~,ephysfile] = fileparts(myKsDir);
+if nargin < 2
+    % find the stim file
+    serverpath = '/mnt/grid-hs/mdussauz/PhotonCerber_Stimuli_on_server';
+    if ~exist(serverpath)
+        keyboard;
+    end
+
+    % recording
+    [~,MouseName] = fileparts(fileparts(myKsDir));
+    Filename = strsplit(ephysfile,'_'); % splits date and timestamp
+    FolderName = regexprep(Filename{1},'-',''); % removes dashes from date
+    StimFiles = dir(fullfile(serverpath,FolderName(3:end),'*.txt'));
+    if isempty(StimFiles) && strcmp(FolderName(end-1),'0')
+        StimFiles = dir(fullfile(serverpath,FolderName([3:end-2 end]),'*.txt'));
+    end
+    if isempty(StimFiles)
+        keyboard;
+    else
+        if size(StimFiles,1)>1
+            for n = 1:size(StimFiles,1)
+                Split = strsplit(StimFiles(n).name,{'_','.'});
+                TimeTag(n) = str2double(Split{2})*60 + str2double(Split{3});
+                numStims(n) = numel(readmatrix(fullfile(StimFiles(n).folder,StimFiles(n).name))) - 6;
+            end
+            TimeTagEphys = str2double(Filename{2}(1:2))*60 + str2double(Filename{2}(4:5));
+            StimsEphys = size(TTLs.Trial,1);
+            [deltaTime,whichFile] = min(abs(TimeTag - TimeTagEphys));
+            [deltaTimeStim,whichFileStim] = min(abs(numStims - StimsEphys));
+            if abs(deltaTime)>30
+                keyboard;
+            else
+                if abs(numStims(whichFile)-StimsEphys)<=2
+                    myStimFile = fullfile(StimFiles(whichFile).folder,StimFiles(whichFile).name);
+                else
+                    if abs(TimeTag(whichFileStim) - TimeTagEphys) < 10
+                        warning(['best time matching stim file is not matching in no. of stimuli - using later file']);
+                        myStimFile = fullfile(StimFiles(whichFileStim).folder,StimFiles(whichFileStim).name);
+                    else
+                        keyboard;
+                    end
+                end
+
+            end
+        else
+            myStimFile = fullfile(StimFiles(1).folder,StimFiles(1).name);
+        end
+    end
 end
 
 % Get stimulus info from the odor machine file
