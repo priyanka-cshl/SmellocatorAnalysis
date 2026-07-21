@@ -40,10 +40,12 @@ window = [0 medianSniff];
 sniffwindows = linspace(0,medianSniff,4);
 sniffwindows(2,1:3) = sniffwindows(1,2:4);
 sniffwindows(:,4) = [];
-equalTimeBlocks = 1;
 chunkByPrevOdor = 0;
+equalTimeBlocks = 0;
 if equalTimeBlocks
     cutOff = [-StimSettings.timing(3)/1000 (StimSettings.timing(3)+StimSettings.timing(4))/1000];
+else
+    cutOff = [-StimSettings.timing(2)/1000 sum(StimSettings.timing(3:5))/1000];
 end
 
 % for every trial, every sniff get a spike count per sniff?
@@ -107,7 +109,8 @@ figure;
 for s = 1:numel(nStim)
     %subplot(numel(nStim),1,s);
     subplot(numel(nStim)/4,numel(nStim)/4,s);
-    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<sniffmax));
+%    selectsniffs = find((SniffStats(:,7)==nStim(s))&(abs(SniffStats(:,5))<sniffmax));
+    selectsniffs = find((SniffStats(:,7)==nStim(s)));
     %plot(SniffStats(selectsniffs,11),sum(SniffStats(selectsniffs,[1:3]),2),'.','Color',mycolors(s,:));
     plot(SniffStats(selectsniffs,11),sum(SniffStats(selectsniffs,[1:3]),2),'o','MarkerFaceColor','none','MarkerEdgeColor',mycolors(s,:),'MarkerSize',3);
     H = get(gca,'YLim');
