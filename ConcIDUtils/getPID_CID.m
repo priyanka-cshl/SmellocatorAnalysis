@@ -1,4 +1,4 @@
-function [PID, TTLs, StimSettings] = getPID_CID(recordNodeDir, varargin)
+function [PIDData, TTLs, StimSettings] = getPID_CID(recordNodeDir, varargin)
 
 %% parse input arguments
 narginchk(1,inf)
@@ -88,9 +88,9 @@ if ~exist(fullfile(fileparts(recordNodeDir),'quickprocessPID.mat'))
     PIDData(:,1) = 0:1/SampleRate:max(timestamps);
     PIDData(:,2) = interp1q(timestamps,PID,PIDData(:,1)); % thermistor
 
-    save(fullfile(fileparts(recordNodeDir),'quickprocessPID.mat'),'TTLs','StimSettings','PID');
+    save(fullfile(fileparts(recordNodeDir),'quickprocessPID.mat'),'TTLs','StimSettings','PIDData');
 else
-    load(fullfile(fileparts(recordNodeDir),'quickprocessPID.mat'),'TTLs','StimSettings','PID');
+    load(fullfile(fileparts(recordNodeDir),'quickprocessPID.mat'),'TTLs','StimSettings','PIDData');
 end
 
 end
