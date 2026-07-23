@@ -102,6 +102,25 @@ if align2sniffs || addSniffPlot
     else
         keyboard;
     end
+
+    % add sniffs before trial 1
+    ts = [0 TTLs.Trial(1,1) nan nan]; % trial start, stop, odor start, stop
+    % find all sniffs
+    thisTrialSniffs = intersect(find(MySniffTimeStamps(:,1)>=ts(1)),find(MySniffTimeStamps(:,1)<ts(2)));
+    thisTrialSniffs(thisTrialSniffs<2) = [];
+    prevSniffDurations = MySniffTimeStamps(thisTrialSniffs-1,3) - MySniffTimeStamps(thisTrialSniffs-1,1);
+    thisTrialSniffs = MySniffTimeStamps(thisTrialSniffs,1:3) - 0; % odor start
+
+    % now lets index every sniff
+    thisTrialSniffs(:,4) = 0; % trial #
+    thisTrialSniffs(:,5) = 1:size(thisTrialSniffs,1); % sniff index
+    thisTrialSniffs(:,6) = 0; % odor ON or time-subtracted
+    thisTrialSniffs(:,7) = -1; % sniff phase
+    thisTrialSniffs(:,8) = prevSniffDurations; % prev. sniff duration
+    thisTrialSniffs(:,9) = 0; % this stim identity
+    thisTrialSniffs(:,10) = 0; % prev stim identity
+    TrialWiseSniffs = vertcat(TrialWiseSniffs, thisTrialSniffs);
+
     for t = 1:size(TTLs.Trial,1)
         if TTLs.Trial(t,4)>0 % every valid trial
             ts = TTLs.Trial(t,[1 2 7 8]); % trial start, stop, odor start, stop
@@ -109,7 +128,7 @@ if align2sniffs || addSniffPlot
                 if t < size(TTLs.Trial,1)
                     ts(2) = TTLs.Trial(t+1,1);
                 else
-                    ts(2) = ts(2) + (StimSettings.timing(5)/1000);
+                    ts(2) = ts(4) + (sum(StimSettings.timing(4:5))/1000);
                 end
             else
                 disp('decide what to do here');
@@ -117,6 +136,7 @@ if align2sniffs || addSniffPlot
             end
             % find all sniffs
             thisTrialSniffs = intersect(find(MySniffTimeStamps(:,1)>=ts(1)),find(MySniffTimeStamps(:,1)<ts(2)));
+            prevSniffDurations = MySniffTimeStamps(thisTrialSniffs-1,3) - MySniffTimeStamps(thisTrialSniffs-1,1);
             firstsniff = find(MySniffTimeStamps(thisTrialSniffs,1)>=ts(3),1,'first');
             firstpostsniff = find(MySniffTimeStamps(thisTrialSniffs,1)>=ts(4),1,'first');
             TTLs.Trial(t,11) = MySniffTimeStamps(thisTrialSniffs(firstsniff+(align2sniffs-1)),1); % time of first sniff (true time)
@@ -142,9 +162,33 @@ if align2sniffs || addSniffPlot
                 postOdorTwo = find(thisTrialSniffs(:,1)>=(secondOdor(2)));
                 thisTrialSniffs(postOdorTwo,7) = 2.5;
             end
+
+            thisTrialSniffs(:,8) = prevSniffDurations; % prev. sniff duration
+            thisTrialSniffs(:,9) = TTLs.Trial(t,4); % this stim identity
+            if t > 1
+                thisTrialSniffs(:,10) = TTLs.Trial(t-1,4); % prev stim identity
+            else
+                thisTrialSniffs(:,10) = 0;
+            end
             TrialWiseSniffs = vertcat(TrialWiseSniffs, thisTrialSniffs);
         end
     end
+
+    % add sniffs after last trial
+    % find all sniffs
+    thisTrialSniffs = find(MySniffTimeStamps(:,1)>=ts(2));
+    prevSniffDurations = MySniffTimeStamps(thisTrialSniffs-1,3) - MySniffTimeStamps(thisTrialSniffs-1,1);
+    thisTrialSniffs = MySniffTimeStamps(thisTrialSniffs,1:3) - 0; % odor start
+
+    % now lets index every sniff
+    thisTrialSniffs(:,4) = t+1; % trial #
+    thisTrialSniffs(:,5) = 1:size(thisTrialSniffs,1); % sniff index
+    thisTrialSniffs(:,6) = 0; % odor ON or time subtracted
+    thisTrialSniffs(:,7) = -2; % sniff phase
+    thisTrialSniffs(:,8) = prevSniffDurations; % prev. sniff duration
+    thisTrialSniffs(:,9) = 0; % this stim identity
+    thisTrialSniffs(:,10) = TTLs.Trial(end,4); % prev stim identity
+    TrialWiseSniffs = vertcat(TrialWiseSniffs, thisTrialSniffs);
 end
 
 % TTLs.Trial has now sniff info in additional columns
