@@ -19,6 +19,10 @@
 % 6     : actual odor ON time
 % 7     : trial phase : 0 - pre-odor, 1 - odor, 1.5 - second odor pulse, 
 %                       2 - post-odor, 2.5 - post second odor pulse
+%                      -1 - before first trial, -2 - after last trial
+% 8     : prev sniff duration
+% 9     : this trial odor identity
+% 10    : prev trial odor identity
 
 %%
 nStim = unique(TTLs.Trial(:,4));
@@ -27,7 +31,7 @@ foo = round(numel(nStim)/2)+1;
 mycolors(foo:end,:) = mycolors(foo:end,:)/2;
 medianSniff = nanmedian(TrialWiseSniffs(:,3)-TrialWiseSniffs(:,1));
 window = [0 medianSniff];
-unitID = 38;
+unitID = 127;
 whichunit = find([SingleUnits.id]==unitID);
 
 %%
@@ -234,7 +238,8 @@ sniffsDone = [];
 for o = 1:numel(nStim)
     subplot(1,numel(nStim)+2,o+1); hold on
     % get sniffs that start at odor off and until next odor ON
-    whichsniffs = find( ((TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)>1)) | ((TrialWiseSniffs(:,10)==nStim(o)) & (TrialWiseSniffs(:,7)==0)) );
+    %whichsniffs = find( ((TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)>1)) | ((TrialWiseSniffs(:,10)==nStim(o)) & (TrialWiseSniffs(:,7)==0)) );
+    whichsniffs = find( ((TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)>0)) | ((TrialWiseSniffs(:,10)==nStim(o)) & (TrialWiseSniffs(:,7)==0)) );
     whichsniffs = TrialWiseSniffs(whichsniffs,:);
     whichsniffs = sortrows(whichsniffs,[4 5]); % sort by trial no. and then sniff index
 
@@ -246,13 +251,18 @@ for o = 1:numel(nStim)
             trial_num = whichsniffs(f,4);
             mySniffs = find( (whichsniffs(:,4)==trial_num) & (whichsniffs(:,5)<0) );
             whichsniffs(mySniffs,5) = last_sniff + (1:numel(mySniffs));
+            %
+            myPrevSniffs = find( (whichsniffs(:,4)==trial_num-1) & (whichsniffs(:,7)>0) );
+            first_postodor = find(whichsniffs(myPrevSniffs,7)>1,1,'first');
+            first_postodor = whichsniffs(myPrevSniffs(first_postodor),5);
+            whichsniffs([myPrevSniffs; mySniffs],11) = whichsniffs([myPrevSniffs; mySniffs],5) - first_postodor;
         else
             alldone = 1;
         end
     end
     
     % sort by sniff index
-    whichsniffs = sortrows(whichsniffs,5);
+    whichsniffs = sortrows(whichsniffs,11);
 
     % build spikepplot
     SpikesPlot = [];
@@ -267,7 +277,11 @@ for o = 1:numel(nStim)
     end
 
     %line(window,sniffsDone+[0 0],'Color','k');
+    %plot(whichsniffs(:,8),1:i,'k');
     plot(SpikesPlot(:,1),SpikesPlot(:,2),'.','Color',mycolors(o,:));
+    x = find(whichsniffs(:,11)<0,1,'last');
+    line(window,x+[0 0],'Color','r');
+    %plot(whichsniffs(:,8)/10+medianSniff+0.05,1:i,'k');
     sniffsDone = vertcat(sniffsDone, i);
 end
 
@@ -292,7 +306,7 @@ sniffsDone = vertcat(sniffsDone, i);
 % a hack
 % there was a brief pulse of 0.5 s when i think air was off
 x = find(whichsniffs(:,1)>(TTLs.Trial(1,1)-12.6),1,'first');
-line(window,243+[0 0],'Color','r');
+line(window,x+[0 0],'Color','r');
 
 % add post-protocol sniffs
 subplot(1,numel(nStim)+2,numel(nStim)+2); hold on
@@ -310,9 +324,59 @@ for i = 1:size(whichsniffs,1)
     SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes i+0*thisSniffSpikes]);
 end
 plot(SpikesPlot(:,1),SpikesPlot(:,2),'.','Color',mycolors(mode(whichsniffs(:,10)),:));
+
 sniffsDone = vertcat(sniffsDone, i);
 
 for o = 1:(2+numel(nStim))
     subplot(1,numel(nStim)+2,o); 
-    set(gca,'YLim',[0 max(sniffsDone)]);
+    set(gca,'YLim',[-10 max(sniffsDone)]);
 end
+
+%% plot all stims, whole session
+figure;
+hold on
+%sniffsDone = [];
+for o = 1:numel(nStim)
+    %subplot(1,numel(nStim)+2,o+1); hold on
+    % get sniffs that start at odor off and until next odor ON
+    whichsniffs = find( ((TrialWiseSniffs(:,9)==nStim(o)) & (TrialWiseSniffs(:,7)>0)) | ((TrialWiseSniffs(:,10)==nStim(o)) & (TrialWiseSniffs(:,7)==0)) );
+    whichsniffs = [TrialWiseSniffs(whichsniffs,:) whichsniffs];
+    whichsniffs = sortrows(whichsniffs,11); % sort sniff occurence
+
+    % build spikepplot
+    SpikesPlot = [];
+    for i = 1:size(whichsniffs,1)
+        thisSniffStart = whichsniffs(i,1) + whichsniffs(i,6); % actual sniff time
+        thisSniffEnd   = min((whichsniffs(i,3) + whichsniffs(i,6)), (thisSniffStart + window(2)));
+        thisSniffWindow = [thisSniffStart+window(1)  thisSniffEnd];
+        % find spikes
+        thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
+        thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
+        SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes whichsniffs(i,11)+0*thisSniffSpikes]);
+    end
+    plot(SpikesPlot(:,2),SpikesPlot(:,1),'.','Color',mycolors(o,:));
+    %sniffsDone = vertcat(sniffsDone, i);
+end
+
+% add pre-protocol sniffs
+whichsniffs = find( TrialWiseSniffs(:,7)==-1 );
+whichsniffs = [TrialWiseSniffs(whichsniffs,:) whichsniffs];
+% build spikepplot
+SpikesPlot = [];
+for i = 1:size(whichsniffs,1)
+    thisSniffStart = whichsniffs(i,1) + whichsniffs(i,6); % actual sniff time
+    thisSniffEnd   = min((whichsniffs(i,3) + whichsniffs(i,6)), (thisSniffStart + window(2)));
+    thisSniffWindow = [thisSniffStart+window(1)  thisSniffEnd];
+    % find spikes
+    thisSniffSpikes = find((SingleUnits(whichunit).spikes>=thisSniffWindow(1))&(SingleUnits(whichunit).spikes<=thisSniffWindow(2)));
+    thisSniffSpikes = SingleUnits(whichunit).spikes(thisSniffSpikes) - thisSniffStart; % actual spiketimes - sniff start
+    SpikesPlot = vertcat(SpikesPlot, [thisSniffSpikes whichsniffs(i,11)+0*thisSniffSpikes]);
+end
+plot(SpikesPlot(:,2),SpikesPlot(:,1),'.','Color','k');
+%sniffsDone = vertcat(sniffsDone, i);
+
+% a hack
+% there was a brief pulse of 0.5 s when i think air was off
+x = find(whichsniffs(:,1)>(TTLs.Trial(1,1)-12.6),1,'first');
+line(x+[0 0],window,'Color','r');
+set(gca,'XLim',[0 size(TrialWiseSniffs,1)]);
