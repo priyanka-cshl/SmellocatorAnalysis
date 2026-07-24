@@ -380,3 +380,39 @@ plot(SpikesPlot(:,2),SpikesPlot(:,1),'.','Color','k');
 x = find(whichsniffs(:,1)>(TTLs.Trial(1,1)-12.6),1,'first');
 line(x+[0 0],window,'Color','r');
 set(gca,'XLim',[0 size(TrialWiseSniffs,1)]);
+
+%% also plot the response in time for just one unit
+nTypes = unique(TTLs.Trial(:,5));
+figure; hold on
+odorON = [];
+repsDone = 0;
+for odor = 1:numel(nStim)
+    for conc = 1:numel(nTypes) % this is just one
+        SpikesPlot = [];
+        whichtrials = intersect(find(TTLs.Trial(:,4)==nStim(odor)),find(TTLs.Trial(:,5)==nTypes(conc)));
+        nreps = numel(whichtrials);
+        for rep = 1:numel(whichtrials)
+            thisTrial = whichtrials(rep);
+            thistrialspikes = [];
+            thistrialspikes = find(AllSpikes{whichunit}(:,2)==thisTrial);
+            thistrialspikes = AllSpikes{whichunit}(thistrialspikes,1);
+            SpikesPlot = vertcat(SpikesPlot, ...
+                [thistrialspikes ...
+                (rep + repsDone)*ones(numel(thistrialspikes),1)]...
+                );
+            if size(TTLs.Trial,2) == 12 && StimSettings.align2sniffs
+                odorON = vertcat(odorON, [TTLs.Trial(thisTrial,12) , (rep + repsDone)]);
+            else
+                odorON = vertcat(odorON, [0 , (rep + repsDone)]);
+            end
+        end
+        repsDone = repsDone + nreps;
+        plot(SpikesPlot(:,1), SpikesPlot(:,2)/500, '.k','Markersize', 4, 'color', mycolors(odor,:));
+    end
+end
+
+plotWidth = [-StimSettings.timing(2) sum(StimSettings.timing(3:5))]/1000;
+plotHeight = (max(odorON(:,2))+1)/500;
+set(gca,'XTick',[],'YTick',[],'XLim',plotWidth,'YLim',[0 plotHeight]);
+plot(odorON(:,1),odorON(:,2)/500,'k');
+plot(odorON(:,1)+StimSettings.timing(3)/1000,odorON(:,2)/500,'k');
