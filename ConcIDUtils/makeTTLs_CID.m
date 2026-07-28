@@ -25,19 +25,40 @@ end
 
 % Trial timestamps
 TTLs.Trial(:,1) = EventTS(ch==trialCh & states,1);
-while size(EventTS(ch==trialCh & ~states,1),1) > size(TTLs.Trial,1)
+if any(EventTS(ch==trialCh & ~states & EventTS<TTLs.Trial(1,1)))
+    TTLs.Trial(:,2) = EventTS(ch==trialCh & ~states & EventTS>TTLs.Trial(1,1));
+elseif size(EventTS(ch==trialCh & ~states,1),1) > size(TTLs.Trial,1) % more OFFs than ONs
+        keyboard;
+        TTLs.Trial(end,:) = [];
+        TTLs.Trial(:,2) = EventTS(ch==trialCh & ~states,1);
+        TTLs.Trial(1,:) = [];
+elseif size(EventTS(ch==trialCh & ~states,1),1) == size(TTLs.Trial,1)-1 % more OFFs than ONs
     TTLs.Trial(end,:) = [];
+    TTLs.Trial(:,2) = EventTS(ch==trialCh & ~states,1);
+else
+    TTLs.Trial(:,2) = EventTS(ch==trialCh & ~states,1);
 end
-TTLs.Trial(:,2) = EventTS(ch==trialCh & ~states,1);
-TTLs.Trial(1,:) = [];
 
 % Odor timestamps
 TTLs.Odor(:,1) = EventTS(ch==odorCh & states,1);
 while size(EventTS(ch==odorCh & ~states,1),1) > size(TTLs.Odor,1)
+    keyboard;
     TTLs.Odor(end,:) = [];
 end
 TTLs.Odor(:,2) = EventTS(ch==odorCh & ~states,1);
-if ~(TTLs.Odor(1,2) < TTLs.Trial(1,2))
+
+% some funky trials - happen because of DAQ reset
+medianOdor = median(TTLs.Odor(:,2)-TTLs.Odor(:,1));
+medianTrial = median(TTLs.Trial(:,2)-TTLs.Trial(:,1));
+if (TTLs.Odor(1,2) <= TTLs.Trial(1,2)) & diff(TTLs.Odor(1,1:2))<0.9*medianOdor
+    TTLs.Funky = TTLs.Odor(1,:);
+    TTLs.Odor(1,:) = [];
+    % also delete the first Trial?
+    if diff(TTLs.Trial(1,1:2))<0.9*medianTrial
+        TTLs.Trial(1,:) = [];
+    end
+elseif (TTLs.Odor(1,2) < TTLs.Trial(1,1))
+    TTLs.Funky = TTLs.Odor(1,:);
     TTLs.Odor(1,:) = [];
 end
 
