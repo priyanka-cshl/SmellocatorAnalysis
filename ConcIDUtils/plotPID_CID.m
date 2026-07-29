@@ -1,7 +1,7 @@
 %% script to plot PID traces for CID sessions done on photoncerber 
 
-%recDir = '/mnt/grid-hs/mdussauz/CID/PID/2022-05-31_08-54-29_16Odor/Record Node 104';
-recDir = '/mnt/grid-hs/mdussauz/CID/PID/newCID/2025-05-14_12-10-02/Record Node 104';
+recDir = '/mnt/grid-hs/mdussauz/CID/PID/2022-05-31_08-54-29_16Odor/Record Node 104';
+%recDir = '/mnt/grid-hs/mdussauz/CID/PID/newCID/2025-05-14_12-10-02/Record Node 104';
 %recDir = '/mnt/grid-hs/mdussauz/CID/PID/newCID/2025-05-14_15-20-57/Record Node 104';
 
 % load the preprocessed data (or preprocess first)
@@ -161,6 +161,9 @@ for odor = 1:nStim
     set(gca,'XLim',[-10 30],'YLim',YVals(n+1,:));
 end
 
+if ~exist(fullfile(fileparts(recDir),'averagedPID.mat'))
+    save(fullfile(fileparts(recDir),'averagedPID.mat'),"AverageOut","TimeOut");
+end
 %%
 skip = 1
 if ~skip
