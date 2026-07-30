@@ -162,7 +162,7 @@ for odor = 1:nStim
 end
 
 if ~exist(fullfile(fileparts(recDir),'averagedPID.mat'))
-    save(fullfile(fileparts(recDir),'averagedPID.mat'),"AverageOut","TimeOut");
+    save(fullfile(fileparts(recDir),'averagedPID.mat'),"AverageOut","TimeOut","window");
 end
 %%
 skip = 1
