@@ -31,6 +31,7 @@ timestep = binsize/1000; % in seconds
 TimeVector = window(1):timestep:window(2);
 ValveVector = TimeVector*0;
 ValveOn = find( (TimeVector>=0) & (TimeVector<=OdorDuration) );
+startat = ValveOn(1);
 ValveVector(ValveOn) = 1;
 
 % interpolate PID traces at the same resolution
@@ -50,9 +51,9 @@ for i = 1:nOdors
 end
 
 [PIDtraces] = interp1(Traces.TimeOut(1:sampMax,1),PIDfiltered,TimeVector);
-PIDtraces(1,:) = [];
-TimeVector(:,1) = [];
-ValveVector(:,1) = [];
+PIDtraces(1:startat,:) = [];
+TimeVector(:,1:startat) = [];
+ValveVector(:,1:startat) = [];
 
 if plotTraces
    figure; 
@@ -72,18 +73,31 @@ ydata = PIDtraces;
 tic
 
 %% 1 : set up the error minimization
-StartingKernels = zeros(5/timestep,nOdors);
-model_fit = @pid_out; 
-lb = -100 + 0*StartingKernels;
-ub = 100 + 0*StartingKernels;
-Eval_max = 1e+6; Iter_max = 1e+6;  
-Fun_Tol  = 1e-8; Step_Tol = 1e-8;
+KernelMode = 'exponentials';
 
+switch KernelMode
+    case 'full'
+        StartingKernels = zeros(5/timestep,nOdors);
+        model_fit = @pid_out;
+        lb = -100 + 0*StartingKernels;
+        ub = 100 + 0*StartingKernels;
+        Eval_max = 1e+6; Iter_max = 1e+6;
+        Fun_Tol  = 1e-8; Step_Tol = 1e-8;
+        options = optimset('MaxFunEvals',Eval_max,'MaxIter',Iter_max); %,'TolFun',Fun_Tol,'TolX',Step_Tol);
+        [kernelsout,resnorm,residual,exitflag,output] = lsqcurvefit(model_fit,StartingKernels,xdata,ydata,lb,ub,options);
+    case 'exponentials'
+        nParams = 4;
+        StartingParams = repmat([1, 0.05, 0.3, 0], nOdors, 1)'; % nParams x nOdors, tune seeds
+        lb = repmat([0,    0.001, 0.001, 0]',   1, nOdors);
+        ub = repmat([5,    2,     5,     0.5]', 1, nOdors);
+        model_fit = @pid_param_out;
+        options = optimset('MaxFunEvals',1e6,'MaxIter',1e6);
+        [paramsout,resnorm,residual,exitflag,output] = ...
+            lsqcurvefit(model_fit, StartingParams, xdata, ydata, lb, ub, options);
+        [kernelsout,PIDOut] = makeKenel(ValveVector,paramsout,timestep);
 
-options = optimset('MaxFunEvals',Eval_max,'MaxIter',Iter_max); %,'TolFun',Fun_Tol,'TolX',Step_Tol);
-%options = optimset('Algorithm','levenberg-marquardt');
-%[kernelsout] = lsqcurvefit(model_fit,StartingKernels,xdata,ydata,lb,ub,options);
-[kernelsout,resnorm,residual,exitflag,output] = lsqcurvefit(model_fit,StartingKernels,xdata,ydata,lb,ub,options);
+end
+
 
 %% 2 : define the convolution function (model_fit)
     function [zdata] = pid_out(StartingKernels,xdata)
@@ -99,6 +113,50 @@ options = optimset('MaxFunEvals',Eval_max,'MaxIter',Iter_max); %,'TolFun',Fun_To
 
         zdata(maxT:end,:) = [];
     end
+
+%% 2: parametric kernel + convolution
+function [zdata] = pid_param_out(P, xdata)
+    x_data = xdata;
+    N      = size(x_data,1);
+    dt     = timestep;  % capture from outer scope (nested function)
+    tvec   = (0:N-1)' * dt;  % kernel time axis, same length as data
+
+    zdata = zeros(N, size(x_data,2));
+    for k = 1:size(x_data,2)
+        A     = P(1,k);
+        tRise = P(2,k);
+        tDecay= P(3,k);
+        delay = P(4,k);
+
+        t = tvec - delay;
+        h = A * (exp(-t/tDecay) - exp(-t/tRise));
+        h(t < 0) = 0;   % causal kernel
+
+        full = conv(x_data(:,k)', h', 'full');
+        zdata(:,k) = full(1:N)';
+    end
+end
+
+    function [K,PIDOut] = makeKenel(ValveVector,Params,timestep,N)
+        if nargin<4
+            N = 5/timestep;
+        end
+        for k = 1:size(Params,2)
+            A     = Params(1,k);
+            tRise = Params(2,k);
+            tDecay= Params(3,k);
+            delay = Params(4,k);
+            tvec   = (0:N-1)' * timestep;
+            t = tvec - delay;
+            h = A * (exp(-t/tDecay) - exp(-t/tRise));
+            h(t < 0) = 0;   % causal kernel
+            K(:,k) = h;
+
+            full = conv(ValveVector,h','full');
+            PIDOut(:,k) = full(1:numel(ValveVector))';
+        end
+    end
+
 
 %% stop clock
 toc
