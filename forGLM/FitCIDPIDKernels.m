@@ -56,11 +56,12 @@ params.addParameter('binsize', 10, @(x) isnumeric(x)); % in ms
 params.parse(varargin{:});
 binsize = params.Results.binsize;
 
-PID     = load(fullfile(PIDdir,'quickprocessPID.mat'));
-Traces  = load(fullfile(PIDdir,'averagedPID.mat'));
+%% Load, interpolate and filter PID traces for fitting
+PID     = load(fullfile(PIDdir,'quickprocessPID.mat')); % for raw traces, TTLs
+Traces  = load(fullfile(PIDdir,'averagedPID.mat')); % for normalized traces
 
 OdorDuration = PID.StimSettings.timing(3)/1000;
-if any(abs(diff((PID.TTLs.Trial(:,7:8))')-OdorDuration)>0.01)
+if any(abs(diff((PID.TTLs.Trial(:,7:8))')-OdorDuration)>0.01) % check
     keyboard; % odor duration seems off
 end
 
@@ -180,16 +181,22 @@ paramsout   = zeros(nParams, nOdors);
 kernelsout  = zeros(size(xdata,1), nOdors);
 PIDOut      = zeros(size(xdata,1), nOdors);
 DriveOut    = zeros(size(xdata,1), nOdors);
+offKernelOut    = zeros(size(xdata,1), nOdors);
+boundaryValueOut = zeros(1, nOdors);
+switchIdxOutAll  = zeros(1, nOdors);
 for kk = 1:numel(goodOdors)
     Pk = zeros(nParams,1);
     Pk(sharedIdx)  = sharedFit;
     Pk(perOdorIdx) = perOdorFit(:,kk);
     paramsout(:,goodOdors(kk)) = Pk;
 
-    [K,PO,DO] = make_tworegime_output(Pk, xdata(:,goodOdors(kk)));
+    [K,PO,DO,offK,bVal,sIdx_] = make_tworegime_output(Pk, xdata(:,goodOdors(kk)));
     kernelsout(:,goodOdors(kk)) = K;
     PIDOut(:,goodOdors(kk))     = PO;
     DriveOut(:,goodOdors(kk))   = DO;
+    offKernelOut(:,goodOdors(kk))    = offK;
+    boundaryValueOut(goodOdors(kk))  = bVal;
+    switchIdxOutAll(goodOdors(kk))   = sIdx_;
 end
 
 fprintf('\nShared parameters (fit jointly across all odors):\n');
@@ -245,6 +252,7 @@ fprintf('--- end sanity check ---\n\n');
 
 Fitted = struct('kernelsout', kernelsout, 'PIDOut', PIDOut, 'DriveOut', DriveOut, ...
     'paramsout', paramsout, 'sharedParams', sharedFit, 'resnormPerOdor', resnormPerOdor, ...
+    'offKernel', offKernelOut, 'boundaryValue', boundaryValueOut, 'switchIdx', switchIdxOutAll, ...
     'TimeVector', TimeVector, 'ValveVector', ValveVector, 'PIDtraces', PIDtraces);
 
 %% Model functions
@@ -278,11 +286,11 @@ Fitted = struct('kernelsout', kernelsout, 'PIDOut', PIDOut, 'DriveOut', DriveOut
         [zdata, ~, ~] = compute_tworegime(P, xdata_col);
     end
 
-    function [K,PIDOut_,DriveOut_] = make_tworegime_output(P, xdata_col)
-        [PIDOut_, K, DriveOut_] = compute_tworegime(P, xdata_col);
+    function [K,PIDOut_,DriveOut_,offKernel_,boundaryValue_,switchIdx_] = make_tworegime_output(P, xdata_col)
+        [PIDOut_, K, DriveOut_, offKernel_, boundaryValue_, switchIdx_] = compute_tworegime(P, xdata_col);
     end
 
-    function [zdata, K, DriveOut_] = compute_tworegime(P, xdata_col)
+    function [zdata, K, DriveOut_, offKernel, boundaryValue, switchIdxOut] = compute_tworegime(P, xdata_col)
         A            = P(1);
         tau_rise     = P(2);
         tau_decay_on = P(3);
@@ -307,9 +315,15 @@ Fitted = struct('kernelsout', kernelsout, 'PIDOut', PIDOut, 'DriveOut', DriveOut
         t(t < 0) = NaN;
         K = A * (exp(-(t/tau_decay_on).^beta_on) - exp(-t/tau_rise));
         K(isnan(K)) = 0;
+        K(K<0) = 0;
 
         full = conv(DriveOut_', K', 'full');
         y_on = full(1:N)';
+
+        % OFF kernel shape (tau=0 at index 1, causal), independent of
+        % where the switch actually falls -- this is the "off_kernel"
+        % piece: (1-w_slow)*exp(-tau/tau_rise) + w_slow*exp(-tau/tau_decay_off_slow)
+        offKernel = (1-w_slow)*exp(-tvec/tau_rise) + w_slow*exp(-tvec/tau_decay_off_slow);
 
         % OFF regime: TWO independent clearance processes, anchored to
         % the ON regime's value at the moment the valve closure is
@@ -321,15 +335,14 @@ Fitted = struct('kernelsout', kernelsout, 'PIDOut', PIDOut, 'DriveOut', DriveOut
         % lingering/diffusing out of tubing).
         rawSwitchIdx = find(xdata_col==1, 1, 'last');
         zdata = y_on;
+        boundaryValue = 0;
+        switchIdxOut  = N;
         if ~isempty(rawSwitchIdx)
-            switchIdx = rawSwitchIdx + round(delay_off/dt);
-            switchIdx = min(switchIdx, N);
-            if switchIdx < N
-                y_boundary = y_on(switchIdx);
-                tOff = tvec(switchIdx+1:end) - tvec(switchIdx);
-                fastPart = (1-w_slow) * exp(-tOff/tau_rise);
-                slowPart = w_slow     * exp(-tOff/tau_decay_off_slow);
-                zdata(switchIdx+1:end) = y_boundary * (fastPart + slowPart);
+            switchIdxOut = min(rawSwitchIdx + round(delay_off/dt), N);
+            if switchIdxOut < N
+                boundaryValue = y_on(switchIdxOut);
+                nTail = N - switchIdxOut;
+                zdata(switchIdxOut+1:end) = boundaryValue * offKernel(1:nTail);
             end
         end
     end
