@@ -1,8 +1,12 @@
-function [OdorOut] = ValveToPIDOdor(valveState,kernelparams)
+function [OdorOut] = ValveToPIDOdor(valveState,kernelparams,fitdt)
 % a function to get the resultant PID waveform out 
 % given an input valve trace
 % Inputs: valveState [t x 2]: time by Valvestate
 %       : kernelparams [10 x 1];
+
+if nargin<3
+    fitdt = 0.01; % was fit at 10 ms resolution
+end
 
 %% Extract parameters
 A            = kernelparams(1); % ON kernel scakar
@@ -57,6 +61,9 @@ if ~isempty(rawSwitchIdx)
         OdorOut(switchIdxOut+1:end) = boundaryValue * offKernel(1:nTail);
     end
 end
+
+% scale for dt 
+OdorOut = OdorOut/(fitdt/dt); % params were calculated at 10 ms time bin
 
 end
 
