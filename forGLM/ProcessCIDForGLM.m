@@ -1,4 +1,3 @@
-
 function [TracesOut,SingleUnits] = ProcessCIDForGLM(myKsDir,varargin)
 
 %% parse input arguments
@@ -20,7 +19,42 @@ savemode = params.Results.savemode;
 %WhereSession = '/mnt/data/Sorted/T3/2025-05-08_16-20-35/quickprocesssniffs.mat';
 WhereSession = fullfile(myKsDir,'quickprocesssniffs.mat');
 
-%% Load the relevant variables
+%% Load the relevant data
+[StimSettings, TTLs, SingleUnits, ~, TrialWiseSniffs, ~] = ...
+    CIDResponsePrepper(myKsDir,'whichSniffSensor',params.Results.whichSniffSensor,'allUnits',UnitFilter,'minRate',minRate);
+
+% Sniffs
+SniffDeltas = TrialWiseSniffs(:,1) + TrialWiseSniffs(:,6); % inhalation starts
+% the first sniff is missing here - add that
+SniffDeltas = [(SniffDeltas(1) - TrialWiseSniffs(1,8)); SniffDeltas];
+
+% Spikes are in SingleUnits.spikes
+
+% PID kernels
+PIDfit = load('/mnt/data/CID/PID/16odor_basic_fit.mat');
+
+
+% make a time-series with sniff onsets
+DigitalSniffs = TracesOut.SniffsFiltered{1}*0;
+if size(CuratedSniffTimestamps,2) < 10
+    CuratedSniffTimestamps(:,10) = 0;
+end
+for n = 1:size(CuratedSniffTimestamps,1)
+    idx = CuratedSniffTimestamps(n,8:9);
+    if CuratedSniffTimestamps(n,10) == -1
+        DigitalSniffs(idx(1):idx(2)) = -1;
+    else
+        DigitalSniffs(idx(1):idx(2)) = 1;
+    end
+end
+TracesOut.SniffsDigitized{1} = DigitalSniffs;
+
+
+
+
+
+
+
 % Sniffs
 [SniffCoords,SniffProps] = TallyThermistorNPressureSniffs(WhereSession);
 if ~isempty(SniffCoords)
