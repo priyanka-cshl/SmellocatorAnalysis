@@ -86,9 +86,10 @@ TracesOut.PID{1} = PIDOdor;
 if savemode
     [~,MouseName] = fileparts(fileparts(myKsDir));
     [~,filename] = fileparts(myKsDir);
-    filename = [MouseName,'_',regexprep(filename(1,1:10),'-',''),'_r0_processed.mat'];
+    %filename = [MouseName,'_',regexprep(filename(1,1:10),'-',''),'_r0_processed.mat'];
+    filename = [MouseName,'_',filename,'_cid_processed.mat'];
     savepath = '/mnt/data/';
-    save(fullfile(savepath,'forWDW',filename),'TracesOut','SingleUnits');
+    save(fullfile(savepath,'forGLM',filename),'TracesOut','SingleUnits');
 end
 
 end
